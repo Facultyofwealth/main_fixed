@@ -24,6 +24,10 @@
             --border: rgba(0,0,0,0.1);
         }
 
+        html {
+            background-color: var(--bg-deep);
+        }
+
         body {
             background-color: var(--bg-deep);
             color: var(--text-main);
@@ -53,13 +57,14 @@
 
         .dashboard {
             display: grid;
-            grid-template-columns: 250px 1fr 200px;
-            grid-template-rows: 1fr 250px;
-            gap: 12px;
-            padding: 12px;
+            grid-template-columns: 300px 1fr 250px;
+            grid-template-rows: minmax(320px, 0.96fr) minmax(250px, 0.74fr);
+            gap: 10px;
+            padding: 10px;
             flex-grow: 1;
             height: calc(100vh - 88px);
             box-sizing: border-box;
+            background-color: var(--bg-deep);
         }
 
         .panel {
@@ -91,25 +96,59 @@
         }
 
         .preview-box {
-            background-color: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 12px;
+            background: var(--bg-panel);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 14px;
             display: flex;
             flex-direction: column;
             align-items: flex-start;
             justify-content: flex-start;
             text-align: left;
-            padding: 10px;
+            padding: 0;
             position: relative;
-            overflow-y: auto;   /* Fix 3: static height, scroll within */
-            overflow-x: hidden;
+            overflow: hidden;
         }
         /* Screen 2 specifically — keep toolbar visible */
         .preview-box.screen2-box {
             justify-content: flex-start;
-            padding-top: 40px;
+            padding-top: 36px;
             align-items: center;
             text-align: center;
+        }
+        .preview-stage {
+            width: 100%;
+            flex: 1;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            overflow: hidden;
+            padding: 18px 18px 16px;
+        }
+        .preview-screen-surface {
+            margin: 12px;
+            width: calc(100% - 24px);
+            background:
+                radial-gradient(circle at top, rgba(255,255,255,0.05), transparent 36%),
+                linear-gradient(180deg, #050505 0%, #09090b 100%);
+            border-radius: 14px;
+            box-shadow:
+                inset 0 0 0 1px rgba(255,255,255,0.05),
+                0 12px 28px rgba(0,0,0,0.24);
+        }
+        .preview-stage-ref {
+            width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .preview-stage-body {
+            width: 100%;
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-box-orient: vertical;
+            -webkit-line-clamp: 8;
         }
 
         .preview-icon { font-size: 35px; opacity: 0.4; margin-bottom: 15px; }
@@ -138,8 +177,8 @@
         .bottom-grid {
             grid-column: 1 / span 3;
             display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
-            gap: 12px;
+            grid-template-columns: 2fr 1fr;
+            gap: 10px;
         }
 
         .empty-state {
@@ -152,11 +191,11 @@
         .center-panel-wrapper {
             display: flex;
             flex-direction: column;
-            background-color: var(--bg-panel);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 12px 15px;
-            gap: 10px;
+            background: #202025;
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 14px;
+            padding: 10px 12px;
+            gap: 8px;
             overflow: hidden;
         }
 
@@ -772,13 +811,141 @@
         .ctx-ref { color: #a67c52; font-weight: 700; white-space: nowrap; flex-shrink: 0; font-size: 10px; }
         .ctx-text { color: #d1d5db; }
 
-        /* Fix 3: center preview panels — static height, scroll inside */
+        /* Fix 3: center preview panels — static height, never scroll */
         .center-panel-wrapper { overflow: hidden; }
         .center-previews { overflow: hidden; }
-        .preview-box { overflow-y: auto; overflow-x: hidden; }
+        .preview-box { overflow: hidden; }
         /* Screen 2 preview — live display */
         #live-text { font-size: 13px; word-break: break-word; width: 100%; padding: 4px 6px; }
         #live-sub { font-size: 11px; line-height: 1.6; word-break: break-word; width: 100%; padding: 0 6px; }
+
+        .ref-search-wrap {
+            position: relative;
+            flex: 1;
+            min-width: 200px;
+            max-width: 540px;
+        }
+        .ref-search-input {
+            width: 100%;
+            background: var(--bg-panel);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 10px;
+            padding: 10px 12px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+        .ref-search-input::placeholder {
+            color: var(--text-dim);
+        }
+        .ref-search-suggestions {
+            position: absolute;
+            top: calc(100% + 6px);
+            left: 0;
+            right: 0;
+            background: var(--bg-panel);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 10px;
+            box-shadow: 0 12px 24px rgba(0,0,0,0.24);
+            overflow: hidden;
+            max-height: 220px;
+            overflow-y: auto;
+            z-index: 30;
+        }
+        .ref-suggestion {
+            padding: 9px 12px;
+            cursor: pointer;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            transition: background 0.12s ease;
+        }
+        .ref-suggestion:hover,
+        .ref-suggestion.active {
+            background: rgba(255,255,255,0.05);
+        }
+        .ref-suggestion:last-child {
+            border-bottom: none;
+        }
+        .ref-suggestion-title {
+            color: #f5f5f5;
+            font-size: 13px;
+            font-weight: 700;
+        }
+        .ref-suggestion-sub {
+            color: #8b8b95;
+            font-size: 10px;
+            margin-top: 2px;
+        }
+
+        #interim-text {
+            font-size: 15px;
+            color: #f5f5f5;
+            font-style: normal;
+            font-weight: 700;
+            min-height: 24px;
+            margin: 4px 10px 6px;
+            padding: 0 0 0 12px;
+            border-left: 3px solid transparent;
+            display: flex;
+            align-items: center;
+        }
+        #transcription-area {
+            padding: 0 10px 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            overflow: hidden;
+        }
+        .transcript-entry {
+            color: rgba(255,255,255,0.62);
+            font-size: 14px;
+            font-weight: 600;
+            line-height: 1.45;
+        }
+        .transcript-entry.is-latest {
+            color: #f5f5f5;
+        }
+        .transcript-placeholder {
+            margin: auto 0;
+            color: #6f6f77;
+            font-size: 13px;
+            text-align: center;
+            padding: 18px 0;
+        }
+
+        @media (max-height: 920px) {
+            .dashboard {
+                grid-template-rows: minmax(280px, 0.9fr) minmax(220px, 0.68fr);
+                gap: 8px;
+                padding: 8px;
+            }
+
+            .center-panel-wrapper {
+                padding: 8px 10px;
+                gap: 6px;
+            }
+
+            .center-previews {
+                gap: 10px;
+            }
+
+            .preview-box.screen2-box {
+                padding-top: 32px;
+            }
+
+            .preview-stage {
+                padding: 14px 14px 12px;
+            }
+
+            .preview-screen-surface {
+                margin: 10px;
+                width: calc(100% - 20px);
+            }
+
+            .ref-search-input {
+                padding: 8px 10px;
+                font-size: 12px;
+            }
+        }
 
         /* Fix 11: session timer */
         #sessionTimer { font-family: monospace; font-weight: 700; color: #a67c52; }
@@ -832,7 +999,7 @@
             <div style="display:flex;align-items:center;gap:14px;margin-left:18px;padding-left:18px;border-left:1px solid rgba(255,255,255,0.1);">
 
                 <!-- Monitor icon -->
-                <svg title="Display Output" style="width:18px;height:18px;color:#888;cursor:pointer;flex-shrink:0;" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" onmouseover="this.style.color='#a67c52'" onmouseout="this.style.color='#888'" onclick="openSubpage('monitor')">
+                <svg title="Broadcast" style="width:18px;height:18px;color:#888;cursor:pointer;flex-shrink:0;" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" onmouseover="this.style.color='#a67c52'" onmouseout="this.style.color='#888'" onclick="openBroadcastModal()">
                     <rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
                 </svg>
 
@@ -899,13 +1066,10 @@
                 <span id="audio-level-pct" style="font-size:9px;color:#555;min-width:28px;text-align:right;">0%</span>
             </div>
             <!-- Interim text (real-time words) -->
-            <div id="interim-text" style="font-size:12px;color:#6b7280;font-style:italic;min-height:18px;margin-bottom:4px;padding:4px 12px 0;"></div>
+            <div id="interim-text"></div>
             <!-- Scrollable transcript log -->
-            <div id="transcription-area" style="flex:1;overflow-y:auto;font-size:12px;color:var(--text-dim);line-height:1.6;overflow-anchor:none;padding:4px 12px;">
-                <div style="text-align:center;padding:20px 0;">
-                    <p style="color:var(--text-dim)">Waiting for transcription...</p>
-                    <small>Click START to begin listening</small>
-                </div>
+            <div id="transcription-area" style="flex:1;">
+                <div class="transcript-placeholder">Waiting for transcription...</div>
             </div>
             <!-- Manual type fallback -->
             <div id="manual-input-row" style="display:none;margin-top:8px;gap:6px;display:none;">
@@ -919,23 +1083,25 @@
             <div class="center-previews">
 
                 <!-- SCREEN 1: Preview -->
-                <div class="preview-box" style="padding-top:36px;position:relative;background:linear-gradient(160deg,#0d1230 0%,#1a2060 50%,#0d1230 100%);border-radius:12px;align-items:center;justify-content:center;text-align:center;">
-                    <div style="position:absolute;top:0;left:0;right:0;background:rgba(0,0,0,0.35);border-bottom:1px solid rgba(255,255,255,0.08);padding:7px 12px;border-radius:12px 12px 0 0;display:flex;align-items:center;gap:8px;">
-                        <span style="font-size:9px;font-weight:800;color:#9ca3af;text-transform:uppercase;letter-spacing:1.2px;">Program Preview</span>
-                        <span style="margin-left:auto;font-size:9px;color:#6b7280;font-weight:600;">STAGED</span>
+                <div class="preview-box" style="padding-top:32px;position:relative;align-items:center;justify-content:center;text-align:center;">
+                    <div style="position:absolute;top:0;left:0;right:0;background:rgba(255,255,255,0.02);border-bottom:1px solid rgba(255,255,255,0.06);padding:8px 12px;border-radius:14px 14px 0 0;display:flex;align-items:center;gap:8px;">
+                        <span style="font-size:10px;font-weight:800;color:#f5f5f5;letter-spacing:-0.1px;">Program preview</span>
+                        <span style="margin-left:auto;font-size:9px;color:#8b8b95;font-weight:600;">STAGED</span>
                     </div>
-                    <div id="preview1-icon" style="font-size:28px;opacity:0.25;margin-bottom:10px;">📖</div>
-                    <div id="preview1-text" style="font-size:10px;font-weight:700;color:#c9972a;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px;">Ready to preview</div>
-                    <div id="preview1-sub" style="font-size:14px;font-weight:600;color:#e8e8f0;line-height:1.6;padding:0 12px;font-family:Georgia,serif;">Search for a verse to see it here first</div>
+                    <div class="preview-stage preview-screen-surface">
+                        <div id="preview1-icon" style="font-size:24px;opacity:0.22;margin-bottom:8px;">📖</div>
+                        <div id="preview1-text" class="preview-stage-ref" style="font-size:11px;font-weight:700;color:#c9972a;letter-spacing:0.9px;text-transform:uppercase;margin-bottom:8px;">Ready to preview</div>
+                        <div id="preview1-sub" class="preview-stage-body" style="font-size:15px;font-weight:600;color:#f3f4f6;line-height:1.5;padding:0 10px;font-family:Georgia,serif;">Search for a verse to see it here first</div>
+                    </div>
                 </div>
 
                 <!-- SCREEN 2: Live Display -->
-                <div class="preview-box screen2-box" style="justify-content:flex-start;padding-top:36px;background:linear-gradient(160deg,#0d1230 0%,#1a2060 50%,#0d1230 100%);border-radius:12px;align-items:center;text-align:center;">
-                    <div class="screen2-toolbar" style="position:absolute;top:0;left:0;right:0;background:rgba(0,0,0,0.35);border-bottom:1px solid rgba(255,255,255,0.08);padding:7px 12px;border-radius:12px 12px 0 0;display:flex;align-items:center;gap:8px;">
-                        <span style="font-size:9px;font-weight:800;color:#9ca3af;text-transform:uppercase;letter-spacing:1.2px;">Live Display</span>
+                <div class="preview-box screen2-box" style="justify-content:flex-start;padding-top:32px;align-items:center;text-align:center;">
+                    <div class="screen2-toolbar" style="position:absolute;top:0;left:0;right:0;background:rgba(255,255,255,0.02);border-bottom:1px solid rgba(255,255,255,0.06);padding:8px 12px;border-radius:14px 14px 0 0;display:flex;align-items:center;gap:8px;">
+                        <span style="font-size:10px;font-weight:800;color:#f5f5f5;letter-spacing:-0.1px;">Live display</span>
                         <span id="live-on-air-badge" style="font-size:9px;font-weight:800;color:#4ade80;letter-spacing:1px;display:none;">● LIVE</span>
                         <div class="auto-toggle-wrap" style="margin-left:auto;">
-                            <span class="auto-label" style="font-size:9px;color:#9ca3af;font-weight:700;letter-spacing:0.5px;">GO LIVE</span>
+                            <span class="auto-label" style="font-size:9px;color:#a3a3ad;font-weight:700;letter-spacing:0.2px;">Go live</span>
                             <label class="toggle-switch">
                                 <input type="checkbox" id="autoToggle" onchange="handleGoLiveToggle(this)">
                                 <div class="toggle-track"></div>
@@ -943,9 +1109,11 @@
                             </label>
                         </div>
                     </div>
-                    <div id="live-icon" style="font-size:28px;opacity:0.25;margin-bottom:10px;">📖</div>
-                    <div id="live-text" style="font-size:10px;font-weight:700;color:#c9972a;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px;padding:4px 6px;word-break:break-word;">Waiting for verse...</div>
-                    <div id="live-sub" style="font-size:14px;font-weight:600;color:#e8e8f0;margin-top:0;padding:0 12px;line-height:1.6;word-break:break-word;font-family:Georgia,serif;">Speak or enter a Bible reference</div>
+                    <div class="preview-stage preview-screen-surface">
+                        <div id="live-icon" style="font-size:24px;opacity:0.22;margin-bottom:8px;">📖</div>
+                        <div id="live-text" class="preview-stage-ref" style="font-size:11px;font-weight:700;color:#c9972a;letter-spacing:0.9px;text-transform:uppercase;margin-bottom:8px;padding:4px 6px;word-break:break-word;">Waiting for verse...</div>
+                        <div id="live-sub" class="preview-stage-body" style="font-size:15px;font-weight:600;color:#f3f4f6;margin-top:0;padding:0 10px;line-height:1.5;word-break:break-word;font-family:Georgia,serif;">Speak or enter a Bible reference</div>
+                    </div>
                 </div>
             </div>
 
@@ -977,15 +1145,16 @@
         <div class="bottom-grid">
             <div class="panel" style="padding:0;overflow:hidden;">
                 <!-- Panel header with separator line like Frame 1 -->
-                <div style="padding:10px 14px 8px;border-bottom:1px solid rgba(255,255,255,0.09);display:flex;align-items:center;gap:8px;flex-shrink:0;">
+                <div style="padding:8px 12px;border-bottom:1px solid rgba(255,255,255,0.09);display:flex;align-items:center;gap:8px;flex-shrink:0;">
                     <button class="tab-btn active" id="tabRef" onclick="switchTab('ref')" style="font-size:9px;padding:3px 10px;border-radius:20px;border:1px solid rgba(166,124,82,0.4);color:#a67c52;"> Book Search</button>
                     <button class="tab-btn" id="tabPara" onclick="switchTab('para')" style="font-size:9px;padding:3px 10px;border-radius:20px;border:1px solid rgba(255,255,255,0.1);color:#6b7280;">✦ Context Search</button>
-                    <div style="margin-left:auto;display:flex;align-items:center;gap:6px;">
-                        <!-- Book search input -->
-                        <input type="text" id="bookSearchInput" placeholder="Book..." style="width:80px;padding:4px 8px;font-size:11px;border-radius:6px;" oninput="filterBookSearch(this.value)" onkeydown="if(event.key==='Enter')doBookSearch()">
-                        <!-- Chapter:Verse direct input -->
-                        <input type="text" id="chapterInput" placeholder="ch:verse" style="width:65px;padding:4px 8px;font-size:11px;border-radius:6px;text-align:center;" onkeydown="if(event.key==='Enter')lookupAndDisplay()">
-                        <select class="translation-select" id="mainTranslation" onchange="saveSettings()" title="Choose Bible translation" style="font-size:10px;padding:3px 7px;">
+                    <div style="margin-left:auto;display:flex;align-items:center;gap:8px;flex:1;min-width:0;">
+                        <input type="text" id="bookSearchInput" style="display:none;">
+                        <div class="ref-search-wrap">
+                            <input type="text" id="chapterInput" class="ref-search-input" placeholder="Search book, chapter or verse" oninput="handleReferenceInput(this.value)" onfocus="handleReferenceInput(this.value)" onkeydown="handleReferenceKeydown(event)">
+                            <div id="reference-suggestions" class="ref-search-suggestions" style="display:none;"></div>
+                        </div>
+                        <select class="translation-select" id="mainTranslation" onchange="saveSettings()" title="Choose Bible translation" style="font-size:10px;padding:3px 7px;min-width:96px;">
                             <option>KJV</option><option>NIV</option><option>ESV</option>
                             <option>NKJV</option><option>NLT</option><option>AMP</option>
                             <option>MSG</option><option>CSB</option>
@@ -996,7 +1165,7 @@
                 <div id="tab-ref-panel" style="display:flex;flex-direction:column;flex:1;overflow:hidden;">
                     <!-- Verse lookup result strip -->
                     <div id="chapter-result" style="display:none;padding:5px 12px;font-size:11px;background:rgba(166,124,82,0.08);border-bottom:1px solid rgba(166,124,82,0.18);color:#e5e7eb;line-height:1.5;"></div>
-                    <div style="display:flex;gap:0;border-bottom:1px solid rgba(255,255,255,0.07);flex-shrink:0;">
+                    <div style="display:none;gap:0;border-bottom:1px solid rgba(255,255,255,0.07);flex-shrink:0;">
                         <select id="bookSelect" style="flex:1;background:rgba(255,255,255,0.04);border:none;border-right:1px solid rgba(255,255,255,0.07);color:#e5e7eb;font-size:12px;padding:7px 10px;outline:none;cursor:pointer;" onchange="onBookChange()">
                             <option value="">— Select Book —</option>
                             <optgroup label="Old Testament">
@@ -1029,27 +1198,23 @@
                 </div>
                 <!-- Paraphrase tab panel (hidden by default) -->
                 <div id="tab-para-panel" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
-                    <input type="text" id="paraInput" placeholder="Type a paraphrase — e.g. God so loved the world..." style="margin:8px 10px;padding:7px 10px;font-size:12px;border-radius:6px;box-sizing:border-box;width:calc(100% - 20px);" onkeydown="if(event.key==='Enter')matchParaphrase(this.value)">
+                    <input type="text" id="paraInput" placeholder="Type a paraphrase — e.g. God so loved the world..." style="margin:8px 10px;padding:7px 10px;font-size:12px;border-radius:6px;box-sizing:border-box;width:calc(100% - 20px);" oninput="handleParaphraseInput(this.value)" onfocus="handleParaphraseInput(this.value)" onkeydown="if(event.key==='Enter')matchParaphrase(this.value)">
                     <div id="paraphrase-area" style="flex:1;overflow-y:auto;font-size:12px;padding:0 4px;"><div class="empty-state">Speak a verse in your own words</div></div>
                 </div>
             </div>
-            <!-- Detected Verses + Paraphrase Matches — side by side -->
+            <!-- Detected Verses — exact + paraphrase matches -->
             <div class="panel" style="padding:0;overflow:hidden;">
-                <div style="padding:9px 14px 8px;border-bottom:1px solid rgba(255,255,255,0.09);display:flex;align-items:center;gap:8px;flex-shrink:0;">
-                    <span style="font-size:9px;font-weight:800;color:#a67c52;text-transform:uppercase;letter-spacing:1px;"> Detected Verses</span>
-                    <span style="margin-left:auto;font-size:9px;color:#555;cursor:pointer;" onclick="document.getElementById('detected-verses').innerHTML='<div class=\'empty-state\'>No verses detected yet</div>'">Clear</span>
+                <div style="padding:9px 14px 8px;border-bottom:1px solid rgba(255,255,255,0.09);display:flex;align-items:center;gap:10px;flex-shrink:0;">
+                    <span style="font-size:9px;font-weight:800;color:#a67c52;text-transform:uppercase;letter-spacing:1px;">Detected Verses</span>
+                    <span style="font-size:9px;color:#555;display:flex;align-items:center;gap:5px;">
+                        <span style="color:#a67c52;">●</span> Exact
+                        <span style="color:#4ade80;margin-left:4px;">●</span> Paraphrase
+                    </span>
+                    <span style="margin-left:auto;font-size:9px;color:#555;cursor:pointer;" onclick="clearDetectedPanel()">Clear</span>
                 </div>
-                <div id="detected-verses" style="flex:1;overflow-y:auto;font-size:12px;padding:4px;"><div class="empty-state">No verses detected yet<br><span style="font-size:10px;">Explicit references will appear here</span></div></div>
-            </div>
-            <!-- Paraphrase Matches (AI) — click to stage, never auto-live -->
-            <div class="panel" style="padding:0;overflow:hidden;">
-                <div style="padding:9px 14px 8px;border-bottom:1px solid rgba(255,255,255,0.09);display:flex;align-items:center;gap:8px;flex-shrink:0;">
-                    <span style="font-size:9px;font-weight:800;color:#a67c52;text-transform:uppercase;letter-spacing:1px;"> Paraphrase Matches</span>
-                    <span style="margin-left:auto;font-size:9px;color:#555;cursor:pointer;" onclick="clearParaphrasePanel()">Clear</span>
-                </div>
-                <div id="paraphrase-matches" style="flex:1;overflow-y:auto;font-size:12px;padding:4px;">
-                    <div class="empty-state">No paraphrases detected<br><span style="font-size:10px;">Speak a verse — click a match to stage it</span></div>
-                </div>
+                <div id="detected-verses" style="flex:1;overflow-y:auto;font-size:12px;padding:4px;"><div class="empty-state">No verses detected yet<br><span style="font-size:10px;">Exact refs auto-queue · Paraphrases tap to stage</span></div></div>
+                <!-- Hidden compat element — JS still references paraphrase-matches -->
+                <div id="paraphrase-matches" style="display:none;"></div>
             </div>
         </div>
     </div>
@@ -1059,119 +1224,103 @@
          SUB-PAGES (overlays)
     ============================================================ -->
 
-    <!-- 1. MONITOR / DISPLAY OUTPUT -->
-    <div class="subpage-overlay" id="subpage-monitor">
-        <div class="subpage-panel">
-            <div class="subpage-header">
-                <div class="subpage-title">
-                    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-                    Display Output
-                </div>
-                <button class="subpage-close" onclick="closeSubpage('monitor')">&times;</button>
+    <!-- BROADCAST MODAL -->
+    <div id="broadcast-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:9999;align-items:center;justify-content:center;">
+        <div style="background:#16181f;border:1px solid rgba(255,255,255,0.1);border-radius:14px;width:420px;max-width:94vw;box-shadow:0 24px 70px rgba(0,0,0,0.7);">
+            <!-- Header -->
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 22px 16px;">
+                <span style="font-size:17px;font-weight:800;color:#e5e7eb;letter-spacing:-0.3px;">Broadcast</span>
+                <button onclick="closeBroadcastModal()" style="background:none;border:none;color:#6b7280;font-size:22px;cursor:pointer;line-height:1;padding:0 2px;">&times;</button>
             </div>
-            <div class="subpage-body">
-                <div class="display-preview" id="monitor-preview">
-                    <span id="monitor-preview-text">For God so loved the world...<br><small style="font-size:13px;opacity:0.5;font-weight:400;">John 3:16 <span style="color:#f9cb42">[KJV]</span></small></span>
-                </div>
 
-                <div class="section-label">Projector View</div>
-                <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
-                    <button class="sub-btn" onclick="openProjectorView()">🖥️ Open Projector View (Fullscreen)</button>
-                    <button class="sub-btn-ghost" onclick="showToast('Windowed projector mode opened')">⊞ Windowed Mode</button>
+            <!-- Main Output card -->
+            <div style="margin:0 16px 14px;padding:14px 16px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.09);border-radius:10px;display:flex;align-items:center;justify-content:space-between;">
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <svg width="18" height="18" fill="none" stroke="#6b7280" stroke-width="1.8" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                    <div>
+                        <div style="font-size:13px;font-weight:700;color:#e5e7eb;">Main Output</div>
+                        <div style="font-size:11px;color:#6b7280;margin-top:1px;">In-room screen / Projector</div>
+                    </div>
                 </div>
+                <!-- Toggle -->
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <span id="bcast-toggle-label" style="font-size:11px;color:#6b7280;">Off</span>
+                    <label style="position:relative;width:40px;height:22px;cursor:pointer;">
+                        <input type="checkbox" id="broadcast-main-toggle" style="opacity:0;width:0;height:0;position:absolute;" onchange="handleBroadcastToggle(this)">
+                        <div id="bcast-track" style="position:absolute;inset:0;background:rgba(255,255,255,0.12);border-radius:20px;transition:background 0.2s;"></div>
+                        <div id="bcast-thumb" style="position:absolute;top:3px;left:3px;width:16px;height:16px;background:#fff;border-radius:50%;transition:transform 0.2s;"></div>
+                    </label>
+                </div>
+            </div>
 
-                <div class="section-label">Output Type</div>
-                <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
-                    <div class="output-badge selected" id="out-hdmi" onclick="selectOutput('hdmi')">
-                        <div class="dot"></div> HDMI Output
-                    </div>
-                    <div class="output-badge" id="out-ndi" onclick="selectOutput('ndi')">
-                        <div class="dot"></div> NDI Stream
-                    </div>
-                    <div class="output-badge" id="out-vmix" onclick="selectOutput('vmix')">
-                        <div class="dot"></div> vMix Input
-                    </div>
-                    <div class="output-badge" id="out-wireless" onclick="selectOutput('wireless')">
-                        <div class="dot"></div> Wireless
-                    </div>
+            <!-- Theme -->
+            <div style="margin:0 16px 14px;">
+                <div style="font-size:10px;font-weight:800;color:#6b7280;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Theme</div>
+                <div style="position:relative;">
+                    <select id="broadcast-theme" onchange="applyBroadcastTheme(this.value)" style="width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.11);color:#d1d5db;border-radius:8px;padding:10px 14px;font-size:13px;outline:none;cursor:pointer;appearance:none;">
+                        <option value="dark">Dark</option>
+                        <option value="midnight">Midnight</option>
+                        <option value="forest">Forest</option>
+                        <option value="amber">Amber</option>
+                        <option value="ocean">Ocean</option>
+                        <option value="parchment">Parchment</option>
+                        <option value="selah" selected>Selah</option>
+                    </select>
+                    <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);color:#6b7280;pointer-events:none;">▾</span>
                 </div>
-                <!-- Output info notice -->
-                <div id="output-info-notice" style="font-size:11px;color:#9ca3af;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:8px;padding:10px 14px;margin-bottom:14px;line-height:1.6;">
-                    ℹ️ <strong style="color:#a67c52;">HDMI</strong> — Projector View opens fullscreen on this display. Connect a second monitor/projector via HDMI and drag this browser window to it for a true second-screen output.<br>
-                    <strong style="color:#a67c52;">NDI / vMix</strong> — These are external hardware/software protocols. Your content still displays in the Projector View below; your IT/AV team must route the NDI or vMix feed from the computer running this app into the video switcher. The browser itself cannot directly push NDI or vMix — that is normal and expected.
-                </div>
+            </div>
 
-                <!-- NDI Settings (shown when NDI selected) -->
-                <div id="ndi-settings" style="display:none;background:rgba(255,255,255,0.03);border-radius:8px;padding:14px;margin-bottom:14px;border:1px solid rgba(255,255,255,0.07);">
-                    <div style="font-size:11px;font-weight:700;color:#a67c52;margin-bottom:10px;">NDI Configuration</div>
-                    <div class="setting-row" style="padding:8px 0;">
-                        <div><div class="setting-label">NDI Source Name</div></div>
-                        <input style="width:180px;padding:6px 10px;font-size:12px;" value="InTheBeginning-1" onchange="saveSettings()">
-                    </div>
-                    <div class="setting-row" style="padding:8px 0;">
-                        <div><div class="setting-label">NDI Group</div></div>
-                        <input style="width:180px;padding:6px 10px;font-size:12px;" value="Church" onchange="saveSettings()">
-                    </div>
-                    <div class="setting-row" style="padding:8px 0;">
-                        <div><div class="setting-label">Frame Rate</div></div>
-                        <select class="sub-select" onchange="saveSettings()"><option>60fps</option><option>30fps</option><option>25fps</option></select>
-                    </div>
+            <!-- Output Type -->
+            <div style="margin:0 16px 14px;">
+                <div style="font-size:10px;font-weight:800;color:#6b7280;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Output Type</div>
+                <div style="display:flex;gap:8px;">
+                    <button id="bcast-btn-ext" onclick="setBroadcastOutput('external')" style="flex:1;padding:10px 0;background:#a67c52;border:none;border-radius:8px;color:#fff;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;">
+                        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                        External Display
+                    </button>
+                    <button id="bcast-btn-ndi" onclick="setBroadcastOutput('ndi')" style="flex:1;padding:10px 0;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.11);border-radius:8px;color:#9ca3af;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;">
+                        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49"/><path d="M7.76 16.24a6 6 0 0 1 0-8.49"/><path d="M20.07 3.93a10 10 0 0 1 0 16.14"/><path d="M3.93 20.07a10 10 0 0 1 0-16.14"/></svg>
+                        NDI
+                    </button>
                 </div>
+            </div>
 
-                <!-- vMix Settings (shown when vMix selected) -->
-                <div id="vmix-settings" style="display:none;background:rgba(255,255,255,0.03);border-radius:8px;padding:14px;margin-bottom:14px;border:1px solid rgba(255,255,255,0.07);">
-                    <div style="font-size:11px;font-weight:700;color:#a67c52;margin-bottom:10px;">vMix Configuration</div>
-                    <div class="setting-row" style="padding:8px 0;">
-                        <div><div class="setting-label">vMix Host IP</div></div>
-                        <input style="width:180px;padding:6px 10px;font-size:12px;" value="192.168.1.100" onchange="saveSettings()">
-                    </div>
-                    <div class="setting-row" style="padding:8px 0;">
-                        <div><div class="setting-label">vMix Input Number</div></div>
-                        <input style="width:80px;padding:6px 10px;font-size:12px;" value="1" type="number" onchange="saveSettings()">
-                    </div>
-                    <div class="setting-row" style="padding:8px 0;">
-                        <div><div class="setting-label">vMix Port</div></div>
-                        <input style="width:80px;padding:6px 10px;font-size:12px;" value="8088" onchange="saveSettings()">
-                    </div>
-                    <div style="margin-top:10px;">
-                        <button class="sub-btn" onclick="showToast('Connecting to vMix at 192.168.1.100...')">Test Connection</button>
-                    </div>
+            <!-- Target Monitor -->
+            <div style="margin:0 16px 16px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                    <div style="font-size:10px;font-weight:800;color:#6b7280;text-transform:uppercase;letter-spacing:1px;">Target Monitor</div>
+                    <button onclick="refreshBroadcastMonitors()" style="background:none;border:none;color:#6b7280;font-size:11px;cursor:pointer;display:flex;align-items:center;gap:4px;">
+                        <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                        Refresh
+                    </button>
                 </div>
+                <div style="position:relative;">
+                    <select id="bcast-monitor-sel" style="width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.11);color:#6b7280;border-radius:8px;padding:10px 14px;font-size:12px;outline:none;cursor:pointer;appearance:none;">
+                        <option>No external monitors detected</option>
+                    </select>
+                    <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);color:#6b7280;pointer-events:none;">▾</span>
+                </div>
+            </div>
 
-                <div class="section-label">Verse Display Mode</div>
-                <div class="setting-row">
-                    <div><div class="setting-label">Display Mode</div><div class="setting-sub">Auto: push detected verses instantly. Manual: you control what shows.</div></div>
-                    <div class="mode-pill">
-                        <button id="mode-auto" class="active" onclick="setDisplayMode('auto')">AUTO</button>
-                        <button id="mode-manual" onclick="setDisplayMode('manual')">MANUAL</button>
-                    </div>
-                </div>
+            <!-- Close Preview button -->
+            <div style="margin:0 16px;">
+                <button onclick="closeBroadcastModal()" style="width:100%;padding:12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#d1d5db;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;">
+                    <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                    Close Preview
+                </button>
+            </div>
 
-                <div class="section-label">Screen</div>
-                <div class="setting-row">
-                    <div><div class="setting-label">Connected Display</div><div class="setting-sub">HDMI Output — 1920 × 1080</div></div>
-                    <select class="sub-select" onchange="saveSettings()"><option>HDMI 1</option><option>HDMI 2</option><option>Wireless</option></select>
-                </div>
-                <div class="setting-row">
-                    <div><div class="setting-label">Resolution</div></div>
-                    <select class="sub-select" onchange="saveSettings()"><option>1920×1080</option><option>1280×720</option><option>3840×2160</option></select>
-                </div>
-                <div class="setting-row">
-                    <div><div class="setting-label">Mirror to Secondary Screen</div></div>
-                    <label class="mini-toggle"><input type="checkbox" checked onchange="saveSettings()"><div class="mini-track"></div><div class="mini-thumb"></div></label>
-                </div>
-                <div class="setting-row">
-                    <div><div class="setting-label">Black Screen</div><div class="setting-sub">Hide output without stopping session</div></div>
-                    <label class="mini-toggle"><input type="checkbox" id="blackScreenToggle" onchange="toggleBlackScreen(this)"><div class="mini-track"></div><div class="mini-thumb"></div></label>
-                </div>
-                <div style="display:flex;gap:10px;margin-top:18px;">
-                    <button class="sub-btn" onclick="sendToLive();showToast('▶ Now Live on display');closeSubpage('monitor')">▶ Go Live Now</button>
-                    <button class="sub-btn-ghost" onclick="toggleBlackScreenBtn()">⬛ Black Screen</button>
-                    <button class="sub-btn-ghost" onclick="openProjectorView()">🖥️ Projector View</button>
-                </div>
+            <!-- Add Output Channel -->
+            <div style="padding:14px 22px 18px;">
+                <button onclick="showToast('Additional output channels coming soon')" style="background:none;border:none;color:#6b7280;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:6px;">
+                    <span style="font-size:16px;line-height:1;">+</span> Add Output Channel
+                </button>
             </div>
         </div>
     </div>
+
+    <!-- hidden compat — blackScreenToggle referenced in JS -->
+    <input type="checkbox" id="blackScreenToggle" style="display:none;" onchange="toggleBlackScreen(this)">
 
     <!-- 2. PROFILE -->
     <div class="subpage-overlay" id="subpage-profile">
@@ -1358,28 +1507,35 @@
             </div>
             <div class="subpage-body">
 
-                <div class="section-label">Microphone Input</div>
+                <div class="section-label">Audio Input</div>
                 <div class="setting-row">
-                    <div><div class="setting-label">Mic Input</div><div class="setting-sub">Choose your audio input device</div></div>
+                    <div><div class="setting-label">Audio Source</div><div class="setting-sub">Use Microphone for room speech, or System Audio to capture preaching and other sound playing on this laptop.</div></div>
+                    <select class="sub-select" id="audioSourceSelect" onchange="saveSettings()">
+                        <option value="microphone">Microphone</option>
+                        <option value="system">System Audio (Laptop Playback)</option>
+                    </select>
+                </div>
+                <div class="setting-row">
+                    <div><div class="setting-label">Mic Input</div><div class="setting-sub">Choose your audio input device. Exact microphones appear after mic access is granted.</div></div>
                     <select class="sub-select" id="micSelect" onchange="saveSettings()">
                         <option value="default">System Default</option>
-                        <option value="conexant">Internal Microphone (Conexant ISST Audio)</option>
-                        <option value="usb">USB Audio Device</option>
-                        <option value="bluetooth">Bluetooth Microphone</option>
-                        <option value="external">External 3.5mm Mic</option>
+                        <option value="external">Prefer External 3.5mm / Headset Mic</option>
+                        <option value="usb">Prefer USB Audio Device</option>
+                        <option value="bluetooth">Prefer Bluetooth Microphone</option>
+                        <option value="conexant">Prefer Internal Microphone</option>
                     </select>
                 </div>
                 <div class="setting-row">
                     <div><div class="setting-label">Mic Gain</div></div>
-                    <input type="range" class="sub-range" min="0" max="200" value="100" oninput="document.getElementById('micGainVal').textContent=this.value+'%';saveSettings()"> <span id="micGainVal" style="font-size:11px;color:#a67c52;margin-left:6px;">100%</span>
+                    <input type="range" class="sub-range" id="micGain" min="0" max="200" value="135" oninput="document.getElementById('micGainVal').textContent=this.value+'%';saveSettings()"> <span id="micGainVal" style="font-size:11px;color:#a67c52;margin-left:6px;">135%</span>
                 </div>
                 <div class="setting-row">
                     <div><div class="setting-label">Noise Suppression</div><div class="setting-sub">Reduce background noise</div></div>
-                    <label class="mini-toggle"><input type="checkbox" checked onchange="saveSettings()"><div class="mini-track"></div><div class="mini-thumb"></div></label>
+                    <label class="mini-toggle"><input type="checkbox" id="noiseSuppressionToggle" checked onchange="saveSettings()"><div class="mini-track"></div><div class="mini-thumb"></div></label>
                 </div>
                 <div class="setting-row">
                     <div><div class="setting-label">Auto-start Transcription</div><div class="setting-sub">Begin listening on app launch</div></div>
-                    <label class="mini-toggle"><input type="checkbox" onchange="saveSettings()"><div class="mini-track"></div><div class="mini-thumb"></div></label>
+                    <label class="mini-toggle"><input type="checkbox" id="autoStartToggle" onchange="saveSettings()"><div class="mini-track"></div><div class="mini-thumb"></div></label>
                 </div>
 
                 <div class="section-label">Transcription Engine</div>
@@ -1796,6 +1952,11 @@
         textColor: '#ffffff',
         dayMode: false,
         transcriptionMode: 'online',
+        audioSource: 'microphone',
+        micInput: 'default',
+        micGain: 135,
+        noiseSuppression: true,
+        autoStartTranscription: false,
         timerMode: 'countdown',
         timerRunning: false,
         timerValue: 0,
@@ -1813,10 +1974,260 @@
             const saved = localStorage.getItem(APP_KEY);
             if (saved) appState = { ...appState, ...JSON.parse(saved) };
         } catch(e) {}
+        if (typeof appState.captureSystemAudio === 'boolean' && !appState.audioSource) {
+            appState.audioSource = appState.captureSystemAudio ? 'system' : 'microphone';
+        }
+        appState.audioSource = normalizeAudioSource(appState.audioSource);
+        appState.captureSystemAudio = appState.audioSource === 'system';
     }
 
     function saveSettings() {
+        syncMicSettingsFromDom();
         try { localStorage.setItem(APP_KEY, JSON.stringify(appState)); } catch(e) {}
+    }
+
+    function normalizeAudioSource(value) {
+        return value === 'system' ? 'system' : 'microphone';
+    }
+
+    const MIC_PRESET_LABELS = {
+        default: 'System Default',
+        external: 'Prefer External 3.5mm / Headset Mic',
+        usb: 'Prefer USB Audio Device',
+        bluetooth: 'Prefer Bluetooth Microphone',
+        conexant: 'Prefer Internal Microphone'
+    };
+    const MIC_PRESET_KEYWORDS = {
+        external: ['external', 'headset', 'head phone', 'headphone', 'earbud', 'wired', 'line in', 'line-in', 'jack', 'trs', 'trrs', 'combo'],
+        usb: ['usb', 'webcam', 'dock', 'yeti', 'focusrite', 'scarlett', 'rode', 'shure'],
+        bluetooth: ['bluetooth', 'hands-free', 'handsfree', 'airpods', 'buds', 'wireless'],
+        conexant: ['conexant', 'internal', 'built in', 'built-in', 'array', 'laptop', 'realtek']
+    };
+    let audioInputDevices = [];
+
+    function clampMicGain(value) {
+        const numeric = Number(value);
+        if (!Number.isFinite(numeric)) return 135;
+        return Math.max(0, Math.min(200, Math.round(numeric)));
+    }
+
+    function normalizeMicLabel(label) {
+        return String(label || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+    }
+
+    function syncMicSettingsFromDom() {
+        const audioSourceSelect = document.getElementById('audioSourceSelect');
+        const micSelect = document.getElementById('micSelect');
+        const micGain = document.getElementById('micGain');
+        const noiseToggle = document.getElementById('noiseSuppressionToggle');
+        const autoStartToggle = document.getElementById('autoStartToggle');
+
+        if (audioSourceSelect) appState.audioSource = normalizeAudioSource(audioSourceSelect.value || appState.audioSource);
+        if (micSelect) appState.micInput = micSelect.value || 'default';
+        if (micGain) appState.micGain = clampMicGain(micGain.value);
+        if (noiseToggle) appState.noiseSuppression = !!noiseToggle.checked;
+        if (autoStartToggle) appState.autoStartTranscription = !!autoStartToggle.checked;
+        appState.captureSystemAudio = appState.audioSource === 'system';
+
+        const micGainVal = document.getElementById('micGainVal');
+        if (micGainVal) micGainVal.textContent = `${appState.micGain}%`;
+    }
+
+    function applyMicSettingsToDom() {
+        const audioSourceSelect = document.getElementById('audioSourceSelect');
+        const micSelect = document.getElementById('micSelect');
+        const micGain = clampMicGain(appState.micGain);
+        appState.audioSource = normalizeAudioSource(appState.audioSource);
+        appState.captureSystemAudio = appState.audioSource === 'system';
+        appState.micInput = appState.micInput || 'default';
+        appState.micGain = micGain;
+
+        if (audioSourceSelect) audioSourceSelect.value = appState.audioSource;
+
+        if (micSelect) {
+            const hasSavedValue = Array.from(micSelect.options).some(opt => opt.value === appState.micInput);
+            micSelect.value = hasSavedValue ? appState.micInput : 'default';
+        }
+
+        const micGainEl = document.getElementById('micGain');
+        const micGainVal = document.getElementById('micGainVal');
+        if (micGainEl) micGainEl.value = String(micGain);
+        if (micGainVal) micGainVal.textContent = `${micGain}%`;
+
+        const noiseToggle = document.getElementById('noiseSuppressionToggle');
+        if (noiseToggle) noiseToggle.checked = appState.noiseSuppression !== false;
+
+        const autoStartToggle = document.getElementById('autoStartToggle');
+        if (autoStartToggle) autoStartToggle.checked = !!appState.autoStartTranscription;
+    }
+
+    function renderMicDeviceOptions() {
+        const micSelect = document.getElementById('micSelect');
+        if (!micSelect) return;
+
+        const selectedValue = appState.micInput || micSelect.value || 'default';
+        micSelect.innerHTML = '';
+
+        Object.entries(MIC_PRESET_LABELS).forEach(([value, label]) => {
+            const opt = document.createElement('option');
+            opt.value = value;
+            opt.textContent = label;
+            micSelect.appendChild(opt);
+        });
+
+        if (audioInputDevices.length) {
+            const divider = document.createElement('option');
+            divider.disabled = true;
+            divider.textContent = '------------------------';
+            micSelect.appendChild(divider);
+
+            audioInputDevices.forEach((device, index) => {
+                const opt = document.createElement('option');
+                opt.value = `device:${device.deviceId}`;
+                opt.textContent = device.label || `Microphone ${index + 1}`;
+                micSelect.appendChild(opt);
+            });
+        }
+
+        const hasSelectedValue = Array.from(micSelect.options).some(opt => opt.value === selectedValue);
+        micSelect.value = hasSelectedValue ? selectedValue : 'default';
+        if (!hasSelectedValue && String(selectedValue).startsWith('device:')) appState.micInput = 'default';
+    }
+
+    async function refreshMicDeviceOptions() {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
+            return [];
+        }
+
+        try {
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            audioInputDevices = devices.filter(device => device.kind === 'audioinput' && device.deviceId);
+        } catch (e) {
+            console.warn('Could not enumerate microphones:', e);
+            audioInputDevices = [];
+        }
+
+        renderMicDeviceOptions();
+        return audioInputDevices;
+    }
+
+    function scoreMicDeviceForPreference(device, preference) {
+        const label = normalizeMicLabel(device.label);
+        if (!label) return 0;
+
+        let score = 0;
+        (MIC_PRESET_KEYWORDS[preference] || []).forEach(keyword => {
+            if (label.includes(keyword)) score += 4;
+        });
+
+        if (preference === 'external') {
+            if (label.includes('microphone') && !label.includes('array')) score += 1;
+            if (label.includes('array') || label.includes('internal') || label.includes('built in') || label.includes('built-in')) score -= 3;
+            if (label.includes('bluetooth') || label.includes('usb')) score -= 2;
+        }
+
+        if (preference === 'usb' && label.includes('headset')) score += 1;
+        if (preference === 'bluetooth' && label.includes('hands free')) score += 2;
+        if (preference === 'conexant' && label.includes('headset')) score -= 1;
+
+        return score;
+    }
+
+    function resolvePreferredMicSelection() {
+        const selectionValue = appState.micInput || 'default';
+
+        if (selectionValue.startsWith('device:')) {
+            const exactMatch = audioInputDevices.find(device => `device:${device.deviceId}` === selectionValue);
+            if (exactMatch) {
+                return {
+                    value: selectionValue,
+                    deviceId: exactMatch.deviceId,
+                    label: exactMatch.label || 'Selected microphone'
+                };
+            }
+            return { value: 'default', deviceId: null, label: MIC_PRESET_LABELS.default };
+        }
+
+        if (selectionValue === 'default') {
+            return { value: 'default', deviceId: null, label: MIC_PRESET_LABELS.default };
+        }
+
+        let bestMatch = null;
+        for (const device of audioInputDevices) {
+            const score = scoreMicDeviceForPreference(device, selectionValue);
+            if (!bestMatch || score > bestMatch.score) bestMatch = { device, score };
+        }
+
+        if (bestMatch && bestMatch.score > 0) {
+            return {
+                value: selectionValue,
+                deviceId: bestMatch.device.deviceId,
+                label: bestMatch.device.label || MIC_PRESET_LABELS[selectionValue],
+                matchedByPreset: true
+            };
+        }
+
+        return {
+            value: selectionValue,
+            deviceId: null,
+            label: MIC_PRESET_LABELS[selectionValue] || MIC_PRESET_LABELS.default
+        };
+    }
+
+    function buildMicConstraints(selection) {
+        const audio = {
+            echoCancellation: false,
+            noiseSuppression: appState.noiseSuppression !== false,
+            autoGainControl: false,
+            channelCount: { ideal: 1 },
+            sampleRate: { ideal: 48000 },
+            latency: { ideal: 0.02 }
+        };
+
+        if (selection && selection.deviceId) {
+            audio.deviceId = { exact: selection.deviceId };
+        }
+
+        return { audio };
+    }
+
+    async function openPreferredMicrophone() {
+        await refreshMicDeviceOptions();
+
+        let selection = resolvePreferredMicSelection();
+        let stream;
+
+        try {
+            stream = await navigator.mediaDevices.getUserMedia(buildMicConstraints(selection));
+        } catch (e) {
+            if (selection.deviceId && (e.name === 'OverconstrainedError' || e.name === 'NotFoundError')) {
+                console.warn('Preferred microphone unavailable, falling back to system default:', e);
+                selection = { value: 'default', deviceId: null, label: MIC_PRESET_LABELS.default, fallback: true };
+                stream = await navigator.mediaDevices.getUserMedia(buildMicConstraints(selection));
+            } else {
+                throw e;
+            }
+        }
+
+        await refreshMicDeviceOptions();
+        const refinedSelection = resolvePreferredMicSelection();
+
+        if (!selection.deviceId && refinedSelection.deviceId) {
+            stream.getTracks().forEach(track => track.stop());
+            stopAudioVisualizer();
+            selection = refinedSelection;
+            stream = await navigator.mediaDevices.getUserMedia(buildMicConstraints(selection));
+        } else if (selection.deviceId) {
+            selection = resolvePreferredMicSelection();
+        }
+
+        return { stream, selection };
+    }
+
+    function getActiveMicLabel(selection, stream) {
+        const activeTrack = stream && stream.getAudioTracks ? stream.getAudioTracks()[0] : null;
+        const trackLabel = activeTrack && activeTrack.label ? activeTrack.label.trim() : '';
+        return trackLabel || (selection && selection.label) || MIC_PRESET_LABELS.default;
     }
 
     function showToast(msg, duration = 2800) {
@@ -1839,6 +2250,9 @@
     }
     document.querySelectorAll('.subpage-overlay').forEach(o => {
         o.addEventListener('click', function(e) { if (e.target === this) this.classList.remove('active'); });
+    });
+    document.addEventListener('click', e => {
+        if (!e.target.closest('.ref-search-wrap')) hideReferenceSuggestions();
     });
     document.addEventListener('keydown', e => {
         if (e.key === 'Escape') {
@@ -1995,81 +2409,144 @@
     }
 
     function filterBookSearch(query) {
-        const bookSel = document.getElementById('bookSelect');
-        if (!query) return;
-        const q = query.toLowerCase();
-        for (let opt of bookSel.options) {
-            if (opt.value && opt.value.toLowerCase().startsWith(q)) {
-                bookSel.value = opt.value;
-                onBookChange();
-                break;
-            }
-        }
+        const match = findMatchingBooks(query, 1)[0];
+        if (match) openChapterFromSearch(match, 1);
     }
 
     function doBookSearch() {
-        const q = document.getElementById('bookSearchInput').value.trim();
+        const q = document.getElementById('chapterInput').value.trim();
         if (!q) return;
-        filterBookSearch(q);
+        handleReferenceInput(q);
     }
 
-    // Fix 7: paraphrase matching
-    async function matchParaphrase(query) {
-        if (!query.trim()) return;
+    function tokenizeSearchText(value) {
+        return String(value || '')
+            .toLowerCase()
+            .replace(/[^a-z0-9\s]/g, ' ')
+            .split(/\s+/)
+            .filter(Boolean);
+    }
+
+    function getParaphraseTokens(query) {
+        return tokenizeSearchText(query).filter(token => token.length > 1 && !PARAPHRASE_STOP_WORDS.has(token));
+    }
+
+    function getParaphraseMatchScore(verse, query) {
+        const rawQuery = normalizeReferenceText(query).toLowerCase();
+        if (!rawQuery) return 0;
+
+        const refText = String(verse.ref || '').toLowerCase();
+        const verseText = String(verse.text || '').toLowerCase();
+        if (refText.includes(rawQuery) || verseText.includes(rawQuery)) {
+            return 200 + rawQuery.length;
+        }
+
+        const queryTokens = getParaphraseTokens(rawQuery);
+        if (!queryTokens.length) return 0;
+
+        const verseTokens = tokenizeSearchText(verseText);
+        let score = 0;
+        queryTokens.forEach(token => {
+            if (verseTokens.includes(token)) score += 8;
+            else if (verseTokens.some(word => word.startsWith(token))) score += 6;
+            else if (verseText.includes(token)) score += 3;
+        });
+
+        if (score && queryTokens.every(token => verseText.includes(token))) score += 4;
+        return score;
+    }
+
+    function resetParaphraseResults(message = 'Speak a verse in your own words') {
         const paraArea = document.getElementById('paraphrase-area');
-        paraArea.innerHTML = '<div style="color:#6b7280;font-size:12px;padding:6px;">Matching...</div>';
-        // Try backend
-        try {
-            const resp = await fetch(BACKEND_URL + '/search', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ text: query })
-            });
-            const data = await resp.json();
-            if (data.results && data.results.length) {
-                paraArea.innerHTML = '';
-                data.results.slice(0, 5).forEach(v => {
-                    const div = document.createElement('div');
-                    div.style.cssText = 'padding:7px 4px;border-bottom:1px solid rgba(255,255,255,0.05);cursor:pointer;';
-                    div.innerHTML = `<div style="color:#a67c52;font-weight:700;font-size:10px;">${v.ref}</div>
-                        <div style="font-size:11px;color:#d1d5db;line-height:1.5;">${v.text}</div>`;
-                    div.onclick = () => {
-                        appState.currentVerse = { ref: v.ref, text: v.text, translation: document.getElementById('mainTranslation').value };
-                        sendToLive();
-                    };
-                    paraArea.appendChild(div);
-                });
-            } else {
-                // Local sample fallback
-                localParaphraseMatch(query, paraArea);
-            }
-        } catch(e) {
-            localParaphraseMatch(query, paraArea);
-        }
+        if (!paraArea) return;
+        paraArea.innerHTML = `<div class="empty-state">${message}</div>`;
     }
 
-    function localParaphraseMatch(query, paraArea) {
-        const q = query.toLowerCase();
-        const matches = Object.values(SAMPLE_VERSES).filter(v =>
-            v.text.toLowerCase().includes(q.split(' ').slice(0,3).join(' ')) ||
-            v.ref.toLowerCase().includes(q)
-        ).slice(0, 4);
-        if (!matches.length) {
-            paraArea.innerHTML = '<div style="color:#6b7280;font-size:12px;padding:6px;">No match found. Connect backend for full search.</div>';
-            return;
-        }
+    function renderParaphraseResults(results, paraArea) {
         paraArea.innerHTML = '';
-        matches.forEach(v => {
+        results.slice(0, 5).forEach(v => {
             const div = document.createElement('div');
             div.style.cssText = 'padding:7px 4px;border-bottom:1px solid rgba(255,255,255,0.05);cursor:pointer;';
             div.innerHTML = `<div style="color:#a67c52;font-weight:700;font-size:10px;">${v.ref}</div>
                 <div style="font-size:11px;color:#d1d5db;line-height:1.5;">${v.text}</div>`;
-            div.onclick = () => {
-                appState.currentVerse = { ref: v.ref, text: v.text, translation: document.getElementById('mainTranslation').value };
-                sendToLive();
-            };
+            div.onclick = () => openChapterFromContextResult(v);
             paraArea.appendChild(div);
         });
+    }
+
+    function handleParaphraseInput(value) {
+        clearTimeout(paraphraseInputTimer);
+        const query = normalizeReferenceText(value);
+        if (!query) {
+            resetParaphraseResults();
+            return;
+        }
+
+        paraphraseInputTimer = setTimeout(() => {
+            matchParaphrase(query, { live: true });
+        }, 180);
+    }
+
+    // Fix 7: paraphrase matching
+    async function matchParaphrase(query, options = {}) {
+        const live = !!options.live;
+        const normalizedQuery = normalizeReferenceText(query);
+        if (!normalizedQuery) {
+            resetParaphraseResults();
+            return;
+        }
+        const paraArea = document.getElementById('paraphrase-area');
+        paraArea.innerHTML = `<div style="color:#6b7280;font-size:12px;padding:6px;">${live ? 'Searching suggestions...' : 'Matching...'}</div>`;
+        try {
+            const resp = await fetch(BACKEND_URL + '/search', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: normalizedQuery })
+            });
+            const data = await resp.json();
+            if (data.results && data.results.length) {
+                const matches = data.results
+                    .map(v => ({ ...v, _score: getParaphraseMatchScore(v, normalizedQuery) }))
+                    .filter(v => v._score > 0)
+                    .sort((a, b) => b._score - a._score || a.ref.localeCompare(b.ref));
+                if (matches.length) {
+                    renderParaphraseResults(matches, paraArea);
+                    return;
+                }
+            } else {
+                localParaphraseMatch(normalizedQuery, paraArea);
+                return;
+            }
+        } catch(e) {
+            localParaphraseMatch(normalizedQuery, paraArea);
+            return;
+        }
+
+        localParaphraseMatch(normalizedQuery, paraArea);
+    }
+
+    // Tap a context search result → open full chapter in Book Search with PREV/NEXT
+    function openChapterFromContextResult(v) {
+        const trans = document.getElementById('mainTranslation').value;
+        appState.currentVerse = { ref: v.ref, text: v.text, translation: trans };
+        buildChapterQueue(v.ref);
+        sendToPreview(appState.currentVerse);
+        // Switch to Book Search tab and navigate to the chapter
+        switchTab('ref');
+        autoNavToRef(v.ref);
+    }
+
+    function localParaphraseMatch(query, paraArea) {
+        const matches = Object.values(SAMPLE_VERSES)
+            .map(v => ({ ...v, _score: getParaphraseMatchScore(v, query) }))
+            .filter(v => v._score > 0)
+            .sort((a, b) => b._score - a._score || a.ref.localeCompare(b.ref))
+            .slice(0, 5);
+        if (!matches.length) {
+            paraArea.innerHTML = '<div style="color:#6b7280;font-size:12px;padding:6px;">No match found. Connect backend for full search.</div>';
+            return;
+        }
+        renderParaphraseResults(matches, paraArea);
     }
 
     // ===================== PROPRESENT TABS =====================
@@ -2195,10 +2672,253 @@
     };
     const ALL_CHAPTERS = { ...OT_CHAPTERS, ...NT_CHAPTERS };
 
+    const ALL_BOOKS = Object.keys(ALL_CHAPTERS);
     const OT = Object.keys(OT_CHAPTERS);
     const NT = Object.keys(NT_CHAPTERS);
+    const BOOK_ALIASES = {
+        'psalm': 'Psalms',
+        'psalms': 'Psalms',
+        'song of songs': 'Song of Solomon',
+        'songs of solomon': 'Song of Solomon',
+        'canticles': 'Song of Solomon',
+        'revelations': 'Revelation'
+    };
+    const PARAPHRASE_STOP_WORDS = new Set([
+        'a', 'an', 'and', 'are', 'as', 'at', 'be', 'by', 'for', 'from', 'he',
+        'i', 'in', 'is', 'it', 'me', 'my', 'of', 'on', 'or', 'our', 'she',
+        'so', 'that', 'the', 'their', 'them', 'they', 'this', 'to', 'was',
+        'we', 'with', 'you', 'your'
+    ]);
+    const ALL_BOOKS_LOWER = ALL_BOOKS.reduce((map, book) => {
+        map[book.toLowerCase()] = book;
+        return map;
+    }, {});
 
     let navSelectedBook = null, navSelectedChapter = null;
+    let referenceSuggestions = [];
+    let activeReferenceSuggestion = -1;
+    let referenceInputTimer = null;
+    let paraphraseInputTimer = null;
+
+    function normalizeReferenceText(value) {
+        return String(value || '').replace(/\s+/g, ' ').trim();
+    }
+
+    function canonicalizeBookName(rawBook) {
+        const normalized = normalizeReferenceText(rawBook).toLowerCase();
+        if (!normalized) return null;
+        return ALL_BOOKS_LOWER[normalized] || BOOK_ALIASES[normalized] || null;
+    }
+
+    function findMatchingBooks(query, limit = 8) {
+        const q = normalizeReferenceText(query).toLowerCase();
+        if (!q) return [];
+        const directMatch = canonicalizeBookName(q);
+        return ALL_BOOKS
+            .map(book => {
+                const bookLower = book.toLowerCase();
+                const aliases = Object.keys(BOOK_ALIASES).filter(alias => BOOK_ALIASES[alias] === book);
+                const terms = [bookLower, ...aliases];
+                let score = 0;
+                if (directMatch === book) score = 120;
+                terms.forEach(term => {
+                    if (term === q) score = Math.max(score, 100);
+                    else if (term.startsWith(q)) score = Math.max(score, 82);
+                    else if (term.includes(q)) score = Math.max(score, 58);
+                    else {
+                        const parts = q.split(' ');
+                        if (parts.every(part => term.includes(part))) score = Math.max(score, 36);
+                    }
+                });
+                return score ? { book, score } : null;
+            })
+            .filter(Boolean)
+            .sort((a, b) => b.score - a.score || a.book.localeCompare(b.book))
+            .slice(0, limit)
+            .map(item => item.book);
+    }
+
+    function parseReferenceQuery(rawValue) {
+        const value = normalizeReferenceText(rawValue);
+        const match = value.match(/^(.+?)\s+(\d+)(?::(\d+))?$/i);
+        if (!match) return null;
+        const [, bookPart, chapterText, verseText] = match;
+        const book = canonicalizeBookName(bookPart) || findMatchingBooks(bookPart, 1)[0];
+        const chapter = parseInt(chapterText, 10);
+        const verse = verseText ? parseInt(verseText, 10) : null;
+        if (!book || !Number.isFinite(chapter) || chapter < 1) return null;
+        const maxChapter = ALL_CHAPTERS[book] || 1;
+        if (chapter > maxChapter) return null;
+        if (verseText && (!Number.isFinite(verse) || verse < 1)) return null;
+        return { book, chapter, verse };
+    }
+
+    function hideReferenceSuggestions() {
+        const box = document.getElementById('reference-suggestions');
+        if (box) box.style.display = 'none';
+        activeReferenceSuggestion = -1;
+    }
+
+    function setActiveReferenceSuggestion(index) {
+        const box = document.getElementById('reference-suggestions');
+        if (!box) return;
+        const items = Array.from(box.querySelectorAll('.ref-suggestion'));
+        items.forEach((item, itemIndex) => item.classList.toggle('active', itemIndex === index));
+        activeReferenceSuggestion = index;
+    }
+
+    function renderReferenceSuggestions(query) {
+        const box = document.getElementById('reference-suggestions');
+        if (!box) return;
+
+        const value = normalizeReferenceText(query);
+        if (!value) {
+            referenceSuggestions = [];
+            hideReferenceSuggestions();
+            return;
+        }
+
+        const suggestions = [];
+        const parsed = value.match(/^(.+?)\s+(\d+)(?::(\d*))?$/i);
+        if (parsed) {
+            const [, bookPart, chapterText, verseText = ''] = parsed;
+            const chapter = parseInt(chapterText, 10);
+            findMatchingBooks(bookPart, 6).forEach(book => {
+                const maxChapter = ALL_CHAPTERS[book] || 1;
+                if (!Number.isFinite(chapter) || chapter < 1 || chapter > maxChapter) return;
+                suggestions.push({
+                    value: `${book} ${chapter}`,
+                    title: `${book} ${chapter}`,
+                    subtitle: `Open chapter ${chapter}`
+                });
+                if (verseText) {
+                    suggestions.unshift({
+                        value: `${book} ${chapter}:${verseText}`,
+                        title: `${book} ${chapter}:${verseText}`,
+                        subtitle: 'Open verse and show full chapter'
+                    });
+                }
+            });
+        } else {
+            findMatchingBooks(value, 8).forEach(book => {
+                suggestions.push({
+                    value: book,
+                    title: book,
+                    subtitle: `${ALL_CHAPTERS[book]} chapters`
+                });
+            });
+        }
+
+        referenceSuggestions = suggestions.filter((item, index, list) =>
+            list.findIndex(candidate => candidate.value === item.value) === index
+        ).slice(0, 8);
+
+        if (!referenceSuggestions.length) {
+            hideReferenceSuggestions();
+            return;
+        }
+
+        box.innerHTML = referenceSuggestions.map((item, index) => `
+            <div class="ref-suggestion" data-index="${index}" onclick="applyReferenceSuggestion(${index})">
+                <div class="ref-suggestion-title">${item.title}</div>
+                <div class="ref-suggestion-sub">${item.subtitle}</div>
+            </div>
+        `).join('');
+        box.style.display = 'block';
+        setActiveReferenceSuggestion(-1);
+    }
+
+    function openChapterFromSearch(book, chapter, syncInput = true) {
+        const bookSel = document.getElementById('bookSelect');
+        const chSel = document.getElementById('chapterSelect');
+        const resultEl = document.getElementById('chapter-result');
+        if (!bookSel || !chSel) return;
+
+        bookSel.value = book;
+        onBookChange();
+        chSel.value = String(chapter);
+        renderVerseList(book, chapter);
+
+        if (syncInput) {
+            const input = document.getElementById('chapterInput');
+            if (input) input.value = `${book} ${chapter}`;
+        }
+
+        if (resultEl) {
+            resultEl.style.display = 'block';
+            resultEl.innerHTML = `<strong style="color:#a67c52;">${book} ${chapter}</strong> <span style="color:#6b7280;">— chapter loaded</span>`;
+        }
+
+        hideReferenceSuggestions();
+    }
+
+    function applyReferenceSuggestion(index) {
+        const item = referenceSuggestions[index];
+        if (!item) return;
+        const input = document.getElementById('chapterInput');
+        if (input) input.value = item.value;
+        hideReferenceSuggestions();
+
+        const parsed = parseReferenceQuery(item.value);
+        if (parsed && parsed.verse) {
+            lookupAndDisplay();
+        } else if (parsed) {
+            openChapterFromSearch(parsed.book, parsed.chapter, false);
+        } else {
+            const bookSel = document.getElementById('bookSelect');
+            if (bookSel) {
+                bookSel.value = item.value;
+                onBookChange();
+            }
+        }
+    }
+
+    function handleReferenceInput(value) {
+        // Show suggestions immediately as user types
+        renderReferenceSuggestions(value);
+        clearTimeout(referenceInputTimer);
+
+        const parsed = parseReferenceQuery(value);
+        if (!parsed) return;
+
+        // Only auto-execute complete references after a short delay
+        // This allows users to select from suggestions without auto-executing
+        referenceInputTimer = setTimeout(() => {
+            if (parsed.verse) {
+                lookupAndDisplay();
+            } else {
+                openChapterFromSearch(parsed.book, parsed.chapter, false);
+            }
+        }, 400);
+    }
+
+    function handleReferenceKeydown(event) {
+        const suggestionCount = referenceSuggestions.length;
+        if (event.key === 'ArrowDown' && suggestionCount) {
+            event.preventDefault();
+            const nextIndex = activeReferenceSuggestion >= suggestionCount - 1 ? 0 : activeReferenceSuggestion + 1;
+            setActiveReferenceSuggestion(nextIndex);
+            return;
+        }
+        if (event.key === 'ArrowUp' && suggestionCount) {
+            event.preventDefault();
+            const nextIndex = activeReferenceSuggestion <= 0 ? suggestionCount - 1 : activeReferenceSuggestion - 1;
+            setActiveReferenceSuggestion(nextIndex);
+            return;
+        }
+        if (event.key === 'Escape') {
+            hideReferenceSuggestions();
+            return;
+        }
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            if (activeReferenceSuggestion >= 0) {
+                applyReferenceSuggestion(activeReferenceSuggestion);
+                return;
+            }
+            lookupAndDisplay();
+        }
+    }
 
     function buildBookGrid(books, containerId) {
         const grid = document.getElementById(containerId);
@@ -2339,12 +3059,18 @@
 
     // Fix 8: instant display on Enter — no separate Look Up button needed
     async function lookupAndDisplay() {
+        const rawInput = normalizeReferenceText(document.getElementById('chapterInput').value);
+        const parsed = parseReferenceQuery(rawInput);
+        if (parsed && !parsed.verse) {
+            openChapterFromSearch(parsed.book, parsed.chapter, false);
+            return;
+        }
         await lookupVerse();
         // sendToLive() is now called inside _applyVerseResult
     }
 
     async function lookupVerse() {
-        const rawInput = document.getElementById('chapterInput').value.trim();
+        const rawInput = normalizeReferenceText(document.getElementById('chapterInput').value);
         if (!rawInput) return;
         const resultEl = document.getElementById('chapter-result');
         if (resultEl) { resultEl.style.display = 'block'; resultEl.textContent = 'Searching…'; resultEl.style.color = '#6b7280'; }
@@ -2404,12 +3130,15 @@
     function _applyVerseResult(verse, resultEl) {
         if (!resultEl) resultEl = document.getElementById('chapter-result');
         const translation = document.getElementById('mainTranslation').value;
+        const input = document.getElementById('chapterInput');
         if (resultEl) {
             resultEl.style.display = 'block';
             resultEl.innerHTML = `<strong style="color:#a67c52;">${verse.ref} <span style="color:#f9cb42;">[${translation}]</span></strong> — <span style="font-size:11px;">${verse.text}</span>`;
         }
+        if (input) input.value = verse.ref;
         appState.currentVerse = { ref: verse.ref, text: verse.text, translation };
         buildChapterQueue(verse.ref);
+        autoNavToRef(verse.ref);
         // Fix 3: ALWAYS show in Preview first — mandatory
         sendToPreview(appState.currentVerse);
         // Fix 3: Only push to Live Display if GO LIVE toggle is on
@@ -2418,12 +3147,6 @@
             sendToLive();
         } else {
             showToast('📺 Staged in Preview — press DISPLAY or turn on GO LIVE');
-        }
-        // Refresh verse list to update active highlight
-        const bookSel = document.getElementById('bookSelect');
-        const chSel = document.getElementById('chapterSelect');
-        if (bookSel && bookSel.value && chSel && chSel.value) {
-            renderVerseList(bookSel.value, parseInt(chSel.value));
         }
     }
 
@@ -2569,6 +3292,7 @@
     }
 
     function clearDisplay() {
+        timerShowingOnScreen = false;
         // Clear live display
         document.getElementById('live-text').textContent = 'Waiting for verse...';
         document.getElementById('live-sub').textContent = 'Speak or enter a Bible reference';
@@ -2657,18 +3381,26 @@
     function updateProjectorText() {
         const v = appState.currentVerse;
         if (!v) return;
+        timerShowingOnScreen = false;
         const pt = document.getElementById('projector-text');
         const pr = document.getElementById('projector-ref');
         const trans = v.translation || document.getElementById('mainTranslation').value;
-        // Fix 1+2: no quotes, full text, yellow translation badge
-        pt.textContent = v.text;    // full text, no quotes, no truncation
+        pt.textContent = v.text;
         pr.innerHTML = '— ' + v.ref + ' &nbsp;<span style="color:#f9cb42;font-size:.75em;">[' + trans + ']</span>';
         pt.style.color = appState.textColor;
         pr.style.color = appState.textColor;
+        // Push to external projector window if open
+        if (window._projectorWindow && !window._projectorWindow.closed) {
+            window._projectorWindow.postMessage({
+                type: 'verse',
+                verse: { ref: v.ref, text: v.text, translation: trans },
+                bg: themeGradients[appState.currentTheme] || '#000'
+            }, '*');
+        }
     }
 
     // ===================== PROJECTOR VIEW =====================
-    function openProjectorView() {
+    function openProjectorView(syncCurrentVerse = true) {
         document.getElementById('projector-view').classList.add('active');
         document.querySelectorAll('.subpage-overlay.active').forEach(el => el.classList.remove('active'));
         if (appState.currentTheme && themeGradients[appState.currentTheme]) {
@@ -2678,7 +3410,7 @@
         const labels = { hdmi: 'HDMI OUTPUT', ndi: 'NDI STREAM', vmix: 'vMix INPUT', wireless: 'WIRELESS' };
         const badge = document.getElementById('projector-output-label');
         if (badge && appState.outputType) badge.textContent = labels[appState.outputType] || appState.outputType.toUpperCase();
-        updateProjectorText();
+        if (syncCurrentVerse) updateProjectorText();
     }
 
     function closeProjectorView() {
@@ -2700,29 +3432,43 @@
     }
 
     // ===================== OUTPUT SELECTION =====================
-    function selectOutput(type) {
+    function selectOutput(type, silent = false) {
         ['hdmi','ndi','vmix','wireless'].forEach(t => {
-            document.getElementById('out-'+t).classList.remove('selected');
+            const legacyBtn = document.getElementById('out-' + t);
+            if (legacyBtn) legacyBtn.classList.remove('selected');
         });
-        document.getElementById('out-'+type).classList.add('selected');
+
+        const selectedLegacyBtn = document.getElementById('out-' + type);
+        if (selectedLegacyBtn) selectedLegacyBtn.classList.add('selected');
+
         appState.outputType = type;
-        document.getElementById('ndi-settings').style.display = type === 'ndi' ? 'block' : 'none';
-        document.getElementById('vmix-settings').style.display = type === 'vmix' ? 'block' : 'none';
-        // Update projector view output badge
+
+        const ndiSettings = document.getElementById('ndi-settings');
+        const vmixSettings = document.getElementById('vmix-settings');
+        if (ndiSettings) ndiSettings.style.display = type === 'ndi' ? 'block' : 'none';
+        if (vmixSettings) vmixSettings.style.display = type === 'vmix' ? 'block' : 'none';
+
+        if (typeof setBroadcastOutput === 'function' && document.getElementById('bcast-btn-ext')) {
+            setBroadcastOutput(type === 'ndi' ? 'ndi' : 'external', silent);
+        }
+
         const labels = { hdmi: 'HDMI OUTPUT', ndi: 'NDI STREAM', vmix: 'vMix INPUT', wireless: 'WIRELESS' };
         const badge = document.getElementById('projector-output-label');
         if (badge) badge.textContent = labels[type] || type.toUpperCase();
+
         saveSettings();
-        showToast('Output set to: ' + type.toUpperCase());
+        if (!silent) showToast('Output set to: ' + type.toUpperCase());
     }
 
     // ===================== DISPLAY MODE =====================
-    function setDisplayMode(mode) {
+    function setDisplayMode(mode, silent = false) {
         appState.displayMode = mode;
-        document.getElementById('mode-auto').classList.toggle('active', mode === 'auto');
-        document.getElementById('mode-manual').classList.toggle('active', mode === 'manual');
+        const autoBtn = document.getElementById('mode-auto');
+        const manualBtn = document.getElementById('mode-manual');
+        if (autoBtn) autoBtn.classList.toggle('active', mode === 'auto');
+        if (manualBtn) manualBtn.classList.toggle('active', mode === 'manual');
         saveSettings();
-        showToast(mode === 'auto' ? '⚡ Auto display mode on' : '✋ Manual display mode on');
+        if (!silent) showToast(mode === 'auto' ? '⚡ Auto display mode on' : '✋ Manual display mode on');
     }
 
     // ===================== TRANSCRIPTION MODE =====================
@@ -2788,9 +3534,17 @@
     let mediaStream  = null;
     let audioContext = null;
     let processor    = null;
+    let micSourceNode = null;
+    let micHighPassNode = null;
+    let micLowPassNode = null;
+    let micCompressorNode = null;
+    let micGainNode = null;
     let transcribing = false;
     let backendMode  = null;   // 'deepgram' | 'text'
     let transcriptLog = [];    // full session log
+    const transcriptHistory = [];
+    const TRANSCRIPT_HISTORY_LIMIT = 6;
+    const WS_MAX_BUFFERED_BYTES = 256 * 1024;
 
     // ── UI helpers ──────────────────────────────────────────────────────────
     function setConnStatus(state) {
@@ -2900,6 +3654,53 @@
     }
 
     // ── Main toggle ──────────────────────────────────────────────────────────
+    function renderTranscriptHistory() {
+        const area = document.getElementById('transcription-area');
+        if (!area) return;
+        area.innerHTML = '';
+        if (!transcriptHistory.length) {
+            area.innerHTML = '<div class="transcript-placeholder">Waiting for transcription...</div>';
+            return;
+        }
+        transcriptHistory.forEach((entry, index) => {
+            const line = document.createElement('div');
+            line.className = 'transcript-entry' + (index === transcriptHistory.length - 1 ? ' is-latest' : '');
+            line.textContent = entry.text;
+            area.appendChild(line);
+        });
+    }
+
+    function appendTranscriptLine(text, type) {
+        const cleanText = normalizeReferenceText(text);
+        if (!cleanText) return;
+
+        transcriptLog.push({ text: cleanText, type, ts: Date.now() });
+        if (!['final', 'match', 'no_match'].includes(type)) return;
+        if (type === 'match' && /^[^A-Za-z0-9]*[1-3]?\s?[A-Za-z].*\d+:\d+$/.test(cleanText)) return;
+        if (transcriptHistory.length && transcriptHistory[transcriptHistory.length - 1].text === cleanText) return;
+
+        transcriptHistory.push({ text: cleanText, type });
+        while (transcriptHistory.length > TRANSCRIPT_HISTORY_LIMIT) transcriptHistory.shift();
+        renderTranscriptHistory();
+    }
+
+    function setInterim(text, isFinal) {
+        const interimEl = document.getElementById('interim-text');
+        if (!interimEl) return;
+
+        if (isFinal === true && text) {
+            appendTranscriptLine(text, 'final');
+            interimEl.textContent = '';
+            interimEl.style.borderLeftColor = 'transparent';
+        } else if (text) {
+            interimEl.textContent = text;
+            interimEl.style.borderLeftColor = '#f97316';
+        } else {
+            interimEl.textContent = '';
+            interimEl.style.borderLeftColor = 'transparent';
+        }
+    }
+
     async function toggleTranscription() {
         if (transcribing) {
             stopTranscription();
@@ -2909,6 +3710,9 @@
     }
 
     async function startTranscription() {
+        transcriptHistory.length = 0;
+        renderTranscriptHistory();
+        setInterim('');
         setTranscribeBtn(false);
         setConnStatus('connecting');
         appendTranscriptLine('Connecting to backend…', 'system');
@@ -2953,31 +3757,74 @@
 
         if (needsMic) {
             try {
-                const captureSystem = appState && appState.captureSystemAudio;
+                const captureSystem = normalizeAudioSource(appState && appState.audioSource) === 'system';
                 if (captureSystem) {
-                    appendTranscriptLine('🖥️ Requesting screen share — check "Share system audio" in the popup', 'system');
-                    const displayStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
-                    displayStream.getVideoTracks().forEach(t => t.stop());
+                    appendTranscriptLine('🖥️ Requesting system audio — enable "Share system audio" or "Share tab audio" in the popup', 'system');
+                    const displayStream = await navigator.mediaDevices.getDisplayMedia({
+                        video: true,
+                        audio: true
+                    });
                     if (!displayStream.getAudioTracks().length) {
-                        appendTranscriptLine('❌ No system audio — did you check "Share system audio"?', 'system');
+                        displayStream.getTracks().forEach(track => track.stop());
+                        appendTranscriptLine('❌ No system audio was shared. Pick a tab or screen with audio and enable audio sharing.', 'system');
                         setConnStatus('error');
                         return;
                     }
                     mediaStream = displayStream;
-                    appendTranscriptLine('🖥️ System audio captured', 'system');
+                    startAudioVisualizer(mediaStream);
+                    mediaStream.getTracks().forEach(track => {
+                        track.addEventListener('ended', () => {
+                            if (!transcribing) return;
+                            appendTranscriptLine('🛑 System audio sharing stopped', 'system');
+                            stopTranscription(true);
+                            showToast('🛑 System audio sharing stopped');
+                        }, { once: true });
+                    });
+                    appendTranscriptLine('🖥️ System audio ready — audio playing on this laptop will be transcribed', 'system');
                 } else {
-                    mediaStream = await navigator.mediaDevices.getUserMedia({ audio: {
-                        echoCancellation: true,
-                        noiseSuppression: true,
-                        sampleRate: 16000,
-                        channelCount: 1,
-                    }});
-                    appendTranscriptLine('🎙️ Microphone ready — connecting…', 'system');
+                    const micSession = await openPreferredMicrophone();
+                    mediaStream = micSession.stream;
+                    startAudioVisualizer(mediaStream);
+                    const activeMic = getActiveMicLabel(micSession.selection, mediaStream);
+                    appendTranscriptLine(`🎙️ Microphone ready (${activeMic}) — connecting…`, 'system');
                 }
 
                 audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
-                const source = audioContext.createMediaStreamSource(mediaStream);
-                processor    = audioContext.createScriptProcessor(4096, 1, 1);
+                micSourceNode = audioContext.createMediaStreamSource(mediaStream);
+                // Deepgram recommends sending 20–100 ms chunks for low latency.
+                // 1024 samples @ 16 kHz is ~64 ms, which helps the first words
+                // appear much faster than the old ~256 ms buffer.
+                processor    = audioContext.createScriptProcessor(1024, 1, 1);
+
+                if (captureSystem) {
+                    micSourceNode.connect(processor);
+                } else {
+                    micHighPassNode = audioContext.createBiquadFilter();
+                    micHighPassNode.type = 'highpass';
+                    micHighPassNode.frequency.value = 110;
+                    micHighPassNode.Q.value = 0.7;
+
+                    micLowPassNode = audioContext.createBiquadFilter();
+                    micLowPassNode.type = 'lowpass';
+                    micLowPassNode.frequency.value = 7600;
+                    micLowPassNode.Q.value = 0.7;
+
+                    micCompressorNode = audioContext.createDynamicsCompressor();
+                    micCompressorNode.threshold.value = -28;
+                    micCompressorNode.knee.value = 18;
+                    micCompressorNode.ratio.value = 4;
+                    micCompressorNode.attack.value = 0.003;
+                    micCompressorNode.release.value = 0.25;
+
+                    micGainNode = audioContext.createGain();
+                    micGainNode.gain.value = Math.max(0, clampMicGain(appState.micGain) / 100);
+
+                    micSourceNode.connect(micHighPassNode);
+                    micHighPassNode.connect(micLowPassNode);
+                    micLowPassNode.connect(micCompressorNode);
+                    micCompressorNode.connect(micGainNode);
+                    micGainNode.connect(processor);
+                }
 
                 processor.onaudioprocess = (e) => {
                     const float32 = e.inputBuffer.getChannelData(0);
@@ -2987,8 +3834,16 @@
                         int16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
                     }
                     if (ws && ws.readyState === WebSocket.OPEN) {
+                        if (ws.bufferedAmount > WS_MAX_BUFFERED_BYTES) {
+                            return; // Drop stale chunks rather than fall behind live speech.
+                        }
                         // Flush any pre-buffered chunks first, then send current
-                        while (_preBuffer.length) ws.send(_preBuffer.shift());
+                        while (_preBuffer.length && ws.bufferedAmount <= WS_MAX_BUFFERED_BYTES) {
+                            ws.send(_preBuffer.shift());
+                        }
+                        if (ws.bufferedAmount > WS_MAX_BUFFERED_BYTES) {
+                            return;
+                        }
                         ws.send(int16.buffer);
                     } else {
                         // WS not open yet — buffer (cap at 20 chunks ≈ 3 s)
@@ -2997,11 +3852,13 @@
                     }
                 };
 
-                source.connect(processor);
                 processor.connect(audioContext.destination);
 
             } catch (e) {
-                appendTranscriptLine('❌ Microphone access denied: ' + e.message, 'system');
+                const captureLabel = normalizeAudioSource(appState && appState.audioSource) === 'system'
+                    ? 'System audio capture failed'
+                    : 'Microphone access failed';
+                appendTranscriptLine(`❌ ${captureLabel}: ${e.message}`, 'system');
                 setConnStatus('error');
                 return;
             }
@@ -3060,9 +3917,15 @@
         setTranscribeBtn(false);
         setConnStatus('off');
         setInterim('');
+        stopAudioVisualizer();
 
         // Stop mic
         if (processor)    { try { processor.disconnect(); } catch(_){} processor = null; }
+        if (micGainNode)  { try { micGainNode.disconnect(); } catch(_){} micGainNode = null; }
+        if (micCompressorNode) { try { micCompressorNode.disconnect(); } catch(_){} micCompressorNode = null; }
+        if (micLowPassNode) { try { micLowPassNode.disconnect(); } catch(_){} micLowPassNode = null; }
+        if (micHighPassNode) { try { micHighPassNode.disconnect(); } catch(_){} micHighPassNode = null; }
+        if (micSourceNode) { try { micSourceNode.disconnect(); } catch(_){} micSourceNode = null; }
         if (audioContext) { try { audioContext.close(); }   catch(_){} audioContext = null; }
         if (mediaStream)  { mediaStream.getTracks().forEach(t => t.stop()); mediaStream = null; }
 
@@ -3129,10 +3992,8 @@
             case 'next_verse': {
                 // Exact ref spoken — lock transcript, then push to Detected Verses
                 setInterim(msg.transcript || '', true); // lock the line
-                appendTranscriptLine(msg.transcript || '', 'match');
                 if (msg.results && msg.results.length) {
                     const top = msg.results[0];
-                    appendTranscriptLine(`✦ ${top.ref}`, 'match');
                     pushVerseToLiveDirect(top);
                 }
                 if (msg.feed) updateScriptureFeedFromBackend(msg.feed);
@@ -3140,11 +4001,10 @@
             }
 
             case 'interim_suggestions': {
-                // Mid-sentence paraphrase hints — shown dimmed in Paraphrase
-                // panel while the preacher is still speaking. Never touches
-                // Detected Verses. User must tap Present or Queue to act.
+                // Mid-sentence hints belong in Context Search only. We keep
+                // Detected Verses reserved for completed utterances.
                 if (msg.results && msg.results.length)
-                    pushToParaphrasePanel(msg.results[0], msg.results, true /* isInterim */);
+                    updateParaphraseArea(msg.results);
                 break;
             }
 
@@ -3203,13 +4063,17 @@
         while (dv.children.length >= 20) dv.removeChild(dv.lastChild);
         const item = document.createElement('div');
         item.dataset.ref = top.ref;
-        item.style.cssText = 'padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.05);cursor:pointer;';
-        item.innerHTML = `<div style="color:#a67c52;font-weight:700;font-size:10px;">${top.ref} <span style="color:#f9cb42;">[${trans2}]</span></div>
+        item.dataset.matchType = 'exact';
+        item.style.cssText = 'padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.05);cursor:pointer;border-left:3px solid #a67c52;';
+        item.innerHTML = `<div style="display:flex;align-items:center;gap:6px;"><span style="color:#a67c52;font-weight:700;font-size:10px;">${top.ref} <span style="color:#f9cb42;font-weight:400;">[${trans2}]</span></span><span style="font-size:9px;padding:1px 6px;border-radius:6px;background:rgba(166,124,82,0.18);color:#a67c52;border:1px solid rgba(166,124,82,0.35);font-weight:700;">Queue</span></div>
             <div style="font-size:11px;color:#d1d5db;margin-top:2px;line-height:1.4;">${top.text}</div>`;
         item.onclick = () => {
             appState.currentVerse = { ref: top.ref, text: top.text, translation: trans2 };
+            buildChapterQueue(top.ref);
             sendToPreview(appState.currentVerse);
             if (document.getElementById('autoToggle').checked) sendToLive();
+            switchTab('ref');
+            autoNavToRef(top.ref);
         };
         dv.insertBefore(item, dv.firstChild);
 
@@ -3326,9 +4190,10 @@
 
     function sendSongToProjector() {
         if (!appState.currentSong) { showToast('No song loaded'); return; }
+        timerShowingOnScreen = false;
         document.getElementById('projector-text').textContent = '♪ ' + appState.currentSong;
         document.getElementById('projector-ref').textContent = '';
-        openProjectorView();
+        openProjectorView(false);
     }
 
     function prevSongSlide() { showToast('◀ Previous verse'); }
@@ -3487,6 +4352,7 @@
     function displayAnnouncement(el, text) {
         // Store as current "verse" so DISPLAY/CLEAR/PREV/NEXT all work on it
         appState.currentVerse = { ref: '— Announcement', text: text, translation: '' };
+        timerShowingOnScreen = false;
 
         // Update Program Preview (Screen 1)
         document.getElementById('preview1-icon').style.display = 'none';
@@ -3509,25 +4375,44 @@
     }
 
     // ===================== TIMER =====================
-    let timerInterval = null, timerSeconds = 0, timerMode = 'countdown';
+    let timerInterval = null, timerSeconds = 0, timerMode = 'countdown', timerShowingOnScreen = false;
+
+    function getConfiguredTimerSeconds() {
+        const m = parseInt(document.getElementById('timer-min')?.value, 10) || 0;
+        const s = parseInt(document.getElementById('timer-sec')?.value, 10) || 0;
+        return Math.max(0, (m * 60) + s);
+    }
+
+    function syncTimerToScreen() {
+        document.getElementById('projector-text').textContent = document.getElementById('timer-display').textContent;
+        document.getElementById('projector-ref').textContent = '— Timer';
+        openProjectorView(false);
+    }
 
     function setTimerMode(mode) {
         timerMode = mode;
         document.getElementById('timer-countdown-btn').classList.toggle('active', mode === 'countdown');
         document.getElementById('timer-stopwatch-btn').classList.toggle('active', mode === 'stopwatch');
-        resetTimer();
+        resetTimer(false);
     }
 
     function startTimer() {
         if (timerInterval) return;
-        if (timerMode === 'countdown' && timerSeconds === 0) {
-            const m = parseInt(document.getElementById('timer-min').value) || 0;
-            const s = parseInt(document.getElementById('timer-sec').value) || 0;
-            timerSeconds = m * 60 + s;
+        if (timerMode === 'countdown' && timerSeconds <= 0) {
+            timerSeconds = getConfiguredTimerSeconds();
         }
+        if (timerMode === 'countdown' && timerSeconds <= 0) {
+            showToast('⏱️ Set a countdown duration first');
+            return;
+        }
+        updateTimerDisplay();
         timerInterval = setInterval(() => {
             if (timerMode === 'countdown') {
-                if (timerSeconds <= 0) { clearInterval(timerInterval); timerInterval = null; showToast('⏰ Timer complete!'); return; }
+                if (timerSeconds <= 0) {
+                    pauseTimer(false);
+                    showToast('⏰ Timer complete!');
+                    return;
+                }
                 timerSeconds--;
             } else {
                 timerSeconds++;
@@ -3537,15 +4422,17 @@
         showToast('▶ Timer started');
     }
 
-    function pauseTimer() {
-        clearInterval(timerInterval); timerInterval = null;
-        showToast('⏸ Timer paused');
+    function pauseTimer(showMessage = true) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+        if (showMessage) showToast('⏸ Timer paused');
     }
 
-    function resetTimer() {
-        pauseTimer();
-        timerSeconds = 0;
+    function resetTimer(showMessage = true) {
+        pauseTimer(false);
+        timerSeconds = timerMode === 'countdown' ? getConfiguredTimerSeconds() : 0;
         updateTimerDisplay();
+        if (showMessage) showToast('↺ Timer reset');
     }
 
     function updateTimerDisplay() {
@@ -3554,12 +4441,12 @@
         const s = timerSeconds % 60;
         document.getElementById('timer-display').textContent =
             String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+        if (timerShowingOnScreen) syncTimerToScreen();
     }
 
     function showTimerOnScreen() {
-        document.getElementById('projector-text').textContent = document.getElementById('timer-display').textContent;
-        document.getElementById('projector-ref').textContent = '— Timer';
-        openProjectorView();
+        timerShowingOnScreen = true;
+        syncTimerToScreen();
     }
 
     // ===================== PROFILE =====================
@@ -3593,9 +4480,15 @@
     // ===================== INIT =====================
     loadState();
     updateDgKeyStatus();
+    renderMicDeviceOptions();
+    applyMicSettingsToDom();
+    refreshMicDeviceOptions();
+    if (navigator.mediaDevices && navigator.mediaDevices.addEventListener) {
+        navigator.mediaDevices.addEventListener('devicechange', refreshMicDeviceOptions);
+    }
     if (appState.dayMode) setDayNight('day');
-    if (appState.displayMode) setDisplayMode(appState.displayMode);
-    if (appState.outputType) selectOutput(appState.outputType);
+    if (appState.displayMode) setDisplayMode(appState.displayMode, true);
+    if (appState.outputType) selectOutput(appState.outputType, true);
     if (appState.transcriptionMode) setTranscriptionMode(appState.transcriptionMode);
 
     // Build bible book grids (for the navigate subpage)
@@ -3607,9 +4500,10 @@
 
     // Session timer (counts up from 0)
     let sessionSeconds = 0;
+    let sessionTimerInterval = null;
     const sessionTimerEl = document.getElementById('sessionTimer');
-    setInterval(() => {
-        sessionSeconds++;
+
+    function updateSessionTimerDisplay() {
         const h = Math.floor(sessionSeconds / 3600);
         const m = Math.floor((sessionSeconds % 3600) / 60);
         const s = sessionSeconds % 60;
@@ -3619,7 +4513,18 @@
                 String(m).padStart(2,'0') + ':' +
                 String(s).padStart(2,'0');
         }
-    }, 1000);
+    }
+
+    function startSessionTimer() {
+        if (sessionTimerInterval) return;
+        updateSessionTimerDisplay();
+        sessionTimerInterval = setInterval(() => {
+            sessionSeconds++;
+            updateSessionTimerDisplay();
+        }, 1000);
+    }
+
+    startSessionTimer();
 
     // Init: chapter-result hidden until a verse is looked up
     const chapterResult = document.getElementById('chapter-result');
@@ -3696,37 +4601,32 @@
     // ── Feature 2: Push to Paraphrase panel (no auto-live) ─────────────────
     // isInterim=true  → mid-sentence hint, shown dimmed (preacher still speaking)
     // isInterim=false → confirmed paraphrase match, full brightness
-    // Paraphrase matches NEVER appear in Detected Verses — that panel is
-    // reserved exclusively for verbatim references (exact_match / next_verse).
+    // Paraphrase matches — write into detected-verses with green style (no Queue badge)
     function pushToParaphrasePanel(top, allResults, isInterim) {
-        const panel = document.getElementById('paraphrase-matches');
-        if (!panel) return;
-        if (panel.querySelector('.empty-state')) panel.innerHTML = '';
-        // Deduplicate — remove any existing entry for the same ref
-        const ex = panel.querySelector('[data-ref="' + top.ref + '"]');
+        const dv = document.getElementById('detected-verses');
+        if (!dv) return;
+        if (dv.querySelector('.empty-state')) dv.innerHTML = '';
+        // Deduplicate
+        const ex = dv.querySelector('[data-ref="' + top.ref + '"]');
         if (ex) ex.remove();
-        // Cap panel at 15 items
-        while (panel.children.length >= 15) panel.removeChild(panel.lastChild);
+        // Cap at 20
+        while (dv.children.length >= 20) dv.removeChild(dv.lastChild);
         const trans = (document.getElementById('mainTranslation') || {}).value || 'KJV';
         const item = document.createElement('div');
         item.className = 'para-match-item';
         item.dataset.ref = top.ref;
-        // Dim the whole item when it is a mid-sentence hint (isInterim)
-        // so the operator can see it is still tentative — matches Pewbeam style
-        if (isInterim) {
-            item.style.opacity = '0.5';
-            item.title = 'Live suggestion — sentence not yet complete';
-        }
+        item.dataset.matchType = 'paraphrase';
+        item.style.cssText = 'padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.05);cursor:pointer;border-left:3px solid #4ade80;' + (isInterim ? 'opacity:0.5;' : '');
+        if (isInterim) item.title = 'Live suggestion — sentence not yet complete';
         item.innerHTML =
-            '<div class="pmr">' + top.ref +
-            ' <span style="color:#f9cb42;font-weight:400;">[' + trans + ']</span>' +
-            (isInterim ? ' <span style="font-size:9px;color:#6b7280;">…listening</span>' : '') +
+            '<div style="display:flex;align-items:center;gap:6px;">' +
+            '<span style="color:#4ade80;font-weight:700;font-size:10px;">' + top.ref +
+            ' <span style="color:#f9cb42;font-weight:400;">[' + trans + ']</span></span>' +
+            (isInterim ? '<span style="font-size:9px;color:#6b7280;">…listening</span>' : '<span style="font-size:9px;padding:1px 5px;border-radius:6px;background:rgba(74,222,128,0.1);color:#4ade80;border:1px solid rgba(74,222,128,0.25);">paraphrase</span>') +
             '</div>' +
-            '<div class="pmt">' + top.text + '</div>';
+            '<div style="font-size:11px;color:#d1d5db;margin-top:2px;line-height:1.4;">' + top.text.substring(0, 110) + (top.text.length > 110 ? '…' : '') + '</div>';
         item.onclick = function() { stageParaphraseVerse(top.ref, top.text, trans); };
-        panel.insertBefore(item, panel.firstChild);
-        // ── Detected Verses is intentionally NOT updated here ──
-        // Only pushVerseToLiveDirect() (exact_match / next_verse) writes there.
+        dv.insertBefore(item, dv.firstChild);
     }
 
     // Tap a paraphrase row — goes live immediately + anchors Next + syncs navigator
@@ -3739,6 +4639,8 @@
         addToScriptureFeed(verse);
         if (window.ws && window.ws.readyState === WebSocket.OPEN)
             window.ws.send(JSON.stringify({ type: 'set_index', ref }));
+        // Switch to Book Search tab and open full chapter
+        switchTab('ref');
         autoNavToRef(ref);
     }
 
@@ -3754,61 +4656,81 @@
         forceDisplayToLive();
         addToScriptureFeed(verse);
         autoNavToRef(top.ref);
+        // Also add to detected-verses with Queue badge
+        const dv = document.getElementById('detected-verses');
+        if (dv) {
+            if (dv.querySelector('.empty-state')) dv.innerHTML = '';
+            const ex = dv.querySelector('[data-ref="' + top.ref + '"]');
+            if (ex) ex.remove();
+            while (dv.children.length >= 20) dv.removeChild(dv.lastChild);
+            const item = document.createElement('div');
+            item.dataset.ref = top.ref;
+            item.dataset.matchType = 'exact';
+            item.style.cssText = 'padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.05);cursor:pointer;border-left:3px solid #a67c52;';
+            item.innerHTML = `<div style="display:flex;align-items:center;gap:6px;"><span style="color:#a67c52;font-weight:700;font-size:10px;">${top.ref} <span style="color:#f9cb42;font-weight:400;">[${trans}]</span></span><span style="font-size:9px;padding:1px 6px;border-radius:6px;background:rgba(166,124,82,0.18);color:#a67c52;border:1px solid rgba(166,124,82,0.35);font-weight:700;">Queue</span></div>
+                <div style="font-size:11px;color:#d1d5db;margin-top:2px;line-height:1.4;">${top.text}</div>`;
+            item.onclick = () => { 
+                appState.currentVerse = verse; 
+                sendToPreview(verse); 
+                forceDisplayToLive();
+                // Switch to Book Search tab and open full chapter
+                switchTab('ref');
+                autoNavToRef(verse.ref);
+            };
+            dv.insertBefore(item, dv.firstChild);
+        }
     }
 
     // Auto-navigate Book Search to the book+chapter of a verse ref
     function autoNavToRef(ref) {
         const m = ref.match(/^(.+?)\s+(\d+):(\d+)$/i);
         if (!m) return;
-        const [_, book, chStr] = m;
+        const [_, bookText, chStr] = m;
         const ch = parseInt(chStr);
         const bookSel = document.getElementById('bookSelect');
         const chSel   = document.getElementById('chapterSelect');
+        const input   = document.getElementById('chapterInput');
         if (!bookSel || !chSel) return;
-        if (bookSel.value !== book) { bookSel.value = book; onBookChange(); }
-        if (chSel.value !== chStr)  { chSel.value = chStr; }
-        renderVerseList(book, ch);
+        if (input) input.value = ref;
+        
+        // Map aliases like "Psalm" to the canonical navigator option.
+        const exactBook = canonicalizeBookName(bookText);
+        if (!exactBook) { console.warn('Book not found:', bookText); return; }
+        
+        // Only trigger onBookChange if value actually changes
+        if (bookSel.value !== exactBook) { 
+            bookSel.value = exactBook; 
+            onBookChange(); 
+        }
+        // Set chapter and render
+        if (chSel.value !== chStr) { chSel.value = chStr; }
+        renderVerseList(exactBook, ch);
+        hideReferenceSuggestions();
+    }
+
+    function clearDetectedPanel() {
+        const dv = document.getElementById('detected-verses');
+        if (dv) dv.innerHTML = '<div class="empty-state">No verses detected yet<br><span style="font-size:10px;">Exact refs auto-queue · Paraphrases tap to stage</span></div>';
     }
 
     function clearParaphrasePanel() {
-        const p = document.getElementById('paraphrase-matches');
-        if (p) p.innerHTML = '<div class="empty-state">No paraphrases detected<br><span style="font-size:10px;">Speak a verse — click a match to stage it</span></div>';
+        clearDetectedPanel();
     }
 
-    // ── Feature 3: Animated transcript lines ───────────────────────────────
-    // Override appendTranscriptLine to use fade-up animation
-    const _origAppendTranscriptLine = appendTranscriptLine;
-    (function patchAppendTranscriptLine() {
-        // We redefine it after the page loads so it wraps the original
-        window._appendTranscriptLinePatched = function(text, type) {
-            const area = document.getElementById('transcription-area');
-            if (!area) return;
-            const colors = { final:'#d1d5db', match:'#4ade80', no_match:'#9ca3af', partial:'#6b7280', system:'#a67c52' };
-            const icons  = { final:'', match:'✦ ', no_match:'', partial:'', system:'ℹ ' };
-            const line = document.createElement('div');
-            line.className = 'transcript-line-animated';
-            line.style.color = colors[type] || '#9ca3af';
-            line.textContent = (icons[type] || '') + text;
-            if (area.querySelector('[style*="text-align:center"]')) area.innerHTML = '';
-            area.insertBefore(line, area.firstChild);
-            // Keep max 40 lines
-            while (area.children.length > 40) area.removeChild(area.lastChild);
-        };
-    })();
-
-    // Override immediately — our script runs after the original definition
-    window.appendTranscriptLine = window._appendTranscriptLinePatched;
+    window.appendTranscriptLine = appendTranscriptLine;
+    renderTranscriptHistory();
 
     // ── Feature 4: Audio visualizer ────────────────────────────────────────
-    let _vizAnalyser = null, _vizDataArray = null, _vizAnimId = null;
+    let _vizAnalyser = null, _vizDataArray = null, _vizAnimId = null, _vizContext = null;
 
     function startAudioVisualizer(stream) {
         try {
-            const vizCtx = new (window.AudioContext || window.webkitAudioContext)();
-            _vizAnalyser = vizCtx.createAnalyser();
+            stopAudioVisualizer();
+            _vizContext = new (window.AudioContext || window.webkitAudioContext)();
+            _vizAnalyser = _vizContext.createAnalyser();
             _vizAnalyser.fftSize = 256;
             _vizAnalyser.smoothingTimeConstant = 0.75;
-            const src = vizCtx.createMediaStreamSource(stream);
+            const src = _vizContext.createMediaStreamSource(stream);
             src.connect(_vizAnalyser);
             _vizDataArray = new Uint8Array(_vizAnalyser.frequencyBinCount);
 
@@ -3836,6 +4758,7 @@
 
     function stopAudioVisualizer() {
         if (_vizAnimId) { cancelAnimationFrame(_vizAnimId); _vizAnimId = null; }
+        if (_vizContext) { try { _vizContext.close(); } catch(_){} _vizContext = null; }
         _vizAnalyser = null; _vizDataArray = null;
         const bar = document.getElementById('audio-level-bar');
         const pct = document.getElementById('audio-level-pct');
@@ -3844,30 +4767,6 @@
     }
 
     // Hook into startTranscription — patch mic getUserMedia to also start visualizer
-    const _origStartTranscription = typeof startTranscription === 'function' ? startTranscription : null;
-    document.addEventListener('DOMContentLoaded', () => {
-        // Intercept MediaStream acquisition to fork into visualizer
-        const origGetUserMedia = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
-        navigator.mediaDevices.getUserMedia = async function(constraints) {
-            const stream = await origGetUserMedia(constraints);
-            if (constraints && constraints.audio) {
-                startAudioVisualizer(stream);
-            }
-            return stream;
-        };
-    });
-
-    // Stop visualizer when transcription stops
-    const _origStopTranscription = typeof stopTranscription === 'function' ? stopTranscription : null;
-    document.addEventListener('DOMContentLoaded', () => {
-        const origStop = window.stopTranscription;
-        if (origStop) {
-            window.stopTranscription = function(silent) {
-                stopAudioVisualizer();
-                return origStop.call(this, silent);
-            };
-        }
-    });
 
     // ── Feature 5: Translation manager ─────────────────────────────────────
     const BUILTIN_TRANSLATIONS = ['KJV','NIV','ESV','NKJV','NLT','AMP','MSG','CSB','NASB','RSV','WEB','YLT'];
@@ -3952,7 +4851,252 @@
     document.addEventListener('DOMContentLoaded', () => {
         saveInstalledTranslations(getInstalledTranslations());
     });
+
+    // ===================== BROADCAST MODAL =====================
+    let _broadcastOutputType = 'external';
+    window._projectorWindow  = null;   // exposed on window so updateProjectorText can reach it
+
+    function openBroadcastModal() {
+        const modal = document.getElementById('broadcast-modal');
+        if (!modal) return;
+        modal.style.display = 'flex';
+        const goLive = document.getElementById('autoToggle');
+        const toggle = document.getElementById('broadcast-main-toggle');
+        if (toggle && goLive) { toggle.checked = goLive.checked; _syncBcastToggle(); }
+        refreshBroadcastMonitors();
+    }
+
+    function closeBroadcastModal() {
+        const modal = document.getElementById('broadcast-modal');
+        if (modal) modal.style.display = 'none';
+    }
+
+    function handleBroadcastToggle(el) {
+        // Mirror to main GO LIVE toggle
+        const goLive = document.getElementById('autoToggle');
+        if (goLive) { goLive.checked = el.checked; if (typeof handleGoLiveToggle === 'function') handleGoLiveToggle(goLive); }
+        _syncBcastToggle();
+        if (el.checked) {
+            if (_broadcastOutputType === 'external') _launchExternalDisplay();
+            else _startNDIStream();
+            showToast('🟢 Output: Live');
+        } else {
+            _stopAllOutputs();
+            showToast('⚫ Output: Off');
+        }
+    }
+
+    function _syncBcastToggle() {
+        const toggle = document.getElementById('broadcast-main-toggle');
+        const track  = document.getElementById('bcast-track');
+        const thumb  = document.getElementById('bcast-thumb');
+        const label  = document.getElementById('bcast-toggle-label');
+        if (!toggle) return;
+        const on = toggle.checked;
+        if (track) track.style.background = on ? '#4ade80' : 'rgba(255,255,255,0.12)';
+        if (thumb) thumb.style.transform  = on ? 'translateX(18px)' : '';
+        if (label) { label.textContent = on ? 'On' : 'Off'; label.style.color = on ? '#4ade80' : '#6b7280'; }
+    }
+
+    function setBroadcastOutput(type, silent = false) {
+        _broadcastOutputType = type;
+        const ext = document.getElementById('bcast-btn-ext');
+        const ndi = document.getElementById('bcast-btn-ndi');
+        const activeStyle = 'flex:1;padding:10px 0;background:#a67c52;border:none;border-radius:8px;color:#fff;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;';
+        const idleStyle   = 'flex:1;padding:10px 0;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.11);border-radius:8px;color:#9ca3af;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;';
+        if (ext) ext.style.cssText = type === 'external' ? activeStyle : idleStyle;
+        if (ndi) ndi.style.cssText = type === 'ndi'      ? activeStyle : idleStyle;
+
+        // Show NDI guide when NDI is chosen
+        let ndiPanel = document.getElementById('ndi-info-panel');
+        if (!ndiPanel) {
+            ndiPanel = document.createElement('div');
+            ndiPanel.id = 'ndi-info-panel';
+            ndiPanel.style.cssText = 'margin:0 16px 14px;padding:12px 14px;background:rgba(166,124,82,0.08);border:1px solid rgba(166,124,82,0.3);border-radius:8px;font-size:11px;color:#d1d5db;line-height:1.8;';
+            ndiPanel.innerHTML =
+                '<div style="font-weight:700;color:#a67c52;margin-bottom:6px;">📡 NDI — How to set up</div>' +
+                '1. Download <strong>NDI Tools</strong> at <a href="https://ndi.video/tools" target="_blank" style="color:#a67c52;">ndi.video/tools</a> and install it.<br>' +
+                '2. Download <strong>OBS Studio</strong> + <strong>obs-ndi plugin</strong> and install both.<br>' +
+                '3. Click <strong>Open Projector Window</strong> below — OBS will capture that window.<br>' +
+                '4. In OBS → Sources → Add <em>Window Capture</em> → pick <em>In The Beginning — Projector</em>.<br>' +
+                '5. In OBS → Tools → <em>NDI Output Settings</em> → enable <em>Main Output</em>.<br>' +
+                '6. On your switcher or vMix → scan NDI sources → select <strong>"OBS"</strong>.<br>' +
+                '<div style="margin-top:8px;padding:8px;background:rgba(0,0,0,0.3);border-radius:6px;color:#9ca3af;">' +
+                '⚠️ Browsers cannot push raw NDI — OBS bridges it over your local network.</div>';
+            // Insert before the last child (Add Output Channel footer)
+            const modalBody = document.querySelector('#broadcast-modal > div');
+            if (modalBody) modalBody.insertBefore(ndiPanel, modalBody.lastElementChild);
+        }
+        ndiPanel.style.display = type === 'ndi' ? 'block' : 'none';
+        if (!silent) {
+            showToast(type === 'external' ? '🖥️ External Display selected' : '📡 NDI — follow setup guide below');
+        }
+    }
+
+    // ── External Display ─────────────────────────────────────────
+    function _launchExternalDisplay() {
+        if (window._projectorWindow && !window._projectorWindow.closed) {
+            window._projectorWindow.focus();
+            showToast('🖥️ Projector window already open — drag it to your projector screen & press F', 4000);
+            return;
+        }
+
+        const theme = appState.currentTheme || 'dark-blue';
+        const bg    = (typeof themeGradients !== 'undefined' && themeGradients[theme]) || '#000011';
+        const v     = appState.currentVerse;
+        const bodyHtml = v
+            ? `<div class="ref">${v.ref} <span style="color:#f9cb42">[${v.translation || 'KJV'}]</span></div><div class="txt">${v.text}</div>`
+            : `<div class="txt" style="opacity:0.25;font-size:28px;">Waiting for verse…</div>`;
+
+        const projHTML = `<!DOCTYPE html><html><head><meta charset="utf-8">
+<title>In The Beginning — Projector</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:${bg};display:flex;align-items:center;justify-content:center;
+     min-height:100vh;font-family:'Georgia',serif;color:#fff;overflow:hidden;
+     transition:background 0.6s ease;}
+#wrap{max-width:1000px;width:90%;padding:60px 80px;text-align:center;}
+.ref{font-size:20px;color:#a67c52;font-weight:700;margin-bottom:28px;letter-spacing:1.5px;text-transform:uppercase;}
+.txt{font-size:44px;line-height:1.55;font-weight:400;}
+#hint{position:fixed;bottom:14px;left:0;right:0;text-align:center;
+      font-family:sans-serif;font-size:11px;opacity:0.25;color:#fff;}
+#badge{position:fixed;top:14px;right:18px;font-family:sans-serif;
+       font-size:10px;font-weight:700;letter-spacing:2px;color:rgba(255,255,255,0.2);text-transform:uppercase;}
+</style></head>
+<body>
+<div id="wrap">${bodyHtml}</div>
+<div id="hint">F = fullscreen &nbsp;·&nbsp; Esc = exit fullscreen</div>
+<div id="badge">In The Beginning · Live</div>
+<script>
+window.addEventListener('message', function(e) {
+    if (!e.data || e.data.type !== 'verse') return;
+    var v = e.data.verse;
+    document.getElementById('wrap').innerHTML =
+        '<div class="ref">' + v.ref +
+        ' <span style="color:#f9cb42">[' + (v.translation || 'KJV') + ']</span></div>' +
+        '<div class="txt">' + v.text + '</div>';
+    if (e.data.bg) document.body.style.background = e.data.bg;
+});
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'F' || e.key === 'f') {
+        if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+        else document.exitFullscreen();
+    }
+});
+// Auto-request fullscreen after 1s
+setTimeout(function(){
+    try { document.documentElement.requestFullscreen(); } catch(err){}
+}, 1000);
+<\/script></body></html>`;
+
+        // Detect best window size — aim for a secondary screen
+        let wx = 0, wy = 0, ww = 1280, wh = 720;
+        if (screen.availWidth > 1920) {
+            // Likely a second monitor to the right
+            wx = 1920; wy = 0; ww = screen.availWidth - 1920; wh = screen.availHeight;
+        }
+        window._projectorWindow = window.open('', 'ITB_Projector',
+            `width=${ww},height=${wh},left=${wx},top=${wy},` +
+            'menubar=no,toolbar=no,location=no,status=no,scrollbars=no,resizable=yes');
+
+        if (!window._projectorWindow) {
+            showToast('⚠️ Popup blocked! Allow popups for 127.0.0.1 and try again.', 5000);
+            // Fallback: open the in-page projector view
+            openProjectorView();
+            return;
+        }
+        window._projectorWindow.document.open();
+        window._projectorWindow.document.write(projHTML);
+        window._projectorWindow.document.close();
+
+        // Cleanup when user closes the popup
+        const _checkInterval = setInterval(function() {
+            if (window._projectorWindow && window._projectorWindow.closed) {
+                clearInterval(_checkInterval);
+                window._projectorWindow = null;
+                const toggle = document.getElementById('broadcast-main-toggle');
+                if (toggle) { toggle.checked = false; _syncBcastToggle(); }
+                showToast('🖥️ Projector window closed');
+            }
+        }, 1000);
+
+        showToast('🖥️ Projector window opened — press F inside it for fullscreen', 4000);
+        closeBroadcastModal();
+    }
+
+    // ── NDI ───────────────────────────────────────────────────────
+    function _startNDIStream() {
+        // NDI requires OBS. We open the projector popup for OBS to capture.
+        _launchExternalDisplay();
+        setTimeout(function() {
+            showToast('📡 Now open OBS → capture the Projector window → enable NDI output', 6000);
+        }, 1200);
+    }
+
+    function _stopAllOutputs() {
+        if (window._projectorWindow && !window._projectorWindow.closed) {
+            window._projectorWindow.close();
+            window._projectorWindow = null;
+        }
+    }
+
+    function applyBroadcastTheme(theme) {
+        const bg = (typeof themeGradients !== 'undefined' && themeGradients[theme]) || '#000';
+        const bgEl = document.getElementById('projector-bg');
+        if (bgEl) { bgEl.style.background = bg; bgEl.style.backgroundImage = ''; }
+        appState.currentTheme = theme;
+        // Push theme update to open projector window
+        if (window._projectorWindow && !window._projectorWindow.closed && appState.currentVerse) {
+            const v = appState.currentVerse;
+            const trans = v.translation || document.getElementById('mainTranslation').value;
+            window._projectorWindow.postMessage({ type: 'verse', verse: { ref: v.ref, text: v.text, translation: trans }, bg: bg }, '*');
+        }
+        if (typeof saveSettings === 'function') saveSettings();
+        showToast('🎨 Theme: ' + theme);
+    }
+
+    function refreshBroadcastMonitors() {
+        const sel = document.getElementById('bcast-monitor-sel');
+        if (!sel) return;
+        // Use Chrome's Window Management API if available
+        if (window.getScreenDetails) {
+            window.getScreenDetails().then(function(sd) {
+                sel.innerHTML = '';
+                sd.screens.forEach(function(s, i) {
+                    const opt = document.createElement('option');
+                    opt.value = i;
+                    opt.textContent = (s.isPrimary ? '⬛ Primary — ' : '🖥️ Screen ' + (i + 1) + ' — ') +
+                        s.width + '×' + s.height;
+                    sel.appendChild(opt);
+                });
+                showToast('↻ Found ' + sd.screens.length + ' screen(s)');
+            }).catch(function() { _detectMonitorFallback(sel); });
+        } else {
+            _detectMonitorFallback(sel);
+        }
+    }
+
+    function _detectMonitorFallback(sel) {
+        sel.innerHTML = '';
+        const primary = document.createElement('option');
+        primary.textContent = '⬛ Primary — ' + screen.width + '×' + screen.height;
+        sel.appendChild(primary);
+        if (window.screen && screen.availWidth > screen.width + 100) {
+            const ext = document.createElement('option');
+            ext.textContent = '🖥️ External — ' + (screen.availWidth - screen.width) + '×' + screen.availHeight;
+            sel.appendChild(ext);
+        }
+        showToast('↻ Basic screen detection — Chrome may need Window Management permission');
+    }
+
+    // Close broadcast modal on backdrop click
+    document.addEventListener('click', function(e) {
+        const modal = document.getElementById('broadcast-modal');
+        if (modal && e.target === modal) closeBroadcastModal();
+    });
+
     </script>
+
 
     <!-- Translation Manager Modal -->
     <div id="translation-manager-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:9999;align-items:center;justify-content:center;">

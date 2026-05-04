@@ -124,6 +124,34 @@ STOP_WORDS = {
     "the","a","an","and","or","of","in","to","is","it","he","she","they",
     "i","that","this","was","be","are","his","her","not","but","for","with"
 }
+BOOK_ALIASES = {
+    "psalm": "Psalms",
+    "psalms": "Psalms",
+    "song of songs": "Song of Solomon",
+    "songs of solomon": "Song of Solomon",
+    "canticles": "Song of Solomon",
+    "revelations": "Revelation",
+}
+
+def _tokenize_words(text: str) -> List[str]:
+    return [word for word in re.sub(r"[^\w\s]", " ", text.lower()).split() if word]
+
+def canonicalize_book_name(book: str) -> str:
+    clean = re.sub(r"\s+", " ", (book or "").strip())
+    if not clean:
+        return clean
+    return BOOK_ALIASES.get(clean.lower(), clean)
+
+def normalise_reference_text(ref: str) -> str:
+    clean = re.sub(r"\s+", " ", (ref or "").strip())
+    match = re.match(r"^(.+?)\s+(\d+)(?::(\d+))?$", clean, re.IGNORECASE)
+    if not match:
+        return clean
+    book, chapter, verse = match.groups()
+    normalized = f"{canonicalize_book_name(book)} {int(chapter)}"
+    if verse is not None:
+        normalized += f":{int(verse)}"
+    return normalized
 
 class BibleIndex:
     def __init__(self):
@@ -197,16 +225,34 @@ class BibleIndex:
         ]
 
     def keyword_search(self, query: str, k: int = TOP_K) -> List[Dict]:
-        q_words = set(re.sub(r"[^\w\s]", "", query.lower()).split()) - STOP_WORDS
-        if not q_words: return []
+        q_words = [word for word in _tokenize_words(query) if word not in STOP_WORDS]
+        if not q_words:
+            return []
+        phrase = " ".join(q_words)
         scored = []
         for i, v in enumerate(self.verses):
-            searchable = v["ref"].lower() + " " + v["text"].lower()
-            v_words    = set(re.sub(r"[^\w\s]", "", searchable).split())
-            overlap    = len(q_words & v_words)
-            if overlap:
-                score = round(overlap / max(len(q_words), 1), 3)
-                scored.append({**v, "score": score, "_idx": i})
+            searchable = f"{v['ref']} {v['text']}".lower()
+            v_words = _tokenize_words(searchable)
+            exact_hits = 0
+            prefix_hits = 0
+            substring_hits = 0
+            for word in q_words:
+                if word in v_words:
+                    exact_hits += 1
+                elif any(candidate.startswith(word) for candidate in v_words):
+                    prefix_hits += 1
+                elif word in searchable:
+                    substring_hits += 1
+            total_hits = exact_hits + prefix_hits + substring_hits
+            if total_hits:
+                score = (
+                    exact_hits +
+                    (prefix_hits * 0.75) +
+                    (substring_hits * 0.35)
+                ) / max(len(q_words), 1)
+                if phrase and phrase in searchable:
+                    score += 0.35
+                scored.append({**v, "score": round(score, 3), "_idx": i})
         scored.sort(key=lambda x: x["score"], reverse=True)
         return scored[:k]
 
@@ -291,6 +337,7 @@ def clear_feed():
 
 @app.get("/chapter")
 def get_chapter(book: str, chapter: int):
+    book = canonicalize_book_name(book)
     prefix = f"{book} {chapter}:".lower()
     verses = [v for v in bible.verses if v["ref"].lower().startswith(prefix)]
     return {"book": book, "chapter": chapter, "verses": verses}
@@ -313,16 +360,22 @@ async def live_search(req: LiveSearchReq):
 # ── Helpers ───────────────────────────────────────────────────
 def exact_lookup(ref: str) -> Optional[Dict]:
     """Match a reference string against the Bible index — two passes."""
-    ref_lower = ref.lower().strip()
-    # Pass 1: exact string match
-    for v in bible.verses:
-        if v["ref"].lower().strip() == ref_lower:
-            return {**v, "score": 1.0}
-    # Pass 2: ignore spaces (handles "John3:16" vs "John 3:16")
-    ref_nospace = ref_lower.replace(" ", "")
-    for v in bible.verses:
-        if v["ref"].lower().replace(" ", "") == ref_nospace:
-            return {**v, "score": 1.0}
+    candidates = []
+    for candidate in (ref, normalise_reference_text(ref)):
+        normalized = re.sub(r"\s+", " ", candidate.lower()).strip()
+        if normalized and normalized not in candidates:
+            candidates.append(normalized)
+
+    for candidate in candidates:
+        for v in bible.verses:
+            if v["ref"].lower().strip() == candidate:
+                return {**v, "score": 1.0}
+
+    for candidate in candidates:
+        candidate_nospace = candidate.replace(" ", "")
+        for v in bible.verses:
+            if v["ref"].lower().replace(" ", "") == candidate_nospace:
+                return {**v, "score": 1.0}
     return None
 
 def normalise_query(query: str) -> str:
@@ -356,6 +409,48 @@ def _find_verse_by_ref(ref: Optional[str], candidates: List[Dict]) -> Optional[D
         if v["ref"].lower().strip() == ref_l:
             return v
     return None
+
+def _canonical_text(text: str) -> str:
+    return re.sub(r"\s+", " ", re.sub(r"[^\w\s]", " ", text.lower())).strip()
+
+def _quick_verbatim_match(query: str, candidates: List[Dict]) -> Optional[Dict]:
+    """
+    Fast path for live verbatim scripture calls.
+    We only treat it as exact if the spoken text is a meaningful contiguous
+    phrase from the verse text, which keeps interim exact-matches precise.
+    """
+    canon_query = _canonical_text(query)
+    query_words = canon_query.split()
+    if len(query_words) < 4:
+        return None
+
+    for verse in candidates[:3]:
+        canon_verse = _canonical_text(verse.get("text", ""))
+        if canon_query and canon_query in canon_verse:
+            return verse
+    return None
+
+def _is_last_feed_ref(ref: str) -> bool:
+    return bool(scripture_feed and scripture_feed[-1].get("ref") == ref)
+
+async def _send_exact_match(
+    ws: WebSocket,
+    query: str,
+    verse: Dict,
+    confidence: float = 1.0,
+    openai: bool = False,
+):
+    bible.set_manual_index(verse["ref"])
+    add_to_feed(verse, "exact")
+    await safe_send(ws, {
+        "type":       "exact_match",
+        "transcript": query,
+        "results":    [verse],
+        "feed":       list(scripture_feed),
+        "is_exact":   True,
+        "confidence": confidence,
+        "openai":     openai,
+    })
 
 # ── Whisper helper ────────────────────────────────────────────
 def transcribe_whisper(raw_bytes: bytes) -> Optional[str]:
@@ -581,21 +676,148 @@ async def process_query(ws: WebSocket, query: str, is_interim: bool = False):
 # ─────────────────────────────────────────────────────────────
 # WebSocket — main entry
 # ─────────────────────────────────────────────────────────────
+async def process_query(ws: WebSocket, query: str, is_interim: bool = False):
+    """
+    Updated live-query pipeline:
+      1. Normalise spoken words to searchable text
+      2. Let exact refs and strong verbatim hits go live immediately
+      3. Keep paraphrase/fuzzy matches on the slower confirmation path
+    """
+    query = query.strip()
+    if not query:
+        return
+
+    clean_query = normalise_query(query)
+
+    if NEXT_VERSE_RE.search(query):
+        nxt = bible.get_next_verse()
+        if nxt:
+            add_to_feed(nxt, "next")
+            await safe_send(ws, {
+                "type": "next_verse", "transcript": query,
+                "results": [nxt], "feed": list(scripture_feed)
+            })
+        return
+
+    exact = exact_lookup(clean_query)
+    if exact:
+        if not _is_last_feed_ref(exact["ref"]):
+            await _send_exact_match(ws, query, exact, confidence=1.0, openai=False)
+        return
+
+    word_threshold = 2 if is_interim else MIN_WORDS
+    if len(query.split()) < word_threshold:
+        if not is_interim:
+            await safe_send(ws, {"type": "partial", "transcript": query})
+        return
+
+    candidates = bible.keyword_search(clean_query, k=TOP_K)
+    if not candidates:
+        if not is_interim:
+            await safe_send(ws, {"type": "no_match", "transcript": query})
+        return
+
+    verbatim = _quick_verbatim_match(query, candidates)
+    if verbatim:
+        if not _is_last_feed_ref(verbatim["ref"]):
+            await _send_exact_match(ws, query, verbatim, confidence=0.96, openai=False)
+        return
+
+    if is_interim:
+        await safe_send(ws, {
+            "type":       "interim_suggestions",
+            "transcript": query,
+            "results":    candidates[:3],
+            "openai":     False,
+        })
+        return
+
+    if OPENAI_AVAILABLE:
+        ranking    = await openai_rank_verses(query, candidates)
+        confidence = ranking["confidence"]
+
+        if ranking["exact"] and confidence >= 0.75:
+            verse = _find_verse_by_ref(ranking["exact"], candidates)
+            if verse:
+                if not _is_last_feed_ref(verse["ref"]):
+                    await _send_exact_match(ws, query, verse, confidence=confidence, openai=True)
+                return
+
+        if ranking["paraphrase"] and confidence >= 0.45:
+            best = _find_verse_by_ref(ranking["paraphrase"], candidates)
+            if best:
+                ordered = [best] + [r for r in candidates if r["ref"] != best["ref"]]
+                await safe_send(ws, {
+                    "type":       "fuzzy_match",
+                    "transcript": query,
+                    "results":    ordered[:3],
+                    "is_exact":   False,
+                    "confidence": confidence,
+                    "reason":     ranking["reason"],
+                    "openai":     True,
+                })
+                return
+
+        await safe_send(ws, {
+            "type":       "no_match",
+            "transcript": query,
+            "reason":     ranking["reason"],
+            "confidence": confidence,
+            "openai":     True,
+        })
+        return
+
+    await safe_send(ws, {
+        "type":       "fuzzy_match",
+        "transcript": query,
+        "results":    candidates[:3],
+        "is_exact":   False,
+        "openai":     False,
+    })
+
 @app.websocket("/ws/live")
 async def live_ws(ws: WebSocket):
     await ws.accept()
     print("🔌 Client connected")
 
-    engine      = "auto"
-    session_key = ""
+    engine          = "auto"
+    session_key     = ""
+    prefetched_audio: List[bytes] = []
 
     try:
-        raw = await asyncio.wait_for(ws.receive(), timeout=5.0)
-        if "text" in raw:
-            msg = json.loads(raw["text"])
+        loop          = asyncio.get_running_loop()
+        init_deadline = loop.time() + 5.0
+
+        while True:
+            remaining = init_deadline - loop.time()
+            if remaining <= 0:
+                break
+
+            raw = await asyncio.wait_for(ws.receive(), timeout=remaining)
+
+            if raw.get("type") == "websocket.disconnect":
+                print("🔌 Client disconnected before init")
+                return
+
+            if "bytes" in raw and raw["bytes"]:
+                prefetched_audio.append(raw["bytes"])
+                continue
+
+            if "text" not in raw or not raw["text"]:
+                continue
+
+            try:
+                msg = json.loads(raw["text"])
+            except json.JSONDecodeError:
+                continue
+
             if msg.get("type") == "init":
                 engine      = msg.get("engine", "auto")
                 session_key = msg.get("deepgram_key", "").strip()
+                break
+    except WebSocketDisconnect:
+        print("🔌 Client disconnected before session start")
+        return
     except Exception:
         pass
 
@@ -622,27 +844,106 @@ async def live_ws(ws: WebSocket):
     print(f"🔌 Engine: {engine} | key_source: {key_source}")
 
     if engine == "deepgram":
-        await _run_deepgram(ws, effective_dg_key)
+        await _run_deepgram(ws, effective_dg_key, prefetched_audio)
     elif engine == "whisper":
-        await _run_whisper(ws)
+        await _run_whisper(ws, prefetched_audio)
     else:
         await _run_text(ws)
 
 # ── Deepgram session ──────────────────────────────────────────
-async def _run_deepgram(ws: WebSocket, dg_key: str):
+async def _run_deepgram(ws: WebSocket, dg_key: str, prefetched_audio: Optional[List[bytes]] = None):
     DG_URL = (
         "wss://api.deepgram.com/v1/listen"
         "?model=nova-2&language=en-US&encoding=linear16"
         "&sample_rate=16000&channels=1"
         "&interim_results=true&punctuate=true"
-        "&smart_format=true&endpointing=500"
+        "&smart_format=true&endpointing=200"
+        "&utterance_end_ms=1000&vad_events=true"
     )
 
     import websockets as _ws_lib
     import inspect
 
-    audio_q  = asyncio.Queue()
+    AUDIO_QUEUE_MAX        = 12   # ~0.75 s of browser audio at 64 ms/chunk
+    INTERIM_QUERY_MIN_SEC  = 0.35
+
+    audio_q  = asyncio.Queue(maxsize=AUDIO_QUEUE_MAX)
     stop_evt = asyncio.Event()
+    prefetched_audio = prefetched_audio or []
+
+    final_segments: List[str] = []
+    final_segment_keys = set()
+    interim_query_task: Optional[asyncio.Task] = None
+    last_interim_query = ""
+    last_interim_query_at = 0.0
+    last_live_transcript = ""
+    last_drop_notice_at = 0.0
+
+    def _segment_key(msg: Dict, tx: str):
+        return (
+            round(float(msg.get("start", 0.0)), 3),
+            round(float(msg.get("duration", 0.0)), 3),
+            tx,
+        )
+
+    def _append_final_segment(msg: Dict, tx: str):
+        clean_tx = tx.strip()
+        if not clean_tx:
+            return
+        key = _segment_key(msg, clean_tx)
+        if key in final_segment_keys:
+            return
+        final_segment_keys.add(key)
+        final_segments.append(clean_tx)
+
+    def _compose_utterance(current_tx: str = "") -> str:
+        parts = [seg.strip() for seg in final_segments if seg.strip()]
+        clean_current = current_tx.strip()
+        if clean_current and (not parts or parts[-1] != clean_current):
+            parts.append(clean_current)
+        return " ".join(parts).strip()
+
+    def _consume_utterance(fallback_tx: str = "") -> str:
+        utterance = _compose_utterance(fallback_tx)
+        final_segments.clear()
+        final_segment_keys.clear()
+        return utterance
+
+    def _finish_task(task: asyncio.Task):
+        try:
+            task.result()
+        except asyncio.CancelledError:
+            pass
+        except Exception as e:
+            print(f"DG interim task error: {e}")
+
+    def _cancel_interim_query():
+        nonlocal interim_query_task
+        if interim_query_task and not interim_query_task.done():
+            interim_query_task.cancel()
+        interim_query_task = None
+
+    def _schedule_interim_query(text: str):
+        nonlocal interim_query_task
+        _cancel_interim_query()
+        interim_query_task = asyncio.create_task(process_query(ws, text, is_interim=True))
+        interim_query_task.add_done_callback(_finish_task)
+
+    async def _enqueue_audio(chunk: bytes):
+        nonlocal last_drop_notice_at
+        if audio_q.full():
+            dropped = 0
+            while audio_q.full():
+                try:
+                    audio_q.get_nowait()
+                    dropped += 1
+                except asyncio.QueueEmpty:
+                    break
+            now = asyncio.get_event_loop().time()
+            if dropped and (now - last_drop_notice_at) >= 2.0:
+                print(f"⚠️ Deepgram backlog detected — dropped {dropped} stale audio chunk(s) to stay live")
+                last_drop_notice_at = now
+        await audio_q.put(chunk)
 
     # ── Keepalive ─────────────────────────────────────────────
     # Deepgram closes with net0001 after 10 s of silence.
@@ -673,31 +974,61 @@ async def _run_deepgram(ws: WebSocket, dg_key: str):
             print(f"DG fwd error: {e}")
 
     async def rcv(dg_ws):
+        nonlocal last_interim_query, last_interim_query_at, last_live_transcript
         try:
             async for raw in dg_ws:
                 if stop_evt.is_set(): break
                 try:
-                    msg        = json.loads(raw)
+                    msg = json.loads(raw if isinstance(raw, str) else raw.decode("utf-8"))
+                    msg_type = msg.get("type", "Results")
+
+                    if msg_type == "UtteranceEnd":
+                        _cancel_interim_query()
+                        utterance = _consume_utterance()
+                        if utterance:
+                            last_interim_query = ""
+                            last_live_transcript = ""
+                            await process_query(ws, utterance, is_interim=False)
+                        continue
+
+                    if msg_type != "Results":
+                        continue
+
                     alts       = msg.get("channel", {}).get("alternatives", [{}])
                     tx         = alts[0].get("transcript", "").strip() if alts else ""
                     is_final   = msg.get("is_final", False)
                     speech_fin = msg.get("speech_final", False)
-                    if not tx: continue
 
-                    # Send interim words to screen immediately
-                    await safe_send(ws, {
-                        "type":       "interim",
-                        "transcript": tx,
-                        "is_final":   is_final,
-                    })
+                    if is_final and tx:
+                        _append_final_segment(msg, tx)
 
-                    # Interim: update Paraphrase panel live (keyword only, no OpenAI)
-                    if not is_final and not speech_fin:
-                        await process_query(ws, tx, is_interim=True)
+                    live_tx = _compose_utterance("" if is_final else tx)
+                    if live_tx and live_tx != last_live_transcript:
+                        # Keep the transcript live until Deepgram confirms the
+                        # speaker has actually paused.
+                        await safe_send(ws, {
+                            "type":       "interim",
+                            "transcript": live_tx,
+                            "is_final":   False,
+                        })
+                        last_live_transcript = live_tx
 
-                    # Final: run full pipeline (exact lookup + OpenAI ranking)
-                    if speech_fin or (is_final and len(tx.split()) >= MIN_WORDS):
-                        await process_query(ws, tx, is_interim=False)
+                    if speech_fin:
+                        _cancel_interim_query()
+                        utterance = _consume_utterance(tx if not is_final else "")
+                        if utterance:
+                            last_interim_query = ""
+                            last_live_transcript = ""
+                            await process_query(ws, utterance, is_interim=False)
+                    elif live_tx:
+                        now = asyncio.get_event_loop().time()
+                        if (
+                            live_tx != last_interim_query
+                            and (now - last_interim_query_at) >= INTERIM_QUERY_MIN_SEC
+                        ):
+                            last_interim_query = live_tx
+                            last_interim_query_at = now
+                            _schedule_interim_query(live_tx)
 
                 except Exception:
                     continue
@@ -724,10 +1055,13 @@ async def _run_deepgram(ws: WebSocket, dg_key: str):
             fwd_t = asyncio.create_task(fwd(dg_ws))
             rcv_t = asyncio.create_task(rcv(dg_ws))
             try:
+                for chunk in prefetched_audio:
+                    await _enqueue_audio(chunk)
+
                 while True:
                     data = await ws.receive()
                     if "bytes" in data and data["bytes"]:
-                        await audio_q.put(data["bytes"])
+                        await _enqueue_audio(data["bytes"])
                     elif "text" in data:
                         try:
                             msg = json.loads(data["text"])
@@ -751,7 +1085,13 @@ async def _run_deepgram(ws: WebSocket, dg_key: str):
                 print("🔌 Browser disconnected during Deepgram session")
             finally:
                 stop_evt.set()
-                await audio_q.put(None)
+                _cancel_interim_query()
+                try:
+                    while audio_q.full():
+                        audio_q.get_nowait()
+                    audio_q.put_nowait(None)
+                except asyncio.QueueFull:
+                    pass
                 fwd_t.cancel()
                 rcv_t.cancel()
                 try: await dg_ws.send(json.dumps({"type": "CloseStream"}))
@@ -770,16 +1110,17 @@ async def _run_deepgram(ws: WebSocket, dg_key: str):
         # The user can manually switch to Offline mode in the UI.
 
 # ── Whisper session ───────────────────────────────────────────
-async def _run_whisper(ws: WebSocket):
+async def _run_whisper(ws: WebSocket, prefetched_audio: Optional[List[bytes]] = None):
     # Guard: check socket is still alive before sending anything
     if not await safe_send(ws, {"type": "whisper_ready", "message": "🎙️ Whisper ready — speak now (Offline Mode)"}):
         print("⚠  Whisper: socket already closed, aborting")
         return
     print("🎙️ Whisper session started")
 
-    audio_buffer  = bytearray()
-    CHUNK_THRESHOLD = 16000 * 2 * 3  # ~3 seconds of audio before transcribing
-    loop = asyncio.get_event_loop()
+    audio_buffer    = bytearray()
+    CHUNK_THRESHOLD = 16000 * 2 * 1  # ~1 second — transcribe as soon as audio arrives
+    loop            = asyncio.get_event_loop()
+    prefetched_audio = prefetched_audio or []
 
     async def flush():
         nonlocal audio_buffer
@@ -794,6 +1135,11 @@ async def _run_whisper(ws: WebSocket):
             ok = await safe_send(ws, {"type": "interim", "transcript": tx})
             if ok:
                 await process_query(ws, tx)
+
+    for chunk in prefetched_audio:
+        audio_buffer.extend(chunk)
+        if len(audio_buffer) >= CHUNK_THRESHOLD:
+            await flush()
 
     try:
         while True:
