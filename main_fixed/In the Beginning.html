@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>In The Beginning</title>
+    <!-- QR Code generation (CDN, no internet-facing infra required on LAN) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/intro.js/minified/introjs.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/intro.js/minified/intro.min.js"></script>
     <style>
         :root {
             --bg-deep: #0b0d11;
@@ -893,7 +897,8 @@
             display: flex;
             flex-direction: column;
             gap: 8px;
-            overflow: hidden;
+            overflow-y: auto;
+            scrollTop = scrollHeight;
         }
         .transcript-entry {
             color: rgba(255,255,255,0.62);
@@ -1026,6 +1031,25 @@
                     <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
                 </svg>
 
+                <!-- REMOTE CONTROL button -->
+                <button id="btn-remote-ctrl"
+                    style="background:rgba(166,124,82,0.12);border:1.5px solid rgba(166,124,82,0.5);color:#a67c52;padding:5px 13px;border-radius:20px;font-size:11px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:5px;letter-spacing:0.5px;white-space:nowrap;font-family:'Inter',sans-serif;position:relative;"
+                    onmouseover="this.style.background='rgba(166,124,82,0.25)'"
+                    onmouseout="this.style.background='rgba(166,124,82,0.12)'"
+                    onclick="openRemoteModal()" title="Mobile Remote Control">
+                    <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="2"/><circle cx="12" cy="17" r="1" fill="currentColor"/><line x1="9" y1="6" x2="15" y2="6"/></svg>
+                    REMOTE
+                    <span id="remote-count-badge" style="display:none;background:#4ade80;color:#0b0d11;border-radius:99px;font-size:9px;font-weight:800;padding:1px 5px;min-width:16px;text-align:center;">0</span>
+                </button>
+
+                <button id="btn-intro-tour"
+                    style="background:transparent;border:1.5px solid rgba(235, 232, 232, 0.18);color:#716b6b;padding:5px 12px;border-radius:20px;font-size:11px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:5px;letter-spacing:0.5px;white-space:nowrap;font-family:'Inter',sans-serif;"
+                    onmouseover="this.style.borderColor='#a67c52';this.style.color='#a67c52'"
+                    onmouseout="this.style.borderColor='rgba(255,255,255,0.18)';this.style.color='#ddd'"
+                    onclick="startIntroTour()" title="Guided tour">
+                    GUIDE
+                </button>
+
                 <!-- PROPRESENT button -->
                 <button id="btn-propresent" style="background-color:transparent;border:1.5px solid #555;color:#dddddd;padding:5px 13px;border-radius:20px;font-size:11px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:5px;letter-spacing:0.5px;white-space:nowrap;font-family:'Inter',sans-serif;"
                     onmouseover="this.style.borderColor='#a67c52';this.style.color='#a67c52'"
@@ -1155,9 +1179,7 @@
                             <div id="reference-suggestions" class="ref-search-suggestions" style="display:none;"></div>
                         </div>
                         <select class="translation-select" id="mainTranslation" onchange="saveSettings()" title="Choose Bible translation" style="font-size:10px;padding:3px 7px;min-width:96px;">
-                            <option>KJV</option><option>NIV</option><option>ESV</option>
-                            <option>NKJV</option><option>NLT</option><option>AMP</option>
-                            <option>MSG</option><option>CSB</option>
+                            <option>KJV</option>
                         </select>
                     </div>
                 </div>
@@ -1208,7 +1230,7 @@
                     <span style="font-size:9px;font-weight:800;color:#a67c52;text-transform:uppercase;letter-spacing:1px;">Detected Verses</span>
                     <span style="font-size:9px;color:#555;display:flex;align-items:center;gap:5px;">
                         <span style="color:#a67c52;">●</span> Exact
-                        <span style="color:#4ade80;margin-left:4px;">●</span> Paraphrase
+                        <span style="color:#f9cb42;margin-left:4px;">●</span> Paraphrase
                     </span>
                     <span style="margin-left:auto;font-size:9px;color:#555;cursor:pointer;" onclick="clearDetectedPanel()">Clear</span>
                 </div>
@@ -1223,6 +1245,59 @@
     <!-- ============================================================
          SUB-PAGES (overlays)
     ============================================================ -->
+
+    <!-- REMOTE CONTROL MODAL -->
+    <div id="remote-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.80);z-index:10000;align-items:center;justify-content:center;">
+        <div style="background:#16181f;border:1px solid rgba(166,124,82,0.35);border-radius:18px;width:420px;max-width:94vw;box-shadow:0 30px 80px rgba(0,0,0,0.8);overflow:hidden;">
+            <!-- Header -->
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:20px 24px 16px;border-bottom:1px solid rgba(255,255,255,0.07);">
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <div style="width:34px;height:34px;border-radius:10px;background:rgba(166,124,82,0.15);border:1px solid rgba(166,124,82,0.3);display:flex;align-items:center;justify-content:center;">
+                        <svg width="18" height="18" fill="none" stroke="#a67c52" stroke-width="2" viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="2"/><circle cx="12" cy="17" r="1" fill="#a67c52"/><line x1="9" y1="6" x2="15" y2="6"/></svg>
+                    </div>
+                    <div>
+                        <div style="font-size:15px;font-weight:800;color:#e5e7eb;letter-spacing:-0.3px;">Mobile Remote Control</div>
+                        <div style="font-size:11px;color:#6b7280;margin-top:1px;">Scan to control from your phone</div>
+                    </div>
+                </div>
+                <button onclick="closeRemoteModal()" style="background:rgba(255,255,255,0.06);border:none;color:#9ca3af;font-size:18px;cursor:pointer;line-height:1;padding:6px 8px;border-radius:8px;">&times;</button>
+            </div>
+
+            <!-- QR Code area -->
+            <div style="padding:24px;text-align:center;">
+                <div style="background:white;border-radius:14px;padding:16px;display:inline-block;box-shadow:0 8px 24px rgba(0,0,0,0.4);">
+                    <div id="remote-qr-code" style="width:200px;height:200px;"></div>
+                </div>
+
+                <!-- URL display -->
+                <div style="margin-top:16px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.09);border-radius:10px;padding:10px 14px;display:flex;align-items:center;gap:8px;">
+                    <svg width="13" height="13" fill="none" stroke="#6b7280" stroke-width="2" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                    <span id="remote-url-display" style="font-size:11px;color:#9ca3af;font-family:monospace;flex:1;text-align:left;word-break:break-all;"></span>
+                    <button onclick="copyRemoteUrl()" style="background:rgba(166,124,82,0.15);border:1px solid rgba(166,124,82,0.3);color:#a67c52;border-radius:6px;padding:4px 10px;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap;">COPY</button>
+                </div>
+
+                <!-- Connected remotes indicator -->
+                <!-- Display-client badge — shows /display windows connected -->
+                <span id="display-client-badge" style="display:none;background:rgba(166,124,82,0.18);color:#a67c52;border:1px solid rgba(166,124,82,0.35);border-radius:5px;font-size:10px;font-weight:700;padding:2px 8px;margin-right:6px;letter-spacing:.5px;"></span>
+                <div id="remote-conn-status" style="margin-top:12px;display:flex;align-items:center;justify-content:center;gap:6px;font-size:12px;color:#6b7280;">
+                    <span style="width:7px;height:7px;border-radius:50%;background:#555;display:inline-block;" id="remote-status-dot"></span>
+                    <span id="remote-status-text">No phones connected</span>
+                </div>
+            </div>
+
+            <!-- Instructions -->
+            <div style="padding:0 24px 24px;">
+                <div style="background:rgba(166,124,82,0.06);border:1px solid rgba(166,124,82,0.2);border-radius:12px;padding:14px;">
+                    <div style="font-size:10px;font-weight:800;color:#a67c52;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">How to use</div>
+                    <div style="font-size:11px;color:#9ca3af;line-height:1.8;">
+                        <span style="color:#e5e7eb;font-weight:600;">1.</span> Make sure your phone is on the <span style="color:#e5e7eb;font-weight:600;">same Wi-Fi</span> network as this computer.<br>
+                        <span style="color:#e5e7eb;font-weight:600;">2.</span> Scan the QR code or open the URL in your phone's browser.<br>
+                        <span style="color:#e5e7eb;font-weight:600;">3.</span> Use the phone controls to navigate verses in real time.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- BROADCAST MODAL -->
     <div id="broadcast-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:9999;align-items:center;justify-content:center;">
@@ -1283,6 +1358,14 @@
                         NDI
                     </button>
                 </div>
+                    <!-- Open standalone /display page (OBS browser source / NDI) -->
+                    <div style="margin-top:10px;text-align:center;">
+                        <a href="/display" target="_blank"
+                           style="display:inline-flex;align-items:center;gap:6px;padding:8px 18px;background:rgba(166,124,82,0.15);border:1px solid rgba(166,124,82,0.4);border-radius:7px;color:#a67c52;font-size:12px;font-weight:700;text-decoration:none;cursor:pointer;"
+                           title="Open the standalone display page in a new window — use as OBS Browser Source or drag to projector">
+                            🖥 Open Display Page (OBS / NDI / Projector)
+                        </a>
+                    </div>
             </div>
 
             <!-- Target Monitor -->
@@ -1599,7 +1682,7 @@
                 </div>
                 <div class="setting-row">
                     <div><div class="setting-label">Default Translation</div></div>
-                    <select class="sub-select" id="tm-default-select" onchange="saveSettings()"><option>KJV</option><option>NIV</option><option>ESV</option><option>NKJV</option><option>NLT</option><option>AMP</option><option>NASB</option></select>
+                    <select class="sub-select" id="tm-default-select" onchange="saveSettings()"><option>KJV</option></select>
                 </div>
                 <div class="setting-row">
                     <div><div class="setting-label">Translation Manager</div><div class="setting-sub">Install or remove Bible translations &amp; set language</div></div>
@@ -2704,6 +2787,12 @@
         return String(value || '').replace(/\s+/g, ' ').trim();
     }
 
+    function compactTranscriptText(value) {
+        const clean = normalizeReferenceText(value);
+        if (clean.length <= TRANSCRIPT_LINE_MAX_CHARS) return clean;
+        return clean.slice(0, TRANSCRIPT_LINE_MAX_CHARS - 1).trimEnd() + '…';
+    }
+
     function canonicalizeBookName(rawBook) {
         const normalized = normalizeReferenceText(rawBook).toLowerCase();
         if (!normalized) return null;
@@ -3138,7 +3227,9 @@
         if (input) input.value = verse.ref;
         appState.currentVerse = { ref: verse.ref, text: verse.text, translation };
         buildChapterQueue(verse.ref);
+        syncBackendVerseState(verse.ref);
         autoNavToRef(verse.ref);
+        hydrateVerseTranslation(appState.currentVerse, false);
         // Fix 3: ALWAYS show in Preview first — mandatory
         sendToPreview(appState.currentVerse);
         // Fix 3: Only push to Live Display if GO LIVE toggle is on
@@ -3196,6 +3287,7 @@
         const verse = appState.currentVerse;
         if (!verse) { showToast('No verse staged — search or speak a verse first'); return; }
         const trans = verse.translation || document.getElementById('mainTranslation').value;
+        syncBackendVerseState(verse.ref);
         document.getElementById('live-text').textContent = verse.ref + '  [' + trans + ']';
         document.getElementById('live-sub').textContent = verse.text;
         document.getElementById('live-icon').style.display = 'none';
@@ -3203,6 +3295,7 @@
         if (badge) badge.style.display = 'inline';
         updateProjectorText();
         renderVerseContext(verse);
+        sendRemoteVerseState(verse);
         showToast('▶ Forced Live: ' + verse.ref);
     }
 
@@ -3236,6 +3329,7 @@
         const verse = appState.currentVerse;
         if (!verse) { showToast('No verse loaded yet'); return; }
         const trans = verse.translation || document.getElementById('mainTranslation').value;
+        syncBackendVerseState(verse.ref);
 
         // ALWAYS update Preview first — this is mandatory
         sendToPreview(verse);
@@ -3254,6 +3348,7 @@
         if (badge) badge.style.display = 'inline';
         updateProjectorText();
         renderVerseContext(verse);
+        sendRemoteVerseState(verse);
         showToast('▶ Live: ' + verse.ref);
     }
 
@@ -3315,6 +3410,7 @@
         const badge = document.getElementById('live-on-air-badge');
         if (badge) badge.style.display = 'none';
         appState.currentVerse = null;
+        sendRemoteVerseState(null);
         showToast('⬛ Display cleared');
     }
 
@@ -3336,8 +3432,8 @@
         sendToLive();
     }
 
-    function navigateNext() {
-        if (ws && ws.readyState === WebSocket.OPEN) {
+    function navigateNext(options = {}) {
+        if (!options.remote && ws && ws.readyState === WebSocket.OPEN) {
             ws.send(JSON.stringify({ type: 'next' }));
         }
         // Try chapter queue first (go to higher verse number = higher index)
@@ -3389,14 +3485,42 @@
         pr.innerHTML = '— ' + v.ref + ' &nbsp;<span style="color:#f9cb42;font-size:.75em;">[' + trans + ']</span>';
         pt.style.color = appState.textColor;
         pr.style.color = appState.textColor;
-        // Push to external projector window if open
+        const bg = (typeof themeGradients !== 'undefined' && themeGradients[appState.currentTheme]) || '#000011';
+        // ── Push to popup projector window (HDMI) ──────────────
         if (window._projectorWindow && !window._projectorWindow.closed) {
             window._projectorWindow.postMessage({
                 type: 'verse',
                 verse: { ref: v.ref, text: v.text, translation: trans },
-                bg: themeGradients[appState.currentTheme] || '#000'
+                bg: bg
             }, '*');
         }
+        // ── Auto-push to /ws/display clients (OBS browser source,
+        //    NDI, or any external display page) without the operator
+        //    needing to visit the Broadcast tab again. ────────────
+        _autoPushToDisplayServer(v, trans, bg);
+    }
+
+    // ── Auto-push helper ──────────────────────────────────────
+    // Sends the current verse to the server's /display/push endpoint.
+    // This propagates to every /ws/display client (projector windows,
+    // OBS browser sources, NDI virtual inputs) automatically.
+    let _displayPushDebounce = null;
+    function _autoPushToDisplayServer(verse, translation, bg) {
+        // Debounce rapid verse changes to ~150 ms
+        if (_displayPushDebounce) clearTimeout(_displayPushDebounce);
+        _displayPushDebounce = setTimeout(function () {
+            const payload = {
+                verse: { ref: verse.ref, text: verse.text },
+                translation: translation || 'KJV',
+                theme: appState.currentTheme || 'dark-blue',
+                bg: bg || '#000011'
+            };
+            fetch(BACKEND_URL + '/display/push', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            }).catch(function () { /* backend may be offline — silent fail */ });
+        }, 150);
     }
 
     // ===================== PROJECTOR VIEW =====================
@@ -3526,8 +3650,15 @@
     }
 
     // ===================== BACKEND CONFIG =====================
-    const BACKEND_URL = 'http://localhost:8000';
-    const WS_URL      = 'ws://localhost:8000/ws/live';
+    if (
+        location.protocol === 'http:'
+        && !['localhost', '127.0.0.1'].includes(location.hostname)
+    ) {
+        location.replace(`http://127.0.0.1:${location.port || '8000'}${location.pathname}${location.search}${location.hash}`);
+    }
+    const BACKEND_URL = `${location.protocol}//${location.host}`;
+    const WS_URL      = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws/live`;
+    const CTRL_WS_URL = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws/control`;
 
     // ===================== WEBSOCKET + DEEPGRAM TRANSCRIPTION =====================
     let ws           = null;
@@ -3540,11 +3671,17 @@
     let micCompressorNode = null;
     let micGainNode = null;
     let transcribing = false;
+    let _dgRestarting = false;  // prevents double-restart loops on dg_error
     let backendMode  = null;   // 'deepgram' | 'text'
+    let controlWs    = null;
+    let controlReconnectTimer = null;
+    let remotePauseUntil = 0;
     let transcriptLog = [];    // full session log
     const transcriptHistory = [];
-    const TRANSCRIPT_HISTORY_LIMIT = 6;
+    const TRANSCRIPT_HISTORY_LIMIT = 5;  // max final lines visible; interim shown separately below
+    const TRANSCRIPT_LINE_MAX_CHARS = 180;
     const WS_MAX_BUFFERED_BYTES = 256 * 1024;
+    const PREBUFFER_CHUNK_LIMIT = 120; // About 7.7 s at 1024 samples / 16 kHz.
 
     // ── UI helpers ──────────────────────────────────────────────────────────
     function setConnStatus(state) {
@@ -3591,10 +3728,11 @@
         const area = document.getElementById('transcription-area');
         const colors = { final:'#d1d5db', match:'#4ade80', no_match:'#9ca3af', partial:'#6b7280', system:'#a67c52' };
         const icons  = { final:'', match:'✦ ', no_match:'', partial:'', system:'ℹ ' };
+        const displayText = compactTranscriptText(text);
         transcriptLog.push({ text, type, ts: Date.now() });
         const line = document.createElement('div');
         line.style.cssText = `padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.04);color:${colors[type]||'#9ca3af'};font-size:12px;`;
-        line.textContent = (icons[type]||'') + text;
+        line.textContent = (icons[type]||'') + displayText;
         // Remove empty-state placeholder if present
         if (area.querySelector('div[style*="text-align:center"]')) area.innerHTML = '';
         // Insert at top (newest first) — preserve scroll position so user can read past lines
@@ -3671,7 +3809,7 @@
     }
 
     function appendTranscriptLine(text, type) {
-        const cleanText = normalizeReferenceText(text);
+        const cleanText = compactTranscriptText(text);
         if (!cleanText) return;
 
         transcriptLog.push({ text: cleanText, type, ts: Date.now() });
@@ -3710,6 +3848,9 @@
     }
 
     async function startTranscription() {
+        if (!window.isSecureContext && !['localhost', '127.0.0.1'].includes(location.hostname)) {
+            showToast('Use localhost for desktop mic; keep 0.0.0.0 for phone remote', 6000);
+        }
         transcriptHistory.length = 0;
         renderTranscriptHistory();
         setInterim('');
@@ -3827,6 +3968,9 @@
                 }
 
                 processor.onaudioprocess = (e) => {
+                    if (Date.now() < remotePauseUntil) {
+                        return;
+                    }
                     const float32 = e.inputBuffer.getChannelData(0);
                     const int16   = new Int16Array(float32.length);
                     for (let i = 0; i < float32.length; i++) {
@@ -3846,9 +3990,9 @@
                         }
                         ws.send(int16.buffer);
                     } else {
-                        // WS not open yet — buffer (cap at 20 chunks ≈ 3 s)
+                        // WS not open yet - keep enough startup audio to avoid losing first words.
                         _preBuffer.push(int16.buffer);
-                        if (_preBuffer.length > 20) _preBuffer.shift();
+                        if (_preBuffer.length > PREBUFFER_CHUNK_LIMIT) _preBuffer.shift();
                     }
                 };
 
@@ -3909,6 +4053,7 @@
         transcribing = true;
         setTranscribeBtn(true);
         setConnStatus('live');
+        sendRemoteTranscriptionState();
         showToast('🎙️ Live transcription started');
     }
 
@@ -3918,6 +4063,7 @@
         setConnStatus('off');
         setInterim('');
         stopAudioVisualizer();
+        sendRemoteTranscriptionState();
 
         // Stop mic
         if (processor)    { try { processor.disconnect(); } catch(_){} processor = null; }
@@ -3947,6 +4093,13 @@
 
     // ── Handle incoming WebSocket messages ──────────────────────────────────
     function handleWsMessage(msg) {
+        if (
+            Date.now() < remotePauseUntil
+            && !msg.source
+            && ['interim', 'final_transcript', 'partial', 'verbatim_match', 'exact_match', 'next_verse', 'interim_suggestions', 'fuzzy_match', 'match', 'no_match'].includes(msg.type)
+        ) {
+            return;
+        }
         switch (msg.type) {
 
             case 'connected': {
@@ -3983,15 +4136,40 @@
                 setInterim(msg.transcript, msg.is_final === true);
                 break;
 
+            case 'final_transcript':
+                setInterim(msg.transcript || '', true);
+                break;
+
             case 'partial':
                 // Short/incomplete fragment — show as interim, never lock
-                setInterim(msg.transcript, false);
+                if (!msg.transcript_finalized) setInterim(msg.transcript, false);
                 break;
+
+            case 'partial_reference':
+                setInterim(msg.message || msg.transcript || '', false);
+                break;
+
+            case 'command_execution':
+                handleCommandExecution(msg);
+                break;
+
+            case 'verbatim_match': {
+                if (!msg.transcript_finalized && !msg.is_interim) {
+                    setInterim(msg.transcript || '', true);
+                }
+                if (msg.results && msg.results.length) {
+                    pushVerseToLiveDirect(msg.results[0], { isInterim: !!msg.is_interim });
+                }
+                if (msg.feed) updateScriptureFeedFromBackend(msg.feed);
+                break;
+            }
 
             case 'exact_match':
             case 'next_verse': {
                 // Exact ref spoken — lock transcript, then push to Detected Verses
-                setInterim(msg.transcript || '', true); // lock the line
+                if (!msg.transcript_finalized && !msg.is_interim) {
+                    setInterim(msg.transcript || '', true); // lock the line
+                }
                 if (msg.results && msg.results.length) {
                     const top = msg.results[0];
                     pushVerseToLiveDirect(top);
@@ -4001,10 +4179,12 @@
             }
 
             case 'interim_suggestions': {
-                // Mid-sentence hints belong in Context Search only. We keep
-                // Detected Verses reserved for completed utterances.
-                if (msg.results && msg.results.length)
+                // Show fast paraphrase hints immediately; final matches replace
+                // these dim rows when confirmation finishes.
+                if (msg.results && msg.results.length) {
                     updateParaphraseArea(msg.results);
+                    pushToParaphrasePanel(msg.results[0], msg.results, true);
+                }
                 break;
             }
 
@@ -4013,15 +4193,20 @@
                 // Sentence complete — paraphrase match confirmed.
                 // Paraphrase panel only. Never auto-displays to screen.
                 // User must tap Present or Queue — exactly like Pewbeam.
-                setInterim(msg.transcript || '', true); // lock transcript line
+                if (!msg.transcript_finalized) {
+                    setInterim(msg.transcript || '', true); // lock transcript line
+                }
                 if (msg.results && msg.results.length)
                     pushToParaphrasePanel(msg.results[0], msg.results, false /* isInterim */);
                 break;
             }
 
             case 'no_match':
-                setInterim('');
-                if (msg.transcript) appendTranscriptLine(msg.transcript, 'no_match');
+                clearInterimDetectedHints();
+                if (!msg.transcript_finalized) {
+                    setInterim('');
+                    if (msg.transcript) appendTranscriptLine(msg.transcript, 'no_match');
+                }
                 break;
 
             case 'feed':
@@ -4035,9 +4220,207 @@
             case 'dg_error':
             case 'error':
                 appendTranscriptLine('❌ ' + (msg.error || msg.message || 'Unknown error'), 'system');
+                // Auto-restart Deepgram if it drops mid-sermon
+                // (e.g. after 10 s of silence → net0001 error)
+                if (transcribing && !_dgRestarting) {
+                    _dgRestarting = true;
+                    appendTranscriptLine('🔄 Deepgram disconnected — auto-restarting in 2 s…', 'system');
+                    setTimeout(function () {
+                        _dgRestarting = false;
+                        if (transcribing) {
+                            appendTranscriptLine('🔄 Reconnecting to Deepgram…', 'system');
+                            // Re-open WebSocket connection
+                            // Trigger restart via the main toggle button
+                            const _toggleBtn = document.getElementById('startBtn') ||
+                                               document.querySelector('[onclick*="toggleTranscription"]') ||
+                                               document.querySelector('[onclick*="startTranscription"]');
+                            if (_toggleBtn && transcribing) {
+                                // Stop first, then restart
+                                _toggleBtn.click();
+                                setTimeout(function(){ if (!transcribing) _toggleBtn.click(); }, 600);
+                            }
+                        }
+                    }, 2000);
+                }
                 setConnStatus('error');
                 showToast('❌ ' + (msg.message || msg.error || 'Engine error — check your API key'));
                 break;
+
+            // ── Remote Control messages ───────────────────────────────
+            case 'remote_joined':
+            case 'remote_left': {
+                const count = msg.remotes || 0;
+                updateRemoteCountBadge(count);
+                const action = msg.type === 'remote_joined' ? 'connected' : 'disconnected';
+                showToast(`📱 Remote ${action} — ${count} phone${count !== 1 ? 's' : ''} active`);
+                break;
+            }
+
+            case 'remote_next':
+                pauseTranscriptionForRemote();
+                showToast('📱 Remote → Next Verse');
+                navigateNext({ remote: true });
+                break;
+
+            case 'remote_prev':
+                pauseTranscriptionForRemote();
+                showToast('📱 Remote → Previous Verse');
+                navigatePrev();
+                break;
+
+            case 'remote_clear':
+                pauseTranscriptionForRemote();
+                showToast('📱 Remote → Clear');
+                clearDisplay();
+                break;
+
+            case 'remote_start_transcription':
+                showToast('📱 Remote → Start Transcription');
+                if (!transcribing) startTranscription();
+                else sendRemoteTranscriptionState();
+                break;
+
+            case 'remote_stop_transcription':
+                showToast('📱 Remote → Stop Transcription');
+                if (transcribing) stopTranscription();
+                else sendRemoteTranscriptionState();
+                break;
+
+            case 'remote_toggle_transcription':
+                showToast('📱 Remote → Toggle Transcription');
+                toggleTranscription();
+                break;
+
+            case 'remote_navigate': {
+                const ref = msg.ref;
+                if (ref) {
+                    pauseTranscriptionForRemote();
+                    showToast('📱 Remote → ' + ref);
+                    if (msg.verse && msg.verse.ref && msg.verse.text) {
+                        const trans = document.getElementById('mainTranslation').value || 'KJV';
+                        const verse = { ref: msg.verse.ref, text: msg.verse.text, translation: trans };
+                        appState.currentVerse = verse;
+                        buildChapterQueue(verse.ref);
+                        syncBackendVerseState(verse.ref);
+                        sendToPreview(verse);
+                        forceDisplayToLive();
+                        addToScriptureFeed(verse);
+                        autoNavToRef(verse.ref);
+                        break;
+                    }
+                    // Look up the verse and push it live
+                    fetch(BACKEND_URL + '/lookup?ref=' + encodeURIComponent(ref))
+                        .then(r => r.json())
+                        .then(data => {
+                            if (data && data.ref && data.text) {
+                                const trans = document.getElementById('mainTranslation').value || 'KJV';
+                                const verse = { ref: data.ref, text: data.text, translation: trans };
+                                appState.currentVerse = verse;
+                                buildChapterQueue(verse.ref);
+                                syncBackendVerseState(verse.ref);
+                                sendToPreview(verse);
+                                forceDisplayToLive();
+                                addToScriptureFeed(verse);
+                                autoNavToRef(verse.ref);
+                            } else {
+                                showToast('⚠️ Remote ref not found: ' + ref);
+                            }
+                        })
+                        .catch(() => showToast('⚠️ Could not load remote reference'));
+                }
+                break;
+            }
+        }
+    }
+
+    function ensureTranslationOption(code) {
+        const translation = (code || 'KJV').toUpperCase();
+        const sel = document.getElementById('mainTranslation');
+        if (!sel) return translation;
+
+        const hasOption = Array.from(sel.options).some(o => o.value.toUpperCase() === translation);
+        if (!hasOption) {
+            const opt = document.createElement('option');
+            opt.value = translation;
+            opt.textContent = translation;
+            sel.appendChild(opt);
+        }
+        sel.value = translation;
+
+        const tmDefault = document.getElementById('tm-default-select');
+        if (tmDefault) {
+            const tmHasOption = Array.from(tmDefault.options).some(o => o.value.toUpperCase() === translation);
+            if (!tmHasOption) {
+                const opt = document.createElement('option');
+                opt.value = translation;
+                opt.textContent = translation;
+                tmDefault.appendChild(opt);
+            }
+            tmDefault.value = translation;
+        }
+
+        saveSettings();
+        return translation;
+    }
+
+    function syncBackendVerseState(ref) {
+        if (!ref || !ws || ws.readyState !== WebSocket.OPEN) return;
+        try { ws.send(JSON.stringify({ type: 'set_index', ref })); } catch(_) {}
+    }
+
+    const translationTextCache = new Map();
+    async function hydrateVerseTranslation(verse, forceLive = false) {
+        if (!verse || !verse.ref) return verse;
+        const code = (verse.translation || document.getElementById('mainTranslation').value || 'KJV').toUpperCase();
+        if (code === 'KJV') return verse;
+        const cacheKey = code + '|' + verse.ref;
+        if (translationTextCache.has(cacheKey)) {
+            verse.text = translationTextCache.get(cacheKey);
+        } else {
+            try {
+                const r = await fetch(BACKEND_URL + '/translations/lookup?code=' + encodeURIComponent(code) + '&ref=' + encodeURIComponent(verse.ref));
+                const data = await r.json();
+                if (!data || data.error || !data.text) return verse;
+                verse.text = data.text;
+                translationTextCache.set(cacheKey, data.text);
+            } catch (_) {
+                return verse;
+            }
+        }
+        if (appState.currentVerse && appState.currentVerse.ref === verse.ref) {
+            appState.currentVerse = { ...appState.currentVerse, text: verse.text, translation: code };
+            sendToPreview(appState.currentVerse);
+            if (forceLive) forceDisplayToLive();
+        }
+        return verse;
+    }
+
+    function handleCommandExecution(msg) {
+        const state = msg.state || {};
+        const translation = ensureTranslationOption(state.active_translation || msg.translation || 'KJV');
+
+        if (msg.feed) updateScriptureFeedFromBackend(msg.feed);
+
+        if (!msg.success) {
+            const text = msg.message || 'Command could not be completed';
+            appendTranscriptLine(text, 'system');
+            showToast(text);
+            return;
+        }
+
+        if (msg.results && msg.results.length) {
+            const top = { ...msg.results[0], translation };
+            pushVerseToLiveDirect(top);
+        } else if (appState.currentVerse) {
+            appState.currentVerse.translation = translation;
+            sendToPreview(appState.currentVerse);
+            const goLiveToggle = document.getElementById('autoToggle');
+            if (goLiveToggle && goLiveToggle.checked) sendToLive();
+        }
+
+        if (msg.message) {
+            appendTranscriptLine(msg.message, 'system');
+            if (msg.action === 'set_translation') showToast(msg.message);
         }
     }
 
@@ -4101,7 +4484,7 @@
         if (appState.displayMode === 'auto' && document.getElementById('autoToggle').checked) {
             sendToLive();
         } else {
-            showToast('📺 Detected: ' + top.ref + ' — staged to Preview');
+            showToast(' Detected: ' + top.ref + ' — staged to Preview');
         }
     }
 
@@ -4200,7 +4583,7 @@
     function nextSongSlide() { showToast('Next verse ▶'); }
     function clearSongDisplay() {
         document.getElementById('projector-text').textContent = '';
-        showToast('⬛ Screen cleared');
+        showToast(' Screen cleared');
     }
 
     function importSong() {
@@ -4265,7 +4648,7 @@
     }
 
     function importPresentation() {
-        showToast('📂 Importing PPT/PDF... (connect to backend for full support)');
+        showToast(' Importing PPT/PDF... (connect to backend for full support)');
     }
 
     // ===================== SCRIPTURE SLIDES =====================
@@ -4279,7 +4662,7 @@
             const div = document.createElement('div');
             div.className = 'lyric-card';
             div.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:10px 14px;';
-            div.innerHTML = `<div style="font-size:12px;font-weight:700;color:#d1d5db;">📖 ${r}</div>
+            div.innerHTML = `<div style="font-size:12px;font-weight:700;color:#d1d5db;"> ${r}</div>
                 <div style="display:flex;gap:6px;">
                     <button class="sub-btn" style="padding:3px 10px;font-size:11px;" onclick="displayScriptureSlide('${r}')">▶</button>
                     <button class="sub-btn-ghost" style="padding:3px 10px;font-size:11px;" onclick="this.closest('.lyric-card').remove()">✕</button>
@@ -4288,7 +4671,7 @@
         });
         document.getElementById('pro-scripture-input').value = '';
         saveSettings();
-        showToast('📖 Scripture slide added: ' + ref);
+        showToast(' Scripture slide added: ' + ref);
     }
 
     // Fix 10: displaying from ProPresent scripture tab works directly
@@ -4315,11 +4698,11 @@
     function handleMediaImport(input) {
         const file = input.files[0];
         if (!file) return;
-        showToast('🖼️ Media imported: ' + file.name);
+        showToast(' Media imported: ' + file.name);
     }
 
     function displayMedia(id) {
-        showToast('🖼️ Media displayed on screen: ' + id);
+        showToast(' Media displayed on screen: ' + id);
         openProjectorView();
     }
 
@@ -4346,7 +4729,7 @@
                 <button class="sub-btn-ghost" style="padding:4px 10px;font-size:11px;" onclick="this.closest('.lyric-card').remove()">✕</button>
             </div>`;
         list.appendChild(div);
-        showToast('📢 Announcement added');
+        showToast(' Announcement added');
     }
 
     function displayAnnouncement(el, text) {
@@ -4356,12 +4739,12 @@
 
         // Update Program Preview (Screen 1)
         document.getElementById('preview1-icon').style.display = 'none';
-        document.getElementById('preview1-text').textContent = '📢 Announcement';
+        document.getElementById('preview1-text').textContent = ' Announcement';
         document.getElementById('preview1-sub').textContent = text;
 
         // Update Live Display (Screen 2) always — announcements bypass GO LIVE toggle
         document.getElementById('live-icon').style.display = 'none';
-        document.getElementById('live-text').textContent = '📢 Announcement';
+        document.getElementById('live-text').textContent = ' Announcement';
         document.getElementById('live-sub').textContent = text;
         const badge = document.getElementById('live-on-air-badge');
         if (badge) badge.style.display = 'inline';
@@ -4371,7 +4754,7 @@
         document.getElementById('projector-ref').textContent = '— Announcement';
         document.getElementById('projector-text').style.color = appState.textColor || '#ffffff';
 
-        showToast('📢 Announcement displayed on screen');
+        showToast(' Announcement displayed on screen');
     }
 
     // ===================== TIMER =====================
@@ -4458,12 +4841,12 @@
         appState.profileName = name;
         appState.profileEmail = email;
         saveSettings();
-        showToast('✅ Profile saved');
+        showToast(' Profile saved');
     }
 
     // ===================== SETTINGS =====================
     function resetSettings() {
-        showToast('🔄 Settings reset to defaults');
+        showToast(' Settings reset to defaults');
     }
 
     function setStars(n) {
@@ -4477,8 +4860,101 @@
         showToast('📤 Feedback sent! Thank you.');
     }
 
+    // ===================== ALWAYS-ON REMOTE CONTROL CHANNEL =====================
+    function sendControlMessage(payload) {
+        if (!controlWs || controlWs.readyState !== WebSocket.OPEN) return false;
+        try {
+            controlWs.send(JSON.stringify(payload));
+            return true;
+        } catch (_) {
+            return false;
+        }
+    }
+
+    function sendRemoteTranscriptionState() {
+        sendControlMessage({ type: 'transcription_state', active: !!transcribing });
+    }
+
+    function sendRemoteVerseState(verse) {
+        const trans = verse && (verse.translation || (document.getElementById('mainTranslation') || {}).value || 'KJV');
+        sendControlMessage({
+            type: 'desktop_state',
+            verse: verse ? { ref: verse.ref, text: verse.text, translation: trans } : null,
+            translation: trans || 'KJV',
+            transcribing: !!transcribing,
+        });
+    }
+
+    function pauseTranscriptionForRemote(ms = 2600) {
+        remotePauseUntil = Math.max(remotePauseUntil, Date.now() + ms);
+        if (transcribing) {
+            setInterim('');
+            appendTranscriptLine('Remote command received - transcription paused briefly', 'system');
+        }
+    }
+
+    function connectDesktopControl() {
+        clearTimeout(controlReconnectTimer);
+        if (controlWs && [WebSocket.OPEN, WebSocket.CONNECTING].includes(controlWs.readyState)) return;
+
+        try {
+            controlWs = new WebSocket(CTRL_WS_URL);
+        } catch (_) {
+            controlReconnectTimer = setTimeout(connectDesktopControl, 2000);
+            return;
+        }
+
+        controlWs.onopen = () => {
+            sendRemoteTranscriptionState();
+            if (appState.currentVerse) sendRemoteVerseState(appState.currentVerse);
+        };
+        controlWs.onmessage = (e) => {
+            try {
+                const msg = JSON.parse(e.data);
+                if (msg.type === 'desktop_control_connected') {
+                    updateRemoteCountBadge(msg.remotes || 0);
+                    return;
+                }
+                handleWsMessage(msg);
+            } catch (_) {}
+        };
+        controlWs.onclose = () => {
+            controlReconnectTimer = setTimeout(connectDesktopControl, 1500);
+        };
+        controlWs.onerror = () => {
+            try { controlWs.close(); } catch (_) {}
+        };
+    }
+
+    function startIntroTour() {
+        if (!window.introJs) {
+            showToast('Guide is loading - check internet connection for intro.js');
+            return;
+        }
+
+        const steps = [
+            { element: document.querySelector('.logo-section'), intro: 'This is the main desktop control room for scripture display and live transcription.' },
+            { element: document.getElementById('transcribeBtn'), intro: 'Start or stop transcription here. The phone remote can also control this button.' },
+            { element: document.getElementById('chapterInput'), intro: 'Search a scripture reference here, then choose a result to stage it.' },
+            { element: document.querySelector('.center-previews'), intro: 'Preview appears on the left. Live output appears on the right when you press DISPLAY or enable GO LIVE.' },
+            { element: document.querySelector('.preview-controls'), intro: 'Use DISPLAY, PREV, CLEAR, and NEXT for the live screen. Phone remote taps take priority and pause transcription briefly.' },
+            { element: document.getElementById('scripture-feed'), intro: 'Shown scriptures collect here so you can jump back quickly.' },
+            { element: document.getElementById('btn-remote-ctrl'), intro: 'Open this to scan the QR code for the mobile remote.' },
+        ].filter(step => step.element);
+
+        introJs().setOptions({
+            steps,
+            nextLabel: 'Next',
+            prevLabel: 'Back',
+            doneLabel: 'Done',
+            showProgress: true,
+            scrollToElement: true,
+        }).start();
+    }
+
     // ===================== INIT =====================
     loadState();
+    connectDesktopControl();
     updateDgKeyStatus();
     renderMicDeviceOptions();
     applyMicSettingsToDom();
@@ -4542,7 +5018,7 @@
             const div = document.createElement('div');
             div.style.cssText = 'padding:7px 4px;border-bottom:1px solid rgba(255,255,255,0.05);cursor:pointer;';
             const trans = document.getElementById('mainTranslation').value;
-            div.innerHTML = `<div style="color:#a67c52;font-weight:700;font-size:10px;">${v.ref} <span style="color:#f9cb42;">[${trans}]</span></div>
+            div.innerHTML = `<div style="color:#f9cb42;font-weight:700;font-size:10px;">${v.ref} <span style="color:#f9cb42;">[${trans}]</span></div>
                 <div style="font-size:11px;color:#d1d5db;line-height:1.5;">${v.text}</div>`;
             div.onclick = () => {
                 appState.currentVerse = { ref: v.ref, text: v.text, translation: trans };
@@ -4552,6 +5028,101 @@
             area.appendChild(div);
         });
     }
+
+    // ===================== REMOTE CONTROL =====================
+
+    let _remoteQR = null;
+    let _remoteConnectedCount = 0;
+
+    function updateRemoteCountBadge(count) {
+        _remoteConnectedCount = count;
+        const badge = document.getElementById('remote-count-badge');
+        if (!badge) return;
+        if (count > 0) {
+            badge.textContent = count;
+            badge.style.display = 'inline-block';
+        } else {
+            badge.style.display = 'none';
+        }
+        // Update modal status if open
+        _updateRemoteModalStatus(count);
+    }
+
+    function _updateRemoteModalStatus(count) {
+        const dot  = document.getElementById('remote-status-dot');
+        const text = document.getElementById('remote-status-text');
+        if (!dot || !text) return;
+        if (count > 0) {
+            dot.style.background = '#4ade80';
+            text.textContent = count + ' phone' + (count !== 1 ? 's' : '') + ' connected';
+            text.style.color = '#4ade80';
+        } else {
+            dot.style.background = '#555';
+            text.textContent = 'No phones connected';
+            text.style.color = '#6b7280';
+        }
+    }
+
+    async function openRemoteModal() {
+        const modal = document.getElementById('remote-modal');
+        if (!modal) return;
+        modal.style.display = 'flex';
+
+        // Determine the remote URL. The backend detects the LAN IP so the
+        // desktop can stay on localhost while phones connect over Wi-Fi.
+        const host    = window.location.hostname || 'localhost';
+        const port    = window.location.port || '8000';
+        let remoteUrl = `http://${host}:${port}/remote`;
+        try {
+            const info = await fetch(BACKEND_URL + '/remote-info').then(r => r.json());
+            if (info && info.remote_url) remoteUrl = info.remote_url;
+        } catch (_) {}
+
+        // Update URL display
+        const urlEl = document.getElementById('remote-url-display');
+        if (urlEl) urlEl.textContent = remoteUrl;
+
+        // Generate or refresh QR code
+        const qrContainer = document.getElementById('remote-qr-code');
+        if (qrContainer) {
+            qrContainer.innerHTML = '';
+            try {
+                _remoteQR = new QRCode(qrContainer, {
+                    text:         remoteUrl,
+                    width:        200,
+                    height:       200,
+                    colorDark:    '#0b0d11',
+                    colorLight:   '#ffffff',
+                    correctLevel: QRCode.CorrectLevel.M,
+                });
+            } catch (err) {
+                qrContainer.innerHTML = `<div style="width:200px;height:200px;display:flex;align-items:center;justify-content:center;background:#111;border-radius:8px;color:#a67c52;font-size:11px;text-align:center;padding:16px;">QRCode.js not loaded — use the URL below</div>`;
+            }
+        }
+
+        _updateRemoteModalStatus(_remoteConnectedCount);
+    }
+
+    function closeRemoteModal() {
+        const modal = document.getElementById('remote-modal');
+        if (modal) modal.style.display = 'none';
+    }
+
+    function copyRemoteUrl() {
+        const urlEl = document.getElementById('remote-url-display');
+        if (!urlEl) return;
+        navigator.clipboard.writeText(urlEl.textContent).then(() => {
+            showToast('📋 Remote URL copied to clipboard');
+        }).catch(() => {
+            showToast('URL: ' + urlEl.textContent);
+        });
+    }
+
+    // Close remote modal on backdrop click
+    document.addEventListener('click', function(e) {
+        const modal = document.getElementById('remote-modal');
+        if (modal && e.target === modal) closeRemoteModal();
+    });
 
     </script>
 
@@ -4585,16 +5156,16 @@
             border-radius: 6px;
             transition: background 0.15s;
         }
-        .para-match-item:hover { background: rgba(74,222,128,0.07); }
-        .para-match-item .pmr  { color:#4ade80;font-weight:700;font-size:10px; }
+        .para-match-item:hover { background: rgba(29,78,216,0.10); }
+        .para-match-item .pmr  { color:#f9cb42;font-weight:700;font-size:10px; }
         .para-match-item .pmt  { color:#d1d5db;font-size:11px;margin-top:2px;line-height:1.4; }
         .para-match-item .pmb  {
             display:inline-block;margin-top:5px;font-size:9px;
             padding:2px 8px;border-radius:8px;
-            border:1px solid rgba(74,222,128,0.4);color:#4ade80;
+            border:1px solid rgba(29,78,216,0.45);color:#f9cb42;
             font-weight:700;letter-spacing:.5px;
         }
-        .para-match-item .pmb:hover { background:rgba(74,222,128,0.15); }
+        .para-match-item .pmb:hover { background:rgba(29,78,216,0.16); }
     </style>
 
     <script>
@@ -4602,10 +5173,19 @@
     // isInterim=true  → mid-sentence hint, shown dimmed (preacher still speaking)
     // isInterim=false → confirmed paraphrase match, full brightness
     // Paraphrase matches — write into detected-verses with green style (no Queue badge)
+    function clearInterimDetectedHints(refToKeep) {
+        const dv = document.getElementById('detected-verses');
+        if (!dv) return;
+        Array.from(dv.querySelectorAll('[data-interim="true"]')).forEach(el => {
+            if (!refToKeep || el.dataset.ref !== refToKeep) el.remove();
+        });
+    }
+
     function pushToParaphrasePanel(top, allResults, isInterim) {
         const dv = document.getElementById('detected-verses');
         if (!dv) return;
         if (dv.querySelector('.empty-state')) dv.innerHTML = '';
+        clearInterimDetectedHints(isInterim ? top.ref : null);
         // Deduplicate
         const ex = dv.querySelector('[data-ref="' + top.ref + '"]');
         if (ex) ex.remove();
@@ -4616,13 +5196,14 @@
         item.className = 'para-match-item';
         item.dataset.ref = top.ref;
         item.dataset.matchType = 'paraphrase';
-        item.style.cssText = 'padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.05);cursor:pointer;border-left:3px solid #4ade80;' + (isInterim ? 'opacity:0.5;' : '');
+        item.dataset.interim = isInterim ? 'true' : 'false';
+        item.style.cssText = 'padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.05);cursor:pointer;border-left:3px solid #f9cb42;' + (isInterim ? 'opacity:0.5;' : '');
         if (isInterim) item.title = 'Live suggestion — sentence not yet complete';
         item.innerHTML =
             '<div style="display:flex;align-items:center;gap:6px;">' +
-            '<span style="color:#4ade80;font-weight:700;font-size:10px;">' + top.ref +
+            '<span style="color:#f9cb42;font-weight:700;font-size:10px;">' + top.ref +
             ' <span style="color:#f9cb42;font-weight:400;">[' + trans + ']</span></span>' +
-            (isInterim ? '<span style="font-size:9px;color:#6b7280;">…listening</span>' : '<span style="font-size:9px;padding:1px 5px;border-radius:6px;background:rgba(74,222,128,0.1);color:#4ade80;border:1px solid rgba(74,222,128,0.25);">paraphrase</span>') +
+            (isInterim ? '<span style="font-size:9px;color:#6b7280;">…listening</span>' : '<span style="font-size:9px;padding:1px 5px;border-radius:6px;background:rgba(29,78,216,0.12);color:#f9cb42;border:1px solid rgba(29,78,216,0.30);">paraphrase</span>') +
             '</div>' +
             '<div style="font-size:11px;color:#d1d5db;margin-top:2px;line-height:1.4;">' + top.text.substring(0, 110) + (top.text.length > 110 ? '…' : '') + '</div>';
         item.onclick = function() { stageParaphraseVerse(top.ref, top.text, trans); };
@@ -4645,8 +5226,9 @@
     }
 
     // Push exact/next verse straight to live + feed + auto-nav
-    function pushVerseToLiveDirect(top) {
-        const trans = document.getElementById('mainTranslation').value;
+    function pushVerseToLiveDirect(top, options = {}) {
+        const trans = top.translation || document.getElementById('mainTranslation').value;
+        ensureTranslationOption(trans);
         const verse = { ref: top.ref, text: top.text, translation: trans };
         appState.currentVerse = verse;
         const hi = appState.verseHistory.findIndex(v => v.ref === top.ref);
@@ -4655,30 +5237,60 @@
         sendToPreview(verse);
         forceDisplayToLive();
         addToScriptureFeed(verse);
-        autoNavToRef(top.ref);
-        // Also add to detected-verses with Queue badge
-        const dv = document.getElementById('detected-verses');
-        if (dv) {
-            if (dv.querySelector('.empty-state')) dv.innerHTML = '';
-            const ex = dv.querySelector('[data-ref="' + top.ref + '"]');
-            if (ex) ex.remove();
-            while (dv.children.length >= 20) dv.removeChild(dv.lastChild);
-            const item = document.createElement('div');
-            item.dataset.ref = top.ref;
-            item.dataset.matchType = 'exact';
-            item.style.cssText = 'padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.05);cursor:pointer;border-left:3px solid #a67c52;';
-            item.innerHTML = `<div style="display:flex;align-items:center;gap:6px;"><span style="color:#a67c52;font-weight:700;font-size:10px;">${top.ref} <span style="color:#f9cb42;font-weight:400;">[${trans}]</span></span><span style="font-size:9px;padding:1px 6px;border-radius:6px;background:rgba(166,124,82,0.18);color:#a67c52;border:1px solid rgba(166,124,82,0.35);font-weight:700;">Queue</span></div>
-                <div style="font-size:11px;color:#d1d5db;margin-top:2px;line-height:1.4;">${top.text}</div>`;
-            item.onclick = () => { 
-                appState.currentVerse = verse; 
-                sendToPreview(verse); 
-                forceDisplayToLive();
-                // Switch to Book Search tab and open full chapter
-                switchTab('ref');
-                autoNavToRef(verse.ref);
-            };
-            dv.insertBefore(item, dv.firstChild);
+        if (options.addDetected !== false) {
+            clearInterimDetectedHints(top.ref);
+            // Also add to detected-verses with Queue badge before heavier navigator work.
+            const dv = document.getElementById('detected-verses');
+            if (dv) {
+                if (dv.querySelector('.empty-state')) dv.innerHTML = '';
+                const ex = dv.querySelector('[data-ref="' + top.ref + '"]');
+                if (ex) ex.remove();
+                while (dv.children.length >= 20) dv.removeChild(dv.lastChild);
+                const item = document.createElement('div');
+                item.dataset.ref = top.ref;
+                item.dataset.matchType = 'exact';
+                item.style.cssText = 'padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.05);cursor:pointer;border-left:3px solid #a67c52;';
+                item.innerHTML = `<div style="display:flex;align-items:center;gap:6px;"><span style="color:#a67c52;font-weight:700;font-size:10px;">${top.ref} <span style="color:#f9cb42;font-weight:400;">[${trans}]</span></span><span style="font-size:9px;padding:1px 6px;border-radius:6px;background:rgba(166,124,82,0.18);color:#a67c52;border:1px solid rgba(166,124,82,0.35);font-weight:700;">Queue</span></div>
+                    <div style="font-size:11px;color:#d1d5db;margin-top:2px;line-height:1.4;">${top.text}</div>`;
+                item.onclick = () => {
+                    appState.currentVerse = verse;
+                    sendToPreview(verse);
+                    forceDisplayToLive();
+                    // Switch to Book Search tab and open full chapter
+                    switchTab('ref');
+                    autoNavToRef(verse.ref);
+                };
+                dv.insertBefore(item, dv.firstChild);
+            }
         }
+        autoNavToRef(top.ref);
+        hydrateVerseTranslation(verse, true);
+    }
+
+    function updateScriptureFeedFromBackend(feed) {
+        const el = document.getElementById('scripture-feed');
+        if (!el) return;
+        el.style.cssText = '';
+        el.innerHTML = '';
+        if (!feed || !feed.length) {
+            el.innerHTML = '<div class="empty-state">No verses shown yet</div>';
+            return;
+        }
+        feed.slice().reverse().slice(0, 8).forEach(v => {
+            const trans = v.translation || document.getElementById('mainTranslation').value || 'KJV';
+            const div = document.createElement('div');
+            div.style.cssText = 'padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.05);cursor:pointer;font-size:11px;';
+            div.innerHTML =
+                '<div style="color:#a67c52;font-weight:700;font-size:10px;">' + v.ref +
+                ' <span style="color:#f9cb42;">[' + trans + ']</span></div>' +
+                '<div style="color:#d1d5db;margin-top:1px;">"' + (v.text || '').substring(0,55) + '..."</div>';
+            div.onclick = () => {
+                appState.currentVerse = { ref: v.ref, text: v.text, translation: trans };
+                sendToLive();
+                syncBackendVerseState(v.ref);
+            };
+            el.appendChild(div);
+        });
     }
 
     // Auto-navigate Book Search to the book+chapter of a verse ref
@@ -4718,6 +5330,34 @@
     }
 
     window.appendTranscriptLine = appendTranscriptLine;
+
+    // ── Framework-agnostic auto-display connection ─────────────
+    // Maintains a persistent /ws/display WebSocket so that whenever
+    // updateProjectorText() posts a verse to /display/push, all
+    // connected external windows (OBS browser source, /display page,
+    // NDI virtual input, ProPresenter stage display, etc.) receive it
+    // instantly — without the operator switching tabs.
+    (function _initDisplayMonitor() {
+        // We do NOT connect the main window as a /ws/display *client*
+        // (it would receive its own pushes back).
+        // Instead we just confirm the endpoint is alive and show a
+        // status badge so the operator knows external display is live.
+        var _pingInterval = null;
+        function _checkDisplayClients() {
+            fetch(BACKEND_URL + '/display/status')
+                .then(function(r){ return r.json(); })
+                .then(function(d){
+                    var badge = document.getElementById('display-client-badge');
+                    if (!badge) return;
+                    var n = d.connected_clients || 0;
+                    badge.textContent = n > 0 ? '🖥 ' + n + ' display' + (n>1?'s':'') + ' connected' : '';
+                    badge.style.display = n > 0 ? 'inline-block' : 'none';
+                }).catch(function(){});
+        }
+        // Poll every 8 s — lightweight
+        _pingInterval = setInterval(_checkDisplayClients, 8000);
+        _checkDisplayClients();
+    })();
     renderTranscriptHistory();
 
     // ── Feature 4: Audio visualizer ────────────────────────────────────────
@@ -4769,7 +5409,7 @@
     // Hook into startTranscription — patch mic getUserMedia to also start visualizer
 
     // ── Feature 5: Translation manager ─────────────────────────────────────
-    const BUILTIN_TRANSLATIONS = ['KJV','NIV','ESV','NKJV','NLT','AMP','MSG','CSB','NASB','RSV','WEB','YLT'];
+    const BUILTIN_TRANSLATIONS = ['KJV'];
     const BUILTIN_LANGUAGES = [
         'English (US)','English (UK)','Español','Français','Deutsch',
         'Português','Yoruba','Igbo','Hausa','Pidgin English','Swahili',
@@ -4797,10 +5437,26 @@
             </div>`).join('');
     }
 
+    function getUserBibleSourceCodes() {
+        try {
+            const saved = localStorage.getItem('itb_byo_sources');
+            const parsed = saved ? JSON.parse(saved) : [];
+            return Array.isArray(parsed) ? parsed.filter(Boolean) : [];
+        } catch(e) { return []; }
+    }
+
+    function rememberUserBibleSource(code) {
+        const clean = String(code || '').trim().toUpperCase();
+        if (!clean || clean === 'KJV') return;
+        const sources = getUserBibleSourceCodes();
+        if (!sources.includes(clean)) sources.push(clean);
+        try { localStorage.setItem('itb_byo_sources', JSON.stringify(sources)); } catch(e) {}
+    }
+
     function getInstalledTranslations() {
         try {
-            const saved = localStorage.getItem('itb_translations');
-            return saved ? JSON.parse(saved) : [...BUILTIN_TRANSLATIONS];
+            const sources = getUserBibleSourceCodes();
+            return ['KJV', ...sources.filter(t => t !== 'KJV')];
         } catch(e) { return [...BUILTIN_TRANSLATIONS]; }
     }
 
@@ -4829,17 +5485,78 @@
         showToast('✅ ' + val + ' added');
     }
 
-    function installTranslation(code) {
+    async function importBibleSource() {
+        const codeInput = document.getElementById('tm-import-code');
+        const fileInput = document.getElementById('tm-import-file');
+        const code = (codeInput && codeInput.value || '').trim().toUpperCase();
+        const file = fileInput && fileInput.files && fileInput.files[0];
+        if (!code || !file) { showToast('Choose a code and a Bible file'); return; }
+        const ext = (file.name.split('.').pop() || '').toLowerCase();
+        const content = await file.text();
+        try {
+            const r = await fetch(BACKEND_URL + '/translations/import', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ code, content, format: ext, source_name: file.name })
+            });
+            const data = await r.json();
+            if (data.error) throw new Error(data.error);
+            installTranslation(code, true);
+            if (codeInput) codeInput.value = '';
+            if (fileInput) fileInput.value = '';
+            showToast(code + ' imported: ' + data.count + ' verses');
+        } catch (e) {
+            showToast('Import failed: ' + e.message);
+        }
+    }
+
+    async function connectBibleApi() {
+        const code = ((document.getElementById('tm-api-code') || {}).value || '').trim().toUpperCase();
+        const url = ((document.getElementById('tm-api-url') || {}).value || '').trim();
+        const path = ((document.getElementById('tm-api-path') || {}).value || '').trim();
+        const apiKey = ((document.getElementById('tm-api-key') || {}).value || '').trim();
+        if (!code || !url) { showToast('Enter an API code and URL template'); return; }
+        try {
+            const r = await fetch(BACKEND_URL + '/translations/connect', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ code, url_template: url, response_path: path, api_key: apiKey })
+            });
+            const data = await r.json();
+            if (data.error) throw new Error(data.error);
+            installTranslation(code, true);
+            showToast(code + ' API connected');
+        } catch (e) {
+            showToast('API connect failed: ' + e.message);
+        }
+    }
+
+    function installTranslation(code, silent = false) {
+        const clean = String(code || '').trim().toUpperCase();
+        const before = getInstalledTranslations();
+        rememberUserBibleSource(clean);
+        const refreshed = getInstalledTranslations();
+        saveInstalledTranslations(refreshed);
+        renderTranslationList();
+        if (!silent && !before.includes(clean)) showToast(clean + ' installed');
+        return;
+        rememberUserBibleSource(code);
         const list = getInstalledTranslations();
         if (!list.includes(code)) {
             list.push(code);
             saveInstalledTranslations(list);
             renderTranslationList();
+            if (silent) return;
             showToast('✅ ' + code + ' installed');
         }
     }
 
     function removeTranslation(code) {
+        try {
+            const clean = String(code || '').trim().toUpperCase();
+            const sources = getUserBibleSourceCodes().filter(t => t !== clean);
+            localStorage.setItem('itb_byo_sources', JSON.stringify(sources));
+        } catch(e) {}
         let list = getInstalledTranslations().filter(t => t !== code);
         if (!list.includes('KJV')) list.unshift('KJV');
         saveInstalledTranslations(list);
@@ -4914,30 +5631,30 @@
             ndiPanel.id = 'ndi-info-panel';
             ndiPanel.style.cssText = 'margin:0 16px 14px;padding:12px 14px;background:rgba(166,124,82,0.08);border:1px solid rgba(166,124,82,0.3);border-radius:8px;font-size:11px;color:#d1d5db;line-height:1.8;';
             ndiPanel.innerHTML =
-                '<div style="font-weight:700;color:#a67c52;margin-bottom:6px;">📡 NDI — How to set up</div>' +
+                '<div style="font-weight:700;color:#a67c52;margin-bottom:6px;">📡 NDI / OBS — How to set up</div>' +
+                '<strong>Quick option (no OBS):</strong> Open <a href="/display" target="_blank" style="color:#a67c52;">http://localhost:8000/display</a> in a browser on your projector screen or as an OBS Browser Source — it auto-receives verses with no extra steps.<br><br>' +
+                '<strong>OBS + NDI route:</strong><br>' +
                 '1. Download <strong>NDI Tools</strong> at <a href="https://ndi.video/tools" target="_blank" style="color:#a67c52;">ndi.video/tools</a> and install it.<br>' +
                 '2. Download <strong>OBS Studio</strong> + <strong>obs-ndi plugin</strong> and install both.<br>' +
-                '3. Click <strong>Open Projector Window</strong> below — OBS will capture that window.<br>' +
-                '4. In OBS → Sources → Add <em>Window Capture</em> → pick <em>In The Beginning — Projector</em>.<br>' +
-                '5. In OBS → Tools → <em>NDI Output Settings</em> → enable <em>Main Output</em>.<br>' +
-                '6. On your switcher or vMix → scan NDI sources → select <strong>"OBS"</strong>.<br>' +
-                '<div style="margin-top:8px;padding:8px;background:rgba(0,0,0,0.3);border-radius:6px;color:#9ca3af;">' +
-                '⚠️ Browsers cannot push raw NDI — OBS bridges it over your local network.</div>';
+                '3. In OBS → Add Source → <em>Browser</em> → URL: <code style="color:#f9cb42">http://localhost:8000/display</code> → W:1920 H:1080.<br>' +
+                '4. In OBS → Tools → <em>NDI Output Settings</em> → enable <em>Main Output</em>.<br>' +
+                '5. On your switcher / vMix → scan NDI sources → select <strong>"OBS"</strong>.<br>' +
+                '<div style="margin-top:6px;color:#9ca3af;font-size:10px;">ℹ The /display page is a transparent overlay — it works alongside ProPresenter, EasyWorship, or any presentation software without covering their output.</div>';
             // Insert before the last child (Add Output Channel footer)
             const modalBody = document.querySelector('#broadcast-modal > div');
             if (modalBody) modalBody.insertBefore(ndiPanel, modalBody.lastElementChild);
         }
         ndiPanel.style.display = type === 'ndi' ? 'block' : 'none';
         if (!silent) {
-            showToast(type === 'external' ? '🖥️ External Display selected' : '📡 NDI — follow setup guide below');
+            showToast(type === 'external' ? ' External Display selected' : ' NDI — follow setup guide below');
         }
     }
 
     // ── External Display ─────────────────────────────────────────
     function _launchExternalDisplay() {
         if (window._projectorWindow && !window._projectorWindow.closed) {
-            window._projectorWindow.focus();
-            showToast('🖥️ Projector window already open — drag it to your projector screen & press F', 4000);
+            updateProjectorText();
+            showToast(' Projector window already open — drag it to your projector screen & press F', 4000);
             return;
         }
 
@@ -4948,45 +5665,115 @@
             ? `<div class="ref">${v.ref} <span style="color:#f9cb42">[${v.translation || 'KJV'}]</span></div><div class="txt">${v.text}</div>`
             : `<div class="txt" style="opacity:0.25;font-size:28px;">Waiting for verse…</div>`;
 
-        const projHTML = `<!DOCTYPE html><html><head><meta charset="utf-8">
-<title>In The Beginning — Projector</title>
+        const projHTML = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<title>In The Beginning — Display</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:${bg};display:flex;align-items:center;justify-content:center;
-     min-height:100vh;font-family:'Georgia',serif;color:#fff;overflow:hidden;
-     transition:background 0.6s ease;}
-#wrap{max-width:1000px;width:90%;padding:60px 80px;text-align:center;}
-.ref{font-size:20px;color:#a67c52;font-weight:700;margin-bottom:28px;letter-spacing:1.5px;text-transform:uppercase;}
-.txt{font-size:44px;line-height:1.55;font-weight:400;}
-#hint{position:fixed;bottom:14px;left:0;right:0;text-align:center;
-      font-family:sans-serif;font-size:11px;opacity:0.25;color:#fff;}
-#badge{position:fixed;top:14px;right:18px;font-family:sans-serif;
-       font-size:10px;font-weight:700;letter-spacing:2px;color:rgba(255,255,255,0.2);text-transform:uppercase;}
+body{
+  background:${bg};
+  min-height:100vh;
+  font-family:'Georgia',serif;
+  color:#fff;
+  overflow:hidden;
+  transition:background 0.55s ease;
+}
+/* ── Bottom-anchored overlay pill ─────────────────────────────
+   The verse sits in the lower third of the screen.
+   It does NOT cover the full display so ProPresenter, EasyWorship,
+   OBS, or any background content remains visible.
+   Press F to go fullscreen (background fills); Esc to exit. */
+#outer{
+  position:fixed;
+  left:50%;
+  bottom:5vh;
+  transform:translateX(-50%);
+  max-width:1200px;
+  width:88%;
+  padding:22px 32px 22px 36px;
+  text-align:center;
+  background:rgba(0,0,0,0.72);
+  border-left:5px solid #a67c52;
+  border-radius:10px;
+  box-shadow:0 16px 56px rgba(0,0,0,0.45);
+  transition:opacity 0.35s ease, transform 0.35s ease;
+}
+#outer.empty{opacity:0;transform:translateX(-50%) translateY(14px);}
+.ref{
+  font-size:17px;color:#a67c52;font-weight:700;
+  margin-bottom:10px;letter-spacing:1.2px;text-transform:uppercase;
+}
+.trans{color:#f9cb42;font-size:.78em;}
+.txt{
+  font-size:clamp(20px,2.8vw,40px);
+  line-height:1.3;
+  font-weight:400;
+  display:-webkit-box;
+  -webkit-line-clamp:4;
+  -webkit-box-orient:vertical;
+  overflow:hidden;
+}
+#hint{
+  position:fixed;bottom:10px;left:0;right:0;
+  text-align:center;font-family:sans-serif;
+  font-size:10px;opacity:0.2;color:#fff;
+}
+#badge{
+  position:fixed;top:12px;right:16px;
+  font-family:sans-serif;font-size:10px;font-weight:700;
+  letter-spacing:2px;color:rgba(255,255,255,0.18);text-transform:uppercase;
+}
 </style></head>
 <body>
-<div id="wrap">${bodyHtml}</div>
+<div id="outer" class="empty">
+  <div class="ref" id="vref"></div>
+  <div class="txt" id="vtxt" style="opacity:0.3;font-size:22px;">Waiting for verse…</div>
+</div>
 <div id="hint">F = fullscreen &nbsp;·&nbsp; Esc = exit fullscreen</div>
 <div id="badge">In The Beginning · Live</div>
 <script>
-window.addEventListener('message', function(e) {
+(function(){
+  // ── postMessage from parent window (popup mode) ────────────
+  window.addEventListener('message', function(e) {
     if (!e.data || e.data.type !== 'verse') return;
-    var v = e.data.verse;
-    document.getElementById('wrap').innerHTML =
-        '<div class="ref">' + v.ref +
-        ' <span style="color:#f9cb42">[' + (v.translation || 'KJV') + ']</span></div>' +
-        '<div class="txt">' + v.text + '</div>';
-    if (e.data.bg) document.body.style.background = e.data.bg;
-});
-document.addEventListener('keydown', function(e) {
+    _showVerse(e.data.verse, e.data.bg);
+  });
+
+  // ── WebSocket from server (auto-push, no tab-switch needed) ──
+  var proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  var wsUrl = proto + '://' + location.host + '/ws/display';
+  var retryDelay = 1500;
+  var ws;
+  function connectWS() {
+    ws = new WebSocket(wsUrl);
+    ws.onmessage = function(e) {
+      try {
+        var d = JSON.parse(e.data);
+        if (d.type === 'verse' && d.verse) _showVerse(d.verse, d.bg);
+      } catch(ex) {}
+    };
+    ws.onclose = function() { setTimeout(connectWS, retryDelay); retryDelay = Math.min(retryDelay*1.5,10000); };
+    ws.onopen  = function() { retryDelay = 1500; };
+  }
+  connectWS();
+
+  function _showVerse(v, bg) {
+    var outer = document.getElementById('outer');
+    var vref  = document.getElementById('vref');
+    var vtxt  = document.getElementById('vtxt');
+    if (!v) return;
+    vref.innerHTML = (v.ref||'') + ' <span class="trans">[' + (v.translation||'KJV') + ']</span>';
+    vtxt.textContent = v.text || '';
+    if (bg) document.body.style.background = bg;
+    if (outer) outer.classList.remove('empty');
+  }
+
+  document.addEventListener('keydown', function(e) {
     if (e.key === 'F' || e.key === 'f') {
-        if (!document.fullscreenElement) document.documentElement.requestFullscreen();
-        else document.exitFullscreen();
+      if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+      else document.exitFullscreen();
     }
-});
-// Auto-request fullscreen after 1s
-setTimeout(function(){
-    try { document.documentElement.requestFullscreen(); } catch(err){}
-}, 1000);
+  });
+})();
 <\/script></body></html>`;
 
         // Detect best window size — aim for a secondary screen
@@ -5000,7 +5787,7 @@ setTimeout(function(){
             'menubar=no,toolbar=no,location=no,status=no,scrollbars=no,resizable=yes');
 
         if (!window._projectorWindow) {
-            showToast('⚠️ Popup blocked! Allow popups for 127.0.0.1 and try again.', 5000);
+            showToast(' Popup blocked! Allow popups for 127.0.0.1 and try again.', 5000);
             // Fallback: open the in-page projector view
             openProjectorView();
             return;
@@ -5016,11 +5803,11 @@ setTimeout(function(){
                 window._projectorWindow = null;
                 const toggle = document.getElementById('broadcast-main-toggle');
                 if (toggle) { toggle.checked = false; _syncBcastToggle(); }
-                showToast('🖥️ Projector window closed');
+                showToast(' Projector window closed');
             }
         }, 1000);
 
-        showToast('🖥️ Projector window opened — press F inside it for fullscreen', 4000);
+        showToast(' Projector window opened — press F inside it for fullscreen', 4000);
         closeBroadcastModal();
     }
 
@@ -5029,7 +5816,7 @@ setTimeout(function(){
         // NDI requires OBS. We open the projector popup for OBS to capture.
         _launchExternalDisplay();
         setTimeout(function() {
-            showToast('📡 Now open OBS → capture the Projector window → enable NDI output', 6000);
+            showToast(' Now open OBS → capture the Projector window → enable NDI output', 6000);
         }, 1200);
     }
 
@@ -5052,7 +5839,7 @@ setTimeout(function(){
             window._projectorWindow.postMessage({ type: 'verse', verse: { ref: v.ref, text: v.text, translation: trans }, bg: bg }, '*');
         }
         if (typeof saveSettings === 'function') saveSettings();
-        showToast('🎨 Theme: ' + theme);
+        showToast(' Theme: ' + theme);
     }
 
     function refreshBroadcastMonitors() {
@@ -5065,7 +5852,7 @@ setTimeout(function(){
                 sd.screens.forEach(function(s, i) {
                     const opt = document.createElement('option');
                     opt.value = i;
-                    opt.textContent = (s.isPrimary ? '⬛ Primary — ' : '🖥️ Screen ' + (i + 1) + ' — ') +
+                    opt.textContent = (s.isPrimary ? '⬛ Primary — ' : ' Screen ' + (i + 1) + ' — ') +
                         s.width + '×' + s.height;
                     sel.appendChild(opt);
                 });
@@ -5083,7 +5870,7 @@ setTimeout(function(){
         sel.appendChild(primary);
         if (window.screen && screen.availWidth > screen.width + 100) {
             const ext = document.createElement('option');
-            ext.textContent = '🖥️ External — ' + (screen.availWidth - screen.width) + '×' + screen.availHeight;
+            ext.textContent = ' External — ' + (screen.availWidth - screen.width) + '×' + screen.availHeight;
             sel.appendChild(ext);
         }
         showToast('↻ Basic screen detection — Chrome may need Window Management permission');
@@ -5110,6 +5897,26 @@ setTimeout(function(){
             <div style="font-size:10px;font-weight:800;color:#a67c52;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Installed Translations</div>
             <div id="tm-installed-list" style="margin-bottom:16px;"></div>
 
+            <!-- User import -->
+            <div style="font-size:10px;font-weight:800;color:#a67c52;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Bring Your Own Bible</div>
+            <div style="font-size:11px;color:#9ca3af;line-height:1.5;margin-bottom:8px;">Import a Bible file your church is licensed to use. Supported: JSON ref map, simple XML, or TXT lines like John 3:16 text.</div>
+            <div style="display:grid;grid-template-columns:90px 1fr auto;gap:8px;margin-bottom:14px;">
+                <input id="tm-import-code" placeholder="CODE" style="padding:8px 10px;font-size:12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:#e5e7eb;outline:none;">
+                <input id="tm-import-file" type="file" accept=".json,.xml,.txt,text/plain,application/json,application/xml" style="font-size:11px;color:#9ca3af;">
+                <button onclick="importBibleSource()" style="padding:8px 14px;background:rgba(166,124,82,0.2);border:1px solid rgba(166,124,82,0.4);color:#a67c52;border-radius:8px;cursor:pointer;font-size:12px;font-weight:700;">Import</button>
+            </div>
+
+            <!-- Licensed API -->
+            <div style="font-size:10px;font-weight:800;color:#a67c52;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Licensed API Connection</div>
+            <div style="display:grid;grid-template-columns:80px 1fr;gap:8px;margin-bottom:8px;">
+                <input id="tm-api-code" placeholder="CODE" style="padding:8px 10px;font-size:12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:#e5e7eb;outline:none;">
+                <input id="tm-api-url" placeholder="https://provider.example/verse?ref={ref}" style="padding:8px 10px;font-size:12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:#e5e7eb;outline:none;">
+                <input id="tm-api-path" placeholder="JSON path, e.g. data.text" style="padding:8px 10px;font-size:12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:#e5e7eb;outline:none;">
+                <input id="tm-api-key" placeholder="Optional API key, kept in this running backend only" style="padding:8px 10px;font-size:12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:#e5e7eb;outline:none;">
+            </div>
+            <button onclick="connectBibleApi()" style="width:100%;padding:8px 14px;background:rgba(29,78,216,0.14);border:1px solid rgba(29,78,216,0.35);color:#93c5fd;border-radius:8px;cursor:pointer;font-size:12px;font-weight:700;margin-bottom:16px;">Connect API</button>
+
+            <div style="display:none;">
             <!-- Add custom -->
             <div style="font-size:10px;font-weight:800;color:#a67c52;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Add Translation</div>
             <div style="display:flex;gap:8px;margin-bottom:14px;">
@@ -5123,6 +5930,8 @@ setTimeout(function(){
                 ${['NRSV','GNT','CEV','CEB','TLB','NASB','ISV','BBE','NET','DRA'].map(t =>
                     `<button onclick="installTranslation('${t}')" style="padding:4px 12px;background:rgba(96,165,250,0.08);border:1px solid rgba(96,165,250,0.2);color:#60a5fa;border-radius:12px;font-size:11px;cursor:pointer;">${t}</button>`
                 ).join('')}
+            </div>
+
             </div>
 
             <!-- Language selector -->
@@ -5143,7 +5952,7 @@ setTimeout(function(){
     <script>
     function saveTranscriptionLanguage(lang) {
         try { localStorage.setItem('itb_lang', lang); } catch(e) {}
-        showToast('🌐 Language set to ' + lang);
+        showToast(' Language set to ' + lang);
     }
     </script>
 </body>

@@ -1,0 +1,1056 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>In The Beginning — Remote</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/intro.js/minified/introjs.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/intro.js/minified/intro.min.js"></script>
+    <style>
+        /* ── Design tokens — identical palette to the desktop app ── */
+        :root {
+            --bg-deep:    #0b0d11;
+            --bg-panel:   #16191f;
+            --bg-card:    #0f1116;
+            --accent:     #a67c52;
+            --accent-dim: rgba(166,124,82,0.18);
+            --accent-bdr: rgba(166,124,82,0.40);
+            --gold:       #f9cb42;
+            --green:      #4ade80;
+            --red:        #ef4444;
+            --text:       #e5e7eb;
+            --text-dim:   #9ca3af;
+            --border:     rgba(255,255,255,0.08);
+            --safe-bottom: env(safe-area-inset-bottom, 0px);
+        }
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        html, body {
+            height: 100%;
+            background: var(--bg-deep);
+            color: var(--text);
+            font-family: -apple-system, 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;
+            -webkit-font-smoothing: antialiased;
+            overscroll-behavior: none;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        /* ── Layout ── */
+        .app {
+            display: flex;
+            flex-direction: column;
+            height: 100dvh;
+            height: 100vh; /* fallback */
+            max-width: 480px;
+            margin: 0 auto;
+        }
+
+        /* ── Top bar ── */
+        .topbar {
+            flex-shrink: 0;
+            background: var(--bg-panel);
+            border-bottom: 1px solid var(--border);
+            padding: 12px 14px 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+        }
+        .topbar-logo {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .topbar-logo svg { flex-shrink: 0; }
+        .topbar-title {
+            font-size: 14px;
+            font-weight: 800;
+            color: var(--text);
+            letter-spacing: -0.3px;
+        }
+        .topbar-subtitle {
+            font-size: 10px;
+            color: var(--text-dim);
+            font-weight: 500;
+            margin-top: 1px;
+        }
+        .conn-pill {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 5px 11px;
+            border-radius: 20px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--border);
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--text-dim);
+            white-space: nowrap;
+            flex-shrink: 0;
+            transition: all 0.3s;
+        }
+        .top-actions {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-shrink: 0;
+        }
+        .mini-action {
+            min-height: 30px;
+            border-radius: 8px;
+            border: 1px solid var(--accent-bdr);
+            background: var(--accent-dim);
+            color: var(--accent);
+            padding: 0 10px;
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: 0.6px;
+        }
+        .mini-action.live {
+            border-color: rgba(74,222,128,0.38);
+            background: rgba(74,222,128,0.12);
+            color: var(--green);
+        }
+        .conn-pill.connected {
+            background: rgba(74,222,128,0.1);
+            border-color: rgba(74,222,128,0.35);
+            color: var(--green);
+        }
+        .conn-pill.error {
+            background: rgba(239,68,68,0.1);
+            border-color: rgba(239,68,68,0.3);
+            color: var(--red);
+        }
+        .conn-dot {
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            background: currentColor;
+            flex-shrink: 0;
+        }
+        .conn-dot.pulse {
+            animation: pulse 1.4s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50%       { opacity: 0.3; }
+        }
+
+        /* ── Scrollable content area ── */
+        .content {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: 16px 16px 0;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        /* ── Card ── */
+        .card {
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            overflow: hidden;
+        }
+        .card-header {
+            padding: 11px 16px 9px;
+            border-bottom: 1px solid var(--border);
+            font-size: 9px;
+            font-weight: 800;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .card-header svg { flex-shrink: 0; }
+
+        /* ── Live verse display ── */
+        .verse-display {
+            padding: 16px;
+            min-height: 100px;
+        }
+        .verse-ref {
+            font-size: 11px;
+            font-weight: 800;
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 0.9px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .verse-ref .trans-badge {
+            background: rgba(249,203,66,0.12);
+            border: 1px solid rgba(249,203,66,0.25);
+            color: var(--gold);
+            font-size: 9px;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+        .verse-text {
+            font-size: 15px;
+            line-height: 1.6;
+            color: var(--text);
+            font-family: Georgia, 'Times New Roman', serif;
+            font-weight: 400;
+        }
+        .verse-placeholder {
+            font-size: 13px;
+            color: var(--text-dim);
+            font-style: italic;
+            opacity: 0.6;
+        }
+
+        /* ── Navigator ── */
+        .nav-grid {
+            padding: 14px 16px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+        .nav-grid .full-row { grid-column: 1 / -1; }
+        .search-input {
+            width: 100%;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text);
+            font-size: 14px;
+            padding: 12px 13px;
+            border-radius: 8px;
+            outline: none;
+        }
+        .search-input:focus {
+            border-color: var(--accent-bdr);
+            box-shadow: 0 0 0 3px rgba(166,124,82,0.12);
+        }
+        .search-results {
+            grid-column: 1 / -1;
+            display: none;
+            flex-direction: column;
+            gap: 7px;
+            max-height: 260px;
+            overflow-y: auto;
+        }
+        .result-item {
+            width: 100%;
+            text-align: left;
+            border: 1px solid rgba(255,255,255,0.08);
+            background: rgba(255,255,255,0.045);
+            color: var(--text);
+            border-radius: 8px;
+            padding: 10px 11px;
+            cursor: pointer;
+        }
+        .result-ref {
+            color: var(--gold);
+            font-size: 11px;
+            font-weight: 800;
+            margin-bottom: 5px;
+        }
+        .result-text {
+            color: var(--text);
+            font-size: 12px;
+            line-height: 1.45;
+        }
+
+        .sel-wrap {
+            position: relative;
+        }
+        .sel-wrap select {
+            width: 100%;
+            appearance: none;
+            -webkit-appearance: none;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text);
+            font-size: 13px;
+            padding: 10px 34px 10px 12px;
+            border-radius: 10px;
+            outline: none;
+            cursor: pointer;
+            transition: border-color 0.2s;
+        }
+        .sel-wrap select:focus { border-color: var(--accent-bdr); }
+        .sel-wrap::after {
+            content: '';
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            border: 5px solid transparent;
+            border-top-color: var(--text-dim);
+            pointer-events: none;
+        }
+        .sel-label {
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            margin-bottom: 5px;
+        }
+
+        .nav-go-btn {
+            grid-column: 1 / -1;
+            padding: 13px;
+            background: var(--accent-dim);
+            border: 1px solid var(--accent-bdr);
+            color: var(--accent);
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 800;
+            cursor: pointer;
+            text-align: center;
+            letter-spacing: 0.5px;
+            transition: background 0.15s, transform 0.1s;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+        }
+        .nav-go-btn:active { transform: scale(0.97); background: rgba(166,124,82,0.32); }
+
+        /* ── Main controls ── */
+        .ctrl-pad {
+            flex-shrink: 0;
+            background: var(--bg-panel);
+            border-top: 1px solid var(--border);
+            padding: 10px 14px calc(10px + var(--safe-bottom));
+        }
+        .ctrl-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 10px;
+        }
+        .ctrl-btn {
+            padding: 0;
+            height: 48px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+            transition: transform 0.1s, filter 0.15s;
+            border: 1px solid;
+            position: relative;
+            overflow: hidden;
+        }
+        .ctrl-btn:active { transform: scale(0.93); }
+        .ctrl-btn svg { flex-shrink: 0; }
+
+        .ctrl-btn.prev {
+            background: rgba(255,255,255,0.04);
+            border-color: rgba(255,255,255,0.12);
+            color: var(--text);
+        }
+        .ctrl-btn.prev:active { background: rgba(255,255,255,0.09); }
+
+        .ctrl-btn.clear {
+            background: rgba(239,68,68,0.09);
+            border-color: rgba(239,68,68,0.25);
+            color: var(--red);
+        }
+        .ctrl-btn.clear:active { background: rgba(239,68,68,0.2); }
+
+        .ctrl-btn.next {
+            background: var(--accent-dim);
+            border-color: var(--accent-bdr);
+            color: var(--accent);
+        }
+        .ctrl-btn.next:active { background: rgba(166,124,82,0.32); }
+
+        .ctrl-btn-icon {
+            font-size: 18px;
+            line-height: 1;
+        }
+        .ctrl-btn-label {
+            font-size: 9px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            opacity: 0.9;
+        }
+
+        /* Ripple */
+        .ripple {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.25);
+            transform: scale(0);
+            animation: ripple-anim 0.45s linear;
+            pointer-events: none;
+        }
+        @keyframes ripple-anim {
+            to { transform: scale(4); opacity: 0; }
+        }
+
+        /* ── Toast ── */
+        #toast {
+            position: fixed;
+            bottom: calc(110px + var(--safe-bottom));
+            left: 50%;
+            transform: translateX(-50%) translateY(20px);
+            background: rgba(22,25,31,0.96);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 9px 18px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.22s, transform 0.22s;
+            z-index: 1000;
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            max-width: 90vw;
+            text-overflow: ellipsis;
+            overflow: hidden;
+        }
+        #toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        /* ── Verse loading animation ── */
+        .skeleton-line {
+            height: 12px;
+            background: linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.09) 50%, rgba(255,255,255,0.04) 75%);
+            background-size: 200% 100%;
+            border-radius: 6px;
+            margin-bottom: 7px;
+            animation: shimmer 1.5s infinite;
+        }
+        @keyframes shimmer {
+            0%   { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        /* ── Disconnected overlay ── */
+        #disconnected-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(11,13,17,0.92);
+            z-index: 900;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 16px;
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+        }
+        #disconnected-overlay.visible { display: flex; }
+        .dc-icon {
+            width: 56px; height: 56px;
+            border-radius: 16px;
+            background: rgba(239,68,68,0.12);
+            border: 1px solid rgba(239,68,68,0.3);
+            display: flex; align-items: center; justify-content: center;
+        }
+        .dc-title {
+            font-size: 18px; font-weight: 800; color: var(--text);
+            text-align: center; letter-spacing: -0.3px;
+        }
+        .dc-sub {
+            font-size: 13px; color: var(--text-dim);
+            text-align: center; line-height: 1.5; padding: 0 32px;
+        }
+        .dc-retry {
+            padding: 12px 32px;
+            background: var(--accent-dim);
+            border: 1px solid var(--accent-bdr);
+            color: var(--accent);
+            border-radius: 10px;
+            font-size: 13px; font-weight: 800;
+            cursor: pointer; letter-spacing: 0.5px;
+        }
+        .dc-retry:active { opacity: 0.7; }
+    </style>
+</head>
+<body>
+
+<div id="disconnected-overlay">
+    <div class="dc-icon">
+        <svg width="28" height="28" fill="none" stroke="#ef4444" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M1 1l22 22M16.72 11.06A10.94 10.94 0 0 1 19 12.55M5 12.55a10.94 10.94 0 0 1 5.17-2.39M10.71 5.05A16 16 0 0 1 22.56 9M1.42 9a15.91 15.91 0 0 1 4.7-2.88M8.53 16.11a6 6 0 0 1 6.95 0M12 20h.01"/>
+        </svg>
+    </div>
+    <div class="dc-title">Connection Lost</div>
+    <div class="dc-sub">Could not reach the desktop app.<br>Make sure you're on the same Wi-Fi network.</div>
+    <button class="dc-retry" onclick="retryConnection()">↻ Reconnect</button>
+</div>
+
+<div class="app">
+
+    <!-- Top bar -->
+    <div class="topbar">
+        <div class="topbar-logo">
+            <svg width="30" height="30" viewBox="0 0 680 590" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                    <linearGradient id="rCover" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stop-color="#7B3F1A"/>
+                        <stop offset="100%" stop-color="#4A2209"/>
+                    </linearGradient>
+                </defs>
+                <path d="M155 210 Q155 195 170 193 L340 185 L510 193 Q525 195 525 210 L525 380 Q525 395 510 397 L340 405 L170 397 Q155 395 155 380 Z" fill="url(#rCover)" stroke="#3A1A06" stroke-width="1.5"/>
+                <path d="M340 188 Q300 192 260 196 Q220 200 185 208 Q165 214 162 228 L158 365 Q160 378 180 382 Q220 388 270 392 Q305 396 340 398 Z" fill="#f5f0e8" stroke="#c8b89a" stroke-width="0.8"/>
+                <path d="M340 188 Q380 192 420 196 Q460 200 495 208 Q515 214 518 228 L522 365 Q520 378 500 382 Q460 388 410 392 Q375 396 340 398 Z" fill="#ece4d8" stroke="#c8b89a" stroke-width="0.8"/>
+                <path d="M340 188 Q343 280 340 398" fill="none" stroke="#b0a090" stroke-width="1.5" opacity="0.6"/>
+            </svg>
+            <div>
+                <div class="topbar-title">In The Beginning</div>
+                <div class="topbar-subtitle">Mobile Remote</div>
+            </div>
+        </div>
+        <div class="top-actions">
+            <button class="mini-action" id="remote-tour-btn" onclick="startRemoteTour()" aria-label="Open guide">GUIDE</button>
+            <button class="mini-action" id="tx-toggle" onclick="toggleRemoteTranscription()" aria-label="Start or stop transcription">START</button>
+            <div class="conn-pill" id="conn-pill">
+                <span class="conn-dot pulse" id="conn-dot"></span>
+                <span id="conn-label">Connecting…</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scrollable content -->
+    <div class="content">
+
+        <!-- Live verse display -->
+        <div class="card">
+            <div class="card-header">
+                <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
+                </svg>
+                Now Displaying
+                <span id="live-badge" style="margin-left:auto;font-size:9px;font-weight:800;color:#4ade80;letter-spacing:1px;display:none;">● LIVE</span>
+            </div>
+            <div class="verse-display" id="verse-display">
+                <div class="verse-placeholder">Waiting for desktop to push a verse…</div>
+            </div>
+        </div>
+
+        <!-- Bible Navigator -->
+        <div class="card">
+            <div class="card-header">
+                <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/>
+                </svg>
+                Bible Navigator
+            </div>
+            <div class="nav-grid">
+                <div class="full-row">
+                    <div class="sel-label">Search Scripture</div>
+                    <input id="remoteSearch" class="search-input" type="search" placeholder="Romans 1:10" autocomplete="off" oninput="handleRemoteSearch(this.value)" onkeydown="handleRemoteSearchKey(event)">
+                </div>
+                <div id="remoteResults" class="search-results"></div>
+
+                <!-- Book -->
+                <div class="full-row">
+                    <div class="sel-label">Book</div>
+                    <div class="sel-wrap">
+                        <select id="bookSelect" onchange="onBookChange()">
+                            <option value="">— Select Book —</option>
+                            <optgroup label="Old Testament">
+                                <option>Genesis</option><option>Exodus</option><option>Leviticus</option><option>Numbers</option><option>Deuteronomy</option>
+                                <option>Joshua</option><option>Judges</option><option>Ruth</option><option>1 Samuel</option><option>2 Samuel</option>
+                                <option>1 Kings</option><option>2 Kings</option><option>1 Chronicles</option><option>2 Chronicles</option><option>Ezra</option>
+                                <option>Nehemiah</option><option>Esther</option><option>Job</option><option>Psalms</option><option>Proverbs</option>
+                                <option>Ecclesiastes</option><option>Song of Solomon</option><option>Isaiah</option><option>Jeremiah</option><option>Lamentations</option>
+                                <option>Ezekiel</option><option>Daniel</option><option>Hosea</option><option>Joel</option><option>Amos</option>
+                                <option>Obadiah</option><option>Jonah</option><option>Micah</option><option>Nahum</option><option>Habakkuk</option>
+                                <option>Zephaniah</option><option>Haggai</option><option>Zechariah</option><option>Malachi</option>
+                            </optgroup>
+                            <optgroup label="New Testament">
+                                <option>Matthew</option><option>Mark</option><option>Luke</option><option>John</option><option>Acts</option>
+                                <option>Romans</option><option>1 Corinthians</option><option>2 Corinthians</option><option>Galatians</option><option>Ephesians</option>
+                                <option>Philippians</option><option>Colossians</option><option>1 Thessalonians</option><option>2 Thessalonians</option>
+                                <option>1 Timothy</option><option>2 Timothy</option><option>Titus</option><option>Philemon</option><option>Hebrews</option>
+                                <option>James</option><option>1 Peter</option><option>2 Peter</option><option>1 John</option><option>2 John</option>
+                                <option>3 John</option><option>Jude</option><option>Revelation</option>
+                            </optgroup>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Chapter -->
+                <div>
+                    <div class="sel-label">Chapter</div>
+                    <div class="sel-wrap">
+                        <select id="chapterSelect" onchange="onChapterChange()">
+                            <option value="">Ch</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Verse -->
+                <div>
+                    <div class="sel-label">Verse</div>
+                    <div class="sel-wrap">
+                        <select id="verseSelect">
+                            <option value="">Vs</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Go button -->
+                <button class="nav-go-btn" onclick="navigateToSelected()">
+                    Go to Reference ↗
+                </button>
+            </div>
+        </div>
+
+        <!-- Spacer so last card clears the control pad -->
+        <div style="height:8px;flex-shrink:0;"></div>
+
+    </div><!-- /content -->
+
+    <!-- Fixed control pad -->
+    <div class="ctrl-pad">
+        <div class="ctrl-row">
+            <button class="ctrl-btn prev" onclick="sendAction('prev', this)" aria-label="Previous verse">
+                <div class="ctrl-btn-icon">
+                    <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+                </div>
+                <span class="ctrl-btn-label">PREV</span>
+            </button>
+
+            <button class="ctrl-btn clear" onclick="sendAction('clear', this)" aria-label="Clear display">
+                <div class="ctrl-btn-icon">
+                    <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </div>
+                <span class="ctrl-btn-label">CLEAR</span>
+            </button>
+
+            <button class="ctrl-btn next" onclick="sendAction('next', this)" aria-label="Next verse">
+                <div class="ctrl-btn-icon">
+                    <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+                </div>
+                <span class="ctrl-btn-label">NEXT</span>
+            </button>
+        </div>
+    </div>
+
+</div><!-- /app -->
+
+<div id="toast"></div>
+
+<script>
+// ── Bible chapter/verse counts ──────────────────────────────
+const CHAPTER_COUNTS = {
+    Genesis:66,Exodus:40,Leviticus:27,Numbers:36,Deuteronomy:34,
+    Joshua:24,Judges:21,Ruth:4,'1 Samuel':31,'2 Samuel':24,
+    '1 Kings':22,'2 Kings':25,'1 Chronicles':29,'2 Chronicles':36,
+    Ezra:10,Nehemiah:13,Esther:10,Job:42,Psalms:150,Proverbs:31,
+    Ecclesiastes:12,'Song of Solomon':8,Isaiah:66,Jeremiah:52,
+    Lamentations:5,Ezekiel:48,Daniel:12,Hosea:14,Joel:3,Amos:9,
+    Obadiah:1,Jonah:4,Micah:7,Nahum:3,Habakkuk:3,Zephaniah:3,
+    Haggai:2,Zechariah:14,Malachi:4,
+    Matthew:28,Mark:16,Luke:24,John:21,Acts:28,Romans:16,
+    '1 Corinthians':16,'2 Corinthians':13,Galatians:6,Ephesians:6,
+    Philippians:4,Colossians:4,'1 Thessalonians':5,'2 Thessalonians':3,
+    '1 Timothy':6,'2 Timothy':4,Titus:3,Philemon:1,Hebrews:13,
+    James:5,'1 Peter':5,'2 Peter':3,'1 John':5,'2 John':1,
+    '3 John':1,Jude:1,Revelation:22
+};
+// Approximate verse counts per chapter (using max known per book for simplicity)
+const VERSE_COUNTS = {
+    Genesis:[31,25,24,26,32,22,24,22,29,32,32,20,18,24,21,16,27,33,38,18,34,24,20,67,34,35,46,22,35,43,55,32,20,31,29,43,36,30,23,23,57,38,34,34,28,34,31,22,33,26],
+    Psalms: Array(150).fill(176), // safe max
+};
+function getVerseCount(book, chapter) {
+    if (VERSE_COUNTS[book] && VERSE_COUNTS[book][chapter - 1]) return VERSE_COUNTS[book][chapter - 1];
+    return 40; // safe fallback for most chapters
+}
+
+// ── Navigator helpers ──────────────────────────────────────
+function onBookChange() {
+    const book = document.getElementById('bookSelect').value;
+    const chSel = document.getElementById('chapterSelect');
+    const vsSel = document.getElementById('verseSelect');
+    chSel.innerHTML = '<option value="">Ch</option>';
+    vsSel.innerHTML = '<option value="">Vs</option>';
+    if (!book) return;
+    const count = CHAPTER_COUNTS[book] || 50;
+    for (let i = 1; i <= count; i++) {
+        const opt = document.createElement('option');
+        opt.value = i; opt.textContent = i;
+        chSel.appendChild(opt);
+    }
+}
+
+function onChapterChange() {
+    const book    = document.getElementById('bookSelect').value;
+    const chapter = parseInt(document.getElementById('chapterSelect').value);
+    const vsSel   = document.getElementById('verseSelect');
+    vsSel.innerHTML = '<option value="">Vs</option>';
+    if (!book || !chapter) return;
+    const count = getVerseCount(book, chapter);
+    for (let i = 1; i <= count; i++) {
+        const opt = document.createElement('option');
+        opt.value = i; opt.textContent = i;
+        vsSel.appendChild(opt);
+    }
+}
+
+function navigateToSelected() {
+    const book    = document.getElementById('bookSelect').value;
+    const chapter = document.getElementById('chapterSelect').value;
+    const verse   = document.getElementById('verseSelect').value;
+    if (!book || !chapter || !verse) {
+        showToast('⚠ Select book, chapter and verse first');
+        return;
+    }
+    const ref = `${book} ${chapter}:${verse}`;
+    send({ type: 'remote_action', action: 'navigate', ref });
+    showToast('↗ Navigating to ' + ref);
+}
+
+function handleRemoteSearch(value) {
+    clearTimeout(searchTimer);
+    const q = (value || '').trim();
+    const resultsEl = document.getElementById('remoteResults');
+    if (!q) {
+        if (resultsEl) {
+            resultsEl.style.display = 'none';
+            resultsEl.innerHTML = '';
+        }
+        return;
+    }
+    searchTimer = setTimeout(() => runRemoteSearch(q), 120);
+}
+
+function handleRemoteSearchKey(event) {
+    if (event.key !== 'Enter') return;
+    event.preventDefault();
+    const q = event.currentTarget.value.trim();
+    if (q) runRemoteSearch(q, true);
+}
+
+async function runRemoteSearch(query, chooseFirst = false) {
+    const resultsEl = document.getElementById('remoteResults');
+    if (!resultsEl) return;
+    resultsEl.style.display = 'flex';
+    resultsEl.innerHTML = '<div class="result-item"><div class="result-text">Searching...</div></div>';
+    try {
+        let results = [];
+        const lookup = await fetch(API_URL + '/lookup?ref=' + encodeURIComponent(query)).then(r => r.json()).catch(() => null);
+        if (lookup && lookup.ref && lookup.text && !lookup.error) {
+            results = [lookup];
+        } else {
+            const resp = await fetch(API_URL + '/search', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: query }),
+            });
+            const data = await resp.json();
+            results = data.results || [];
+        }
+        renderRemoteResults(results);
+        if (chooseFirst && results[0]) selectRemoteVerse(results[0]);
+    } catch (_) {
+        resultsEl.innerHTML = '<div class="result-item"><div class="result-text">Search failed. Check desktop server.</div></div>';
+    }
+}
+
+function renderRemoteResults(results) {
+    const resultsEl = document.getElementById('remoteResults');
+    if (!resultsEl) return;
+    if (!results || !results.length) {
+        resultsEl.innerHTML = '<div class="result-item"><div class="result-text">No scripture found.</div></div>';
+        return;
+    }
+    resultsEl.innerHTML = '';
+    results.slice(0, 6).forEach(v => {
+        const btn = document.createElement('button');
+        btn.className = 'result-item';
+        btn.type = 'button';
+        btn.innerHTML = `<div class="result-ref">${escapeHtml(v.ref || '')}</div><div class="result-text">${escapeHtml(v.text || '')}</div>`;
+        btn.onclick = () => selectRemoteVerse(v);
+        resultsEl.appendChild(btn);
+    });
+}
+
+function selectRemoteVerse(verse) {
+    if (!verse || !verse.ref) return;
+    renderVerseDisplay(verse, verse.translation || 'KJV');
+    const input = document.getElementById('remoteSearch');
+    if (input) input.value = verse.ref;
+    send({ type: 'remote_action', action: 'navigate', ref: verse.ref, translation: verse.translation || 'KJV' });
+    showToast('Displaying ' + verse.ref);
+}
+
+function escapeHtml(value) {
+    return String(value || '').replace(/[&<>"']/g, ch => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[ch]));
+}
+
+// ── WebSocket ──────────────────────────────────────────────
+let ws = null;
+let wsConnected = false;
+let reconnectTimer = null;
+let reconnectAttempts = 0;
+let transcriptionActive = false;
+let searchTimer = null;
+const MAX_RECONNECT = 8;
+const API_URL = `${location.protocol}//${location.host}`;
+const WS_URL = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws/remote`;
+
+function connect() {
+    clearTimeout(reconnectTimer);
+    if (ws) { try { ws.close(); } catch(_){} ws = null; }
+    setConnStatus('connecting');
+
+    try {
+        ws = new WebSocket(WS_URL);
+        ws.binaryType = 'arraybuffer';
+    } catch (e) {
+        setConnStatus('error');
+        scheduleReconnect();
+        return;
+    }
+
+    ws.onopen = () => {
+        wsConnected = true;
+        reconnectAttempts = 0;
+        setConnStatus('connected');
+        hideDisconnectedOverlay();
+        showToast('📱 Connected to desktop');
+    };
+
+    ws.onmessage = (e) => {
+        try {
+            const msg = JSON.parse(e.data);
+            handleMessage(msg);
+        } catch(_) {}
+    };
+
+    ws.onerror = () => {
+        wsConnected = false;
+    };
+
+    ws.onclose = () => {
+        wsConnected = false;
+        setConnStatus('error');
+        scheduleReconnect();
+        if (reconnectAttempts >= 3) showDisconnectedOverlay();
+    };
+}
+
+function scheduleReconnect() {
+    if (reconnectAttempts >= MAX_RECONNECT) {
+        showDisconnectedOverlay();
+        return;
+    }
+    reconnectAttempts++;
+    const delay = Math.min(1000 * reconnectAttempts, 8000);
+    reconnectTimer = setTimeout(connect, delay);
+    setConnStatus('connecting');
+}
+
+function retryConnection() {
+    reconnectAttempts = 0;
+    hideDisconnectedOverlay();
+    connect();
+}
+
+// ── Message handling ───────────────────────────────────────
+function handleMessage(msg) {
+    switch (msg.type) {
+        case 'remote_connected':
+            showToast('✅ Remote ready');
+            break;
+
+        case 'remote_pong':
+            break; // heartbeat ack
+
+        case 'remote_action_status':
+            if (msg.ok === false) showToast(msg.message || 'Desktop control is not connected');
+            break;
+
+        case 'transcription_state':
+            setRemoteTranscriptionState(!!msg.active);
+            break;
+
+        // Desktop can push current verse state back to phones
+        case 'verse_state':
+        case 'exact_match':
+        case 'next_verse': {
+            const v = (msg.results && msg.results[0]) || msg.verse;
+            if (v) renderVerseDisplay(v, msg.translation);
+            else clearVerseDisplay();
+            if (typeof msg.transcribing === 'boolean') setRemoteTranscriptionState(msg.transcribing);
+            break;
+        }
+    }
+}
+
+// ── Send action ────────────────────────────────────────────
+function send(payload) {
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+        showToast('⚠ Not connected');
+        return false;
+    }
+    ws.send(JSON.stringify(payload));
+    return true;
+}
+
+function sendAction(action, btn) {
+    // Ripple
+    if (btn) addRipple(btn, event);
+
+    const ok = send({ type: 'remote_action', action });
+    if (!ok) return;
+
+    // Haptic feedback if available
+    if (navigator.vibrate) navigator.vibrate(30);
+
+    const labels = { next: '→ Next Verse', prev: '← Previous Verse', clear: '⬛ Clear' };
+    if (action === 'clear') clearVerseDisplay();
+    showToast(labels[action] || action);
+}
+
+function toggleRemoteTranscription() {
+    const action = transcriptionActive ? 'stop_transcription' : 'start_transcription';
+    if (!send({ type: 'remote_action', action })) return;
+    setRemoteTranscriptionState(!transcriptionActive);
+    showToast(action === 'start_transcription' ? 'Starting transcription' : 'Stopping transcription');
+}
+
+function setRemoteTranscriptionState(active) {
+    transcriptionActive = !!active;
+    const btn = document.getElementById('tx-toggle');
+    if (!btn) return;
+    btn.textContent = transcriptionActive ? 'STOP' : 'START';
+    btn.classList.toggle('live', transcriptionActive);
+}
+
+// ── Ripple effect ──────────────────────────────────────────
+function addRipple(btn, e) {
+    const rect = btn.getBoundingClientRect();
+    const x = (e && e.touches ? e.touches[0].clientX : (e ? e.clientX : rect.left + rect.width/2)) - rect.left;
+    const y = (e && e.touches ? e.touches[0].clientY : (e ? e.clientY : rect.top + rect.height/2)) - rect.top;
+    const r = document.createElement('span');
+    const size = Math.max(rect.width, rect.height) * 1.5;
+    r.className = 'ripple';
+    r.style.cssText = `width:${size}px;height:${size}px;left:${x-size/2}px;top:${y-size/2}px;`;
+    btn.appendChild(r);
+    setTimeout(() => r.remove(), 500);
+}
+
+// ── Verse display ──────────────────────────────────────────
+function renderVerseDisplay(verse, translation) {
+    const el = document.getElementById('verse-display');
+    if (!el) return;
+    const trans = translation || verse.translation || 'KJV';
+    el.innerHTML = `
+        <div class="verse-ref">
+            ${verse.ref}
+            <span class="trans-badge">${trans}</span>
+        </div>
+        <div class="verse-text">${verse.text || ''}</div>
+    `;
+    const badge = document.getElementById('live-badge');
+    if (badge) badge.style.display = 'inline';
+}
+
+function clearVerseDisplay() {
+    const el = document.getElementById('verse-display');
+    if (!el) return;
+    el.innerHTML = '<div class="verse-placeholder">Waiting for desktop to push a verse...</div>';
+    const badge = document.getElementById('live-badge');
+    if (badge) badge.style.display = 'none';
+}
+
+// ── Connection status UI ───────────────────────────────────
+function setConnStatus(state) {
+    const pill  = document.getElementById('conn-pill');
+    const dot   = document.getElementById('conn-dot');
+    const label = document.getElementById('conn-label');
+    if (!pill || !dot || !label) return;
+    pill.className = 'conn-pill';
+    dot.className  = 'conn-dot';
+    if (state === 'connected') {
+        pill.classList.add('connected');
+        dot.style.background = '#4ade80';
+        label.textContent    = 'Connected';
+    } else if (state === 'error') {
+        pill.classList.add('error');
+        dot.style.background = '#ef4444';
+        label.textContent    = 'Disconnected';
+    } else {
+        // connecting
+        dot.classList.add('pulse');
+        dot.style.background = '#f9cb42';
+        label.textContent    = 'Connecting…';
+    }
+}
+
+function showDisconnectedOverlay() {
+    const el = document.getElementById('disconnected-overlay');
+    if (el) el.classList.add('visible');
+}
+function hideDisconnectedOverlay() {
+    const el = document.getElementById('disconnected-overlay');
+    if (el) el.classList.remove('visible');
+}
+
+// ── Toast ──────────────────────────────────────────────────
+let _toastTimer = null;
+function showToast(msg, duration = 2200) {
+    const el = document.getElementById('toast');
+    if (!el) return;
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(_toastTimer);
+    _toastTimer = setTimeout(() => el.classList.remove('show'), duration);
+}
+
+// ── Keepalive ping ─────────────────────────────────────────
+setInterval(() => {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'remote_action', action: 'ping' }));
+    }
+}, 25000);
+
+function startRemoteTour() {
+    if (!window.introJs) {
+        showToast('Guide is loading - check internet connection for intro.js');
+        return;
+    }
+    const steps = [
+        { element: document.querySelector('.topbar-logo'), intro: 'This remote controls the desktop display over the same Wi-Fi network.' },
+        { element: document.getElementById('tx-toggle'), intro: 'Start or stop desktop transcription from here.' },
+        { element: document.getElementById('verse-display'), intro: 'This shows what is currently live on the desktop screen.' },
+        { element: document.querySelector('.ctrl-row'), intro: 'PREV, CLEAR, and NEXT take priority over transcription and pause listening briefly.' },
+        { element: document.getElementById('remoteSearch'), intro: 'Search a scripture reference or phrase, then tap a result to show it on the desktop immediately.' },
+        { element: document.querySelector('.nav-grid'), intro: 'You can also jump by book, chapter, and verse.' },
+    ].filter(step => step.element);
+    introJs().setOptions({
+        steps,
+        nextLabel: 'Next',
+        prevLabel: 'Back',
+        doneLabel: 'Done',
+        showProgress: true,
+    }).start();
+}
+
+// ── Boot ───────────────────────────────────────────────────
+connect();
+</script>
+</body>
+</html>
