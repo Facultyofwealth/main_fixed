@@ -3227,4 +3227,5 @@ async def _run_text(ws: WebSocket, session: SessionState):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main_fixed:app", host="0.0.0.0", port=8000, reload=True)
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run("main_fixed:app", host="0.0.0.0", port=port, reload=False)
