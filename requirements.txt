@@ -1,0 +1,10 @@
+fastapi
+uvicorn[standard]
+websockets
+deepgram-sdk
+faiss-cpu
+sentence-transformers
+numpy
+python-multipart
+httpx
+python-dotenv
