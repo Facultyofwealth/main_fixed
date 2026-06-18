@@ -7,6 +7,42 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/intro.js/minified/introjs.min.css">
     <script src="https://cdn.jsdelivr.net/npm/intro.js/minified/intro.min.js"></script>
     <style>
+        /* ── Intro.js Dark Theme Override (matches desktop app) ── */
+        .introjs-tooltip {
+            background: #13161c !important;
+            border: 1px solid rgba(166,124,82,0.45) !important;
+            border-radius: 12px !important;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.75) !important;
+            color: #e5e7eb !important;
+            font-family: -apple-system, 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif !important;
+            max-width: 300px !important;
+            padding: 20px 22px 18px !important;
+        }
+        .introjs-tooltiptext { color: #d1d5db !important; font-size: 13px !important; line-height: 1.65 !important; }
+        .introjs-tooltip-header { padding: 0 0 10px !important; }
+        .introjs-skipbutton { color: #6b7280 !important; font-size: 18px !important; }
+        .introjs-skipbutton:hover { color: #e5e7eb !important; }
+        .introjs-tooltipbuttons { border-top: 1px solid rgba(255,255,255,0.07) !important; padding-top: 12px !important; margin-top: 4px !important; }
+        .introjs-button { background: rgba(166,124,82,0.15) !important; border: 1px solid rgba(166,124,82,0.45) !important; color: #a67c52 !important; border-radius: 7px !important; font-size: 12px !important; font-weight: 700 !important; padding: 7px 16px !important; text-shadow: none !important; transition: background 0.15s !important; }
+        .introjs-button:hover { background: rgba(166,124,82,0.32) !important; color: #fff !important; border-color: #a67c52 !important; }
+        .introjs-button:focus { outline: none !important; box-shadow: none !important; }
+        .introjs-nextbutton { background: #a67c52 !important; color: #fff !important; border-color: #a67c52 !important; }
+        .introjs-nextbutton:hover { background: #c09060 !important; border-color: #c09060 !important; }
+        .introjs-donebutton { background: #a67c52 !important; color: #fff !important; border-color: #a67c52 !important; }
+        .introjs-donebutton:hover { background: #c09060 !important; }
+        .introjs-progressbar { background: #a67c52 !important; border-radius: 3px !important; }
+        .introjs-progress { background: rgba(255,255,255,0.08) !important; border-radius: 3px !important; height: 4px !important; margin-bottom: 14px !important; }
+        .introjs-arrow.top, .introjs-arrow.top-right, .introjs-arrow.top-middle { border-bottom-color: #a67c52 !important; }
+        .introjs-arrow.bottom, .introjs-arrow.bottom-right, .introjs-arrow.bottom-middle { border-top-color: #a67c52 !important; }
+        .introjs-arrow.left { border-right-color: #a67c52 !important; }
+        .introjs-arrow.right { border-left-color: #a67c52 !important; }
+        .introjs-helperLayer { box-shadow: rgba(166,124,82,0.5) 0 0 1px 2px, rgba(0,0,0,0.5) 0 0 0 5000px !important; border-radius: 8px !important; }
+        .introjs-overlay { background: rgba(0,0,0,0.72) !important; }
+        .introjs-stepnumber { color: #a67c52 !important; font-weight: 800 !important; }
+        .introjs-bullets ul li a { background: rgba(255,255,255,0.2) !important; }
+        .introjs-bullets ul li a.active, .introjs-bullets ul li a:hover { background: #a67c52 !important; }
+    </style>
+    <style>
         /* ── Design tokens — identical palette to the desktop app ── */
         :root {
             --bg-deep:    #0b0d11;

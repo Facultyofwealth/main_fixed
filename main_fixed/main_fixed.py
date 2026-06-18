@@ -676,6 +676,13 @@ class BibleIndex:
 
 bible = BibleIndex()
 
+# ── Shared session state ───────────────────────────────────────
+# One module-level SessionState is kept in sync by every code path that
+# displays a verse (/ws/live transcription + /ws/control remote commands).
+# This ensures remote NEXT/PREV always move relative to the *last displayed*
+# verse, even when the preacher has jumped to a completely new reference.
+global_session: "SessionState" = None   # populated after SessionState is defined
+
 async def _copy_stream(reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
     try:
         while True:
@@ -919,6 +926,11 @@ async def desktop_control_ws(ws: WebSocket):
 
             t = msg.get("type")
             if t == "desktop_state":
+                # Desktop tells us the current verse — keep global_session in sync
+                verse_data = msg.get("verse")
+                if verse_data and verse_data.get("ref"):
+                    global_session.set_current(verse_data)
+                    bible.set_manual_index(verse_data["ref"])
                 await remote_manager.broadcast_to_remotes({
                     "type": "verse_state",
                     "verse": msg.get("verse"),
@@ -932,6 +944,83 @@ async def desktop_control_ws(ws: WebSocket):
                 })
             elif t == "desktop_ping":
                 await safe_send(ws, {"type": "desktop_pong", "remotes": len(remote_manager.remotes)})
+
+            # ── Remote NEXT / PREV / NAVIGATE commands ────────────────
+            # These arrive here (via relay_to_desktop) from the phone remote.
+            # We handle them against global_session so they always act on the
+            # last displayed verse, not an older transcription snapshot.
+            elif t == "remote_next":
+                if not global_session.current_ref:
+                    await safe_send(ws, {"type": "remote_action_status", "ok": False, "message": "No verse loaded yet"})
+                else:
+                    verse = bible.get_adjacent_to_ref(global_session.current_ref, 1)
+                    if verse:
+                        global_session.set_current(verse)
+                        bible.set_manual_index(verse["ref"])
+                        add_to_feed(verse, "next_verse")
+                        await safe_send(ws, {
+                            "type": "next_verse",
+                            "results": [verse],
+                            "feed": list(scripture_feed),
+                            "transcript_finalized": True,
+                            "state": global_session.payload(),
+                        })
+                        await remote_manager.broadcast_to_remotes({
+                            "type": "verse_state",
+                            "verse": verse,
+                            "translation": global_session.active_translation,
+                        })
+                    else:
+                        await safe_send(ws, {"type": "remote_action_status", "ok": False, "message": "No next verse available"})
+
+            elif t == "remote_prev":
+                if not global_session.current_ref:
+                    await safe_send(ws, {"type": "remote_action_status", "ok": False, "message": "No verse loaded yet"})
+                else:
+                    verse = bible.get_adjacent_to_ref(global_session.current_ref, -1)
+                    if verse:
+                        global_session.set_current(verse)
+                        bible.set_manual_index(verse["ref"])
+                        add_to_feed(verse, "previous_verse")
+                        await safe_send(ws, {
+                            "type": "exact_match",
+                            "results": [verse],
+                            "feed": list(scripture_feed),
+                            "transcript_finalized": True,
+                            "state": global_session.payload(),
+                        })
+                        await remote_manager.broadcast_to_remotes({
+                            "type": "verse_state",
+                            "verse": verse,
+                            "translation": global_session.active_translation,
+                        })
+                    else:
+                        await safe_send(ws, {"type": "remote_action_status", "ok": False, "message": "No previous verse available"})
+
+            elif t == "remote_navigate":
+                ref = msg.get("ref", "")
+                verse = msg.get("verse") or (bible.find_by_ref(ref) if ref else None)
+                if verse:
+                    global_session.set_current(verse)
+                    bible.set_manual_index(verse["ref"])
+                    add_to_feed(verse, "navigate")
+                    await safe_send(ws, {
+                        "type": "exact_match",
+                        "results": [verse],
+                        "feed": list(scripture_feed),
+                        "transcript_finalized": True,
+                        "state": global_session.payload(),
+                    })
+                    await remote_manager.broadcast_to_remotes({
+                        "type": "verse_state",
+                        "verse": verse,
+                        "translation": global_session.active_translation,
+                    })
+                else:
+                    await safe_send(ws, {"type": "remote_action_status", "ok": False, "message": f"Verse not found: {ref}"})
+
+            elif t == "remote_clear":
+                await safe_send(ws, {"type": "clear_display"})
     except WebSocketDisconnect:
         pass
     finally:
@@ -1441,6 +1530,104 @@ def normalise_query(query: str) -> str:
     clean = re.sub(r'\s*:\s*', ':', clean).strip()
     return clean
 
+# ── Semantic Topic Expander ───────────────────────────────────
+# Maps church-preaching themes to enriched embedding queries so that
+# FAISS can surface topically relevant verses even when the preacher's
+# exact words don't appear in scripture text.
+# Each entry: (regex pattern, expanded query for BGE embedding)
+_TOPIC_EXPANSIONS: List[Tuple[re.Pattern, str]] = [
+    # Soul winning / evangelism
+    (re.compile(r"\b(soul[s]?\s*win|win(?:ning)?\s*soul|lead\s*(?:someone|them|people|sinners?)\s*to\s*(?:christ|god|salvation|jesus)|evangelis[mt]|reach\s*the\s*lost|go\s*and\s*preach|great\s*commission|tell\s*the\s*world|harvest\s*of\s*soul)\b", re.I),
+     "value of one soul salvation rejoice heaven lost sheep found sinner repents God joy"),
+
+    # Holy Spirit teaching / helper
+    (re.compile(r"\b(holy\s*spirit\s*(?:teach|will\s*teach|guide|instruct|remind|counsel)|spirit\s*(?:of\s*truth|teach|guide|comfort)|comforter|paraclete|spirit\s*lead)\b", re.I),
+     "Holy Spirit teach all things bring to remembrance Comforter guide truth"),
+
+    # Faith / believing
+    (re.compile(r"\b(faith\s*(?:in\s*god|move[s]?\s*mountain|without\s*doubt|heal|miracle)|walk\s*by\s*faith|believe\s*and\s*(?:receive|it\s*shall)|trust\s*(?:in\s*the\s*lord|god))\b", re.I),
+     "faith trust believe God mountain doubt nothing impossible"),
+
+    # Prayer / asking God
+    (re.compile(r"\b(pow(?:er)?\s*of\s*prayer|pray(?:ing)?\s*without\s*ceas|ask\s*and\s*(?:ye\s*shall|you\s*will)\s*receive|seek\s*and\s*(?:ye\s*shall|you\s*will)\s*find|knock\s*and\s*(?:the\s*door|it\s*shall)|effectual\s*fervent\s*prayer)\b", re.I),
+     "ask seek knock prayer receive answered faith persistent"),
+
+    # Grace / salvation by grace
+    (re.compile(r"\b(saved\s*by\s*grace|grace\s*(?:of\s*god|through\s*faith|not\s*works)|gift\s*of\s*(?:god|salvation)|not\s*by\s*work[s]?|unmerited\s*favor)\b", re.I),
+     "grace saved through faith not works gift God righteousness"),
+
+    # Love of God / God's love
+    (re.compile(r"\b(god[']?s?\s*love|love\s*of\s*(?:god|christ|the\s*father)|god\s*so\s*loved|unconditional\s*love|father[']?s?\s*love|loved\s*(?:us|the\s*world)\s*(?:so\s*much|first))\b", re.I),
+     "God so loved the world gave only begotten Son everlasting love"),
+
+    # Healing / divine healing
+    (re.compile(r"\b(divine\s*heal|god\s*(?:heal[s]?|is\s*(?:a\s*)?healer)|by\s*(?:his|whose)\s*stripe[s]?|stripes\s*(?:we\s*are|ye\s*were)\s*heal|healing\s*(?:power|virtue|anointing))\b", re.I),
+     "healed stripes wounds sick recover lay hands healing"),
+
+    # Anointing / power of God
+    (re.compile(r"\b(anointing\s*(?:of\s*god|break[s]?\s*yoke|fall[s]?\s*on|upon\s*me)|yoke\s*(?:destroying|breaking)\s*anointing|power\s*from\s*on\s*high|baptis[em]\s*(?:of\s*)?(?:the\s*)?holy\s*spirit|power\s*of\s*god)\b", re.I),
+     "anointing oil yoke broken power Holy Ghost upon me Spirit"),
+
+    # Prosperity / blessing
+    (re.compile(r"\b(god[']?s?\s*(?:provision|supply|prosper)|prosper(?:ity|ous)?|bless(?:ing|ed|ings)?\s*(?:of\s*god|of\s*the\s*lord|overflow)|abundance\s*(?:of\s*god|life)|all\s*(?:your|my)\s*need[s]?\s*(?:met|supplied))\b", re.I),
+     "prosper abundance bless supply needs met give good gifts"),
+
+    # Second coming / rapture / end times
+    (re.compile(r"\b(second\s*com(?:ing)?|rapture|caught\s*up|trump(?:et)?\s*of\s*god|lord\s*(?:shall\s*)?descend|dead\s*in\s*christ|end\s*times|last\s*days|parousia)\b", re.I),
+     "Lord descend shout trumpet dead Christ rise caught up clouds"),
+
+    # Redemption / blood of Jesus
+    (re.compile(r"\b(blood\s*of\s*(?:jesus|christ|the\s*lamb)|redeem(?:ed|ption|ing)?|lamb\s*of\s*god|atonement|ransom|bought\s*(?:with\s*a\s*price|by\s*(?:his|the)\s*blood)|precious\s*blood)\b", re.I),
+     "blood Jesus Christ redeemed forgiven atonement lamb sacrifice sin"),
+
+    # Word of God / scripture
+    (re.compile(r"\b(word\s*of\s*god|scripture\s*(?:says|tells|is)|bible\s*says|word\s*is\s*(?:a\s*lamp|alive|sharper|powerful)|rhema|logos|thy\s*word)\b", re.I),
+     "word God lamp light path sword scripture profitable doctrine"),
+
+    # Worship / praise
+    (re.compile(r"\b(worship\s*(?:god|in\s*spirit|in\s*truth)|praise\s*(?:the\s*lord|god|his\s*name)|enter\s*(?:his\s*)?gate[s]?\s*with|sacrifice\s*of\s*praise|shout\s*unto\s*the\s*lord|hallelujah)\b", re.I),
+     "praise worship Lord shout joy enter gates thanksgiving holy"),
+
+    # Fear not / courage
+    (re.compile(r"\b(fear\s*not|do\s*not\s*be\s*afraid|be\s*(?:strong\s*and\s*courageous|not\s*dismayed)|god\s*(?:is\s*with\s*you|has\s*not\s*given\s*us\s*a\s*spirit\s*of\s*fear))\b", re.I),
+     "fear not afraid strong courageous God with you spirit power love sound mind"),
+
+    # Forgiveness / sin
+    (re.compile(r"\b(forgiv(?:e|en|eness|ing)|confess\s*(?:sin[s]?|our\s*sin)|remission\s*of\s*sin|washed\s*(?:clean|white)|repent(?:ance)?|turn\s*from\s*sin)\b", re.I),
+     "forgive confess sin cleanse repent remission blood righteous"),
+
+    # Heaven / eternal life
+    (re.compile(r"\b(eternal\s*(?:life|home)|heaven(?:ly\s*father)?|mansions?\s*(?:in\s*heaven|prepared)|kingdom\s*(?:of\s*heaven|of\s*god)|everlasting\s*life|life\s*after\s*death|paradise)\b", re.I),
+     "eternal life heaven mansions prepared believe not perish everlasting"),
+
+    # Armor of God / spiritual warfare
+    (re.compile(r"\b(armor\s*of\s*god|spiritual\s*(?:warfare|battle|weapon[s]?)|wrestle\s*not\s*against\s*flesh|put\s*on\s*(?:the\s*)?(?:full\s*)?armor|sword\s*of\s*the\s*spirit|shield\s*of\s*faith)\b", re.I),
+     "armor God spiritual warfare principalities sword faith shield righteousness"),
+
+    # Peace / rest in God
+    (re.compile(r"\b(peace\s*(?:of\s*god|that\s*passes|that\s*surpasses|be\s*still)|rest\s*in\s*(?:god|the\s*lord)|cast\s*(?:all\s*)?(?:your\s*)?(?:anxiety|care|burden[s]?)\s*on|be\s*anxious\s*for\s*nothing)\b", re.I),
+     "peace God surpasses understanding anxious worry cast care still know"),
+
+    # Strength / weakness made strong
+    (re.compile(r"\b(strength(?:en)?\s*(?:in\s*(?:the\s*)?lord|through\s*christ)|i\s*can\s*do\s*all\s*things|made\s*strong\s*in\s*weakness|mount\s*up\s*(?:with\s*)?wings|renew\s*(?:ed)?\s*strength|wait\s*on\s*(?:the\s*)?lord)\b", re.I),
+     "strength weak Christ strengthens all things possible wings eagles renew"),
+]
+
+def _expand_semantic_query(query: str) -> str:
+    """
+    Check if the query matches a known preaching theme and return an
+    enriched embedding query that helps FAISS surface topically relevant
+    verses.  Falls back to the original query if no theme matches.
+    """
+    for pattern, expansion in _TOPIC_EXPANSIONS:
+        if pattern.search(query):
+            # Blend the original query with the theme expansion so that
+            # highly specific phrasing still anchors the search while
+            # thematic coverage is broadened.
+            return f"{query} {expansion}"
+    return query
+
+
 class TranslationSourceRegistry:
     """
     Legal-safe Bible source layer:
@@ -1727,6 +1914,9 @@ class SessionState:
             "pending_chapter": self.pending_chapter,
             "active_translation": self.active_translation,
         }
+
+# Initialise the shared session now that SessionState is defined
+global_session = SessionState()
 
 def _parse_spoken_int(value: str) -> Optional[int]:
     clean = _normalise_intent_text(value)
@@ -2376,7 +2566,13 @@ async def process_query(
         )
         return
 
-    candidates = await asyncio.to_thread(bible.vector_search, clean_query, TOP_K)
+    # ── Lane 2: Semantic search with topic-aware query expansion ──
+    # _expand_semantic_query enriches the embedding query when the preacher
+    # speaks a recognised church theme (soul winning, Holy Spirit, etc.)
+    # so FAISS surfaces topically-relevant verses even when the exact words
+    # don't appear in the verse text.
+    semantic_query = _expand_semantic_query(clean_query)
+    candidates = await asyncio.to_thread(bible.vector_search, semantic_query, TOP_K)
     if not candidates:
         if not is_interim:
             await safe_send(ws, {
@@ -2450,7 +2646,8 @@ async def live_ws(ws: WebSocket):
     engine          = "auto"
     session_key     = ""
     prefetched_audio: List[bytes] = []
-    session_state   = SessionState()
+    global global_session
+    session_state   = global_session   # share with /ws/control so remote NEXT/PREV tracks the latest verse
 
     try:
         loop          = asyncio.get_running_loop()

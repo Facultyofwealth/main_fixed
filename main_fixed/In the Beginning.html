@@ -9,6 +9,93 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/intro.js/minified/introjs.min.css">
     <script src="https://cdn.jsdelivr.net/npm/intro.js/minified/intro.min.js"></script>
     <style>
+        /* ── Intro.js Dark Theme Override ── */
+        .introjs-tooltip {
+            background: #13161c !important;
+            border: 1px solid rgba(166,124,82,0.45) !important;
+            border-radius: 12px !important;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.75) !important;
+            color: #e5e7eb !important;
+            font-family: 'Inter', -apple-system, sans-serif !important;
+            max-width: 320px !important;
+            padding: 20px 22px 18px !important;
+        }
+        .introjs-tooltiptext {
+            color: #d1d5db !important;
+            font-size: 13px !important;
+            line-height: 1.65 !important;
+        }
+        .introjs-tooltip-header {
+            padding: 0 0 10px !important;
+        }
+        .introjs-skipbutton {
+            color: #6b7280 !important;
+            font-size: 18px !important;
+        }
+        .introjs-skipbutton:hover { color: #e5e7eb !important; }
+        .introjs-tooltipbuttons {
+            border-top: 1px solid rgba(255,255,255,0.07) !important;
+            padding-top: 12px !important;
+            margin-top: 4px !important;
+        }
+        .introjs-button {
+            background: rgba(166,124,82,0.15) !important;
+            border: 1px solid rgba(166,124,82,0.45) !important;
+            color: #a67c52 !important;
+            border-radius: 7px !important;
+            font-size: 12px !important;
+            font-weight: 700 !important;
+            padding: 7px 16px !important;
+            text-shadow: none !important;
+            transition: background 0.15s !important;
+        }
+        .introjs-button:hover {
+            background: rgba(166,124,82,0.32) !important;
+            color: #fff !important;
+            border-color: #a67c52 !important;
+        }
+        .introjs-button:focus { outline: none !important; box-shadow: none !important; }
+        .introjs-nextbutton {
+            background: #a67c52 !important;
+            color: #fff !important;
+            border-color: #a67c52 !important;
+        }
+        .introjs-nextbutton:hover { background: #c09060 !important; border-color: #c09060 !important; }
+        .introjs-donebutton {
+            background: #a67c52 !important;
+            color: #fff !important;
+            border-color: #a67c52 !important;
+        }
+        .introjs-donebutton:hover { background: #c09060 !important; }
+        .introjs-progressbar {
+            background: #a67c52 !important;
+            border-radius: 3px !important;
+        }
+        .introjs-progress {
+            background: rgba(255,255,255,0.08) !important;
+            border-radius: 3px !important;
+            height: 4px !important;
+            margin-bottom: 14px !important;
+        }
+        .introjs-arrow.top { border-bottom-color: #a67c52 !important; }
+        .introjs-arrow.top-right { border-bottom-color: #a67c52 !important; }
+        .introjs-arrow.top-middle { border-bottom-color: #a67c52 !important; }
+        .introjs-arrow.bottom { border-top-color: #a67c52 !important; }
+        .introjs-arrow.bottom-right { border-top-color: #a67c52 !important; }
+        .introjs-arrow.bottom-middle { border-top-color: #a67c52 !important; }
+        .introjs-arrow.left { border-right-color: #a67c52 !important; }
+        .introjs-arrow.right { border-left-color: #a67c52 !important; }
+        .introjs-helperLayer {
+            box-shadow: rgba(166,124,82,0.5) 0 0 1px 2px, rgba(0,0,0,0.5) 0 0 0 5000px !important;
+            border-radius: 8px !important;
+        }
+        .introjs-overlay { background: rgba(0,0,0,0.72) !important; }
+        .introjs-stepnumber { color: #a67c52 !important; font-weight: 800 !important; }
+        .introjs-bullets ul li a { background: rgba(255,255,255,0.2) !important; }
+        .introjs-bullets ul li a.active,
+        .introjs-bullets ul li a:hover { background: #a67c52 !important; }
+    </style>
+    <style>
         :root {
             --bg-deep: #0b0d11;
             --bg-panel: #16191f;
@@ -954,6 +1041,158 @@
 
         /* Fix 11: session timer */
         #sessionTimer { font-family: monospace; font-weight: 700; color: #a67c52; }
+
+        /* Trial-expired badge in header */
+        #trial-badge {
+            display: none;
+            background: rgba(239,68,68,0.15);
+            border: 1px solid rgba(239,68,68,0.5);
+            color: #ef4444;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+            cursor: pointer;
+            animation: trialPulse 2s infinite;
+        }
+        @keyframes trialPulse {
+            0%, 100% { opacity: 1; }
+            50%       { opacity: 0.65; }
+        }
+
+        /* Trial-expired overlay modal */
+        #trial-modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.82);
+            z-index: 99999;
+            align-items: center;
+            justify-content: center;
+        }
+        #trial-modal.active { display: flex; }
+        .trial-card {
+            background: #13161c;
+            border: 1px solid rgba(239,68,68,0.35);
+            border-radius: 16px;
+            width: 440px;
+            max-width: 94vw;
+            padding: 32px 28px 28px;
+            box-shadow: 0 30px 80px rgba(0,0,0,0.75);
+            text-align: center;
+            animation: slideIn 0.25s cubic-bezier(0.34,1.56,0.64,1);
+        }
+        .trial-icon { font-size: 42px; margin-bottom: 14px; }
+        .trial-title { font-size: 18px; font-weight: 800; color: #e5e7eb; margin-bottom: 8px; }
+        .trial-body  { font-size: 13px; color: #9ca3af; line-height: 1.7; margin-bottom: 22px; }
+        .trial-input-row { display: flex; gap: 8px; margin-bottom: 14px; }
+        .trial-key-input {
+            flex: 1;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 8px;
+            padding: 10px 14px;
+            color: #e5e7eb;
+            font-size: 13px;
+            outline: none;
+            font-family: monospace;
+        }
+        .trial-key-input:focus { border-color: rgba(166,124,82,0.6); }
+        .trial-save-btn {
+            background: #a67c52;
+            border: none;
+            border-radius: 8px;
+            color: #fff;
+            padding: 10px 18px;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        .trial-save-btn:hover { background: #c09060; }
+        .trial-link {
+            display: inline-block;
+            margin-top: 4px;
+            font-size: 11px;
+            color: #a67c52;
+            text-decoration: none;
+        }
+        .trial-link:hover { text-decoration: underline; }
+        .trial-close-btn {
+            background: none;
+            border: none;
+            color: #6b7280;
+            font-size: 20px;
+            cursor: pointer;
+            position: absolute;
+            top: 14px; right: 18px;
+            line-height: 1;
+        }
+
+        /* Pin (+) button on detected verse cards */
+        .verse-pin-btn {
+            background: rgba(166,124,82,0.12);
+            border: 1px solid rgba(166,124,82,0.3);
+            color: #a67c52;
+            border-radius: 6px;
+            width: 20px; height: 20px;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 700;
+            line-height: 1;
+            flex-shrink: 0;
+            transition: background 0.15s, border-color 0.15s;
+            margin-left: auto;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+        }
+        .verse-pin-btn:hover { background: rgba(166,124,82,0.28); border-color: rgba(166,124,82,0.6); }
+        .verse-pin-btn.pinned { background: rgba(166,124,82,0.35); border-color: #a67c52; color: #fff; }
+
+        /* Pinned verse in scripture feed */
+        .feed-pinned {
+            border-left: 3px solid #a67c52 !important;
+            background: rgba(166,124,82,0.06);
+        }
+        .feed-pin-label {
+            font-size: 8px; font-weight: 800;
+            color: #a67c52; letter-spacing: 1px;
+            text-transform: uppercase;
+            margin-left: 6px;
+        }
+
+        /* ── Custom icon tooltips ── */
+        [data-tip] {
+            position: relative;
+        }
+        [data-tip]::after {
+            content: attr(data-tip);
+            position: absolute;
+            bottom: calc(100% + 8px);
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1e2129;
+            color: #e5e7eb;
+            font-size: 11px;
+            font-weight: 600;
+            font-family: 'Inter', sans-serif;
+            white-space: nowrap;
+            padding: 5px 10px;
+            border-radius: 6px;
+            border: 1px solid rgba(166,124,82,0.35);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.15s ease, transform 0.15s ease;
+            transform: translateX(-50%) translateY(4px);
+            z-index: 9999;
+        }
+        [data-tip]:hover::after {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
     </style>
 </head>
 <body>
@@ -1000,21 +1239,22 @@
             </span>
             <div style="position:absolute;left:50%;transform:translateX(-50%);font-size:13px;color:var(--text-dim);display:flex;align-items:center;gap:6px;font-weight:600;letter-spacing:0.5px;">
               <span style="color:#4ade80;font-size:11px;">●</span> SESSION <span id="sessionTimer" style="color:#a67c52;font-weight:700;font-family:monospace;font-size:14px;">00:00:00</span>
+              <span id="trial-badge" onclick="openTrialModal()" title="Deepgram trial expired — click to enter your key">🔑 GET YOUR KEY</span>
             </div>
             <div style="display:flex;align-items:center;gap:14px;margin-left:18px;padding-left:18px;border-left:1px solid rgba(255,255,255,0.1);">
 
                 <!-- Monitor icon -->
-                <svg title="Broadcast" style="width:18px;height:18px;color:#888;cursor:pointer;flex-shrink:0;" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" onmouseover="this.style.color='#a67c52'" onmouseout="this.style.color='#888'" onclick="openBroadcastModal()">
+                <svg data-tip="Broadcast" title="Broadcast" style="width:18px;height:18px;color:#888;cursor:pointer;flex-shrink:0;" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" onmouseover="this.style.color='#a67c52'" onmouseout="this.style.color='#888'" onclick="openBroadcastModal()">
                     <rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
                 </svg>
 
                 <!-- Profile icon -->
-                <svg title="Profile" style="width:18px;height:18px;color:#888;cursor:pointer;flex-shrink:0;" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" onmouseover="this.style.color='#a67c52'" onmouseout="this.style.color='#888'" onclick="openSubpage('profile')">
+                <svg data-tip="Profile" title="Profile" style="width:18px;height:18px;color:#888;cursor:pointer;flex-shrink:0;" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" onmouseover="this.style.color='#a67c52'" onmouseout="this.style.color='#888'" onclick="openSubpage('profile')">
                     <circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/>
                 </svg>
 
                 <!-- Brightness icon -->
-                <svg title="Appearance" style="width:18px;height:18px;color:#888;cursor:pointer;flex-shrink:0;" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" onmouseover="this.style.color='#a67c52'" onmouseout="this.style.color='#888'" onclick="openSubpage('brightness')">
+                <svg data-tip="Appearance" title="Appearance" style="width:18px;height:18px;color:#888;cursor:pointer;flex-shrink:0;" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" onmouseover="this.style.color='#a67c52'" onmouseout="this.style.color='#888'" onclick="openSubpage('brightness')">
                     <circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/>
                     <line x1="4.22" y1="4.22" x2="6.34" y2="6.34"/><line x1="17.66" y1="17.66" x2="19.78" y2="19.78"/>
                     <line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/>
@@ -1022,17 +1262,17 @@
                 </svg>
 
                 <!-- Compass icon -->
-                <svg title="Bible Navigator" style="width:18px;height:18px;color:#888;cursor:pointer;flex-shrink:0;" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" onmouseover="this.style.color='#a67c52'" onmouseout="this.style.color='#888'" onclick="openSubpage('navigate')">
+                <svg data-tip="Bible Navigator" title="Bible Navigator" style="width:18px;height:18px;color:#888;cursor:pointer;flex-shrink:0;" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" onmouseover="this.style.color='#a67c52'" onmouseout="this.style.color='#888'" onclick="openSubpage('navigate')">
                     <circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/>
                 </svg>
 
                 <!-- Settings icon -->
-                <svg title="Settings" style="width:18px;height:18px;color:#888;cursor:pointer;flex-shrink:0;" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" onmouseover="this.style.color='#a67c52'" onmouseout="this.style.color='#888'" onclick="openSubpage('settings')">
+                <svg data-tip="Settings" title="Settings" style="width:18px;height:18px;color:#888;cursor:pointer;flex-shrink:0;" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" onmouseover="this.style.color='#a67c52'" onmouseout="this.style.color='#888'" onclick="openSubpage('settings')">
                     <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
                 </svg>
 
                 <!-- REMOTE CONTROL button -->
-                <button id="btn-remote-ctrl"
+                <button id="btn-remote-ctrl" data-tip="Mobile Remote Control"
                     style="background:rgba(166,124,82,0.12);border:1.5px solid rgba(166,124,82,0.5);color:#a67c52;padding:5px 13px;border-radius:20px;font-size:11px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:5px;letter-spacing:0.5px;white-space:nowrap;font-family:'Inter',sans-serif;position:relative;"
                     onmouseover="this.style.background='rgba(166,124,82,0.25)'"
                     onmouseout="this.style.background='rgba(166,124,82,0.12)'"
@@ -1042,7 +1282,7 @@
                     <span id="remote-count-badge" style="display:none;background:#4ade80;color:#0b0d11;border-radius:99px;font-size:9px;font-weight:800;padding:1px 5px;min-width:16px;text-align:center;">0</span>
                 </button>
 
-                <button id="btn-intro-tour"
+                <button id="btn-intro-tour" data-tip="Guided Tour"
                     style="background:transparent;border:1.5px solid rgba(235, 232, 232, 0.18);color:#716b6b;padding:5px 12px;border-radius:20px;font-size:11px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:5px;letter-spacing:0.5px;white-space:nowrap;font-family:'Inter',sans-serif;"
                     onmouseover="this.style.borderColor='#a67c52';this.style.color='#a67c52'"
                     onmouseout="this.style.borderColor='rgba(255,255,255,0.18)';this.style.color='#ddd'"
@@ -1051,7 +1291,7 @@
                 </button>
 
                 <!-- PROPRESENT button -->
-                <button id="btn-propresent" style="background-color:transparent;border:1.5px solid #555;color:#dddddd;padding:5px 13px;border-radius:20px;font-size:11px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:5px;letter-spacing:0.5px;white-space:nowrap;font-family:'Inter',sans-serif;"
+                <button id="btn-propresent" data-tip="ProPresenter Integration" style="background-color:transparent;border:1.5px solid #555;color:#dddddd;padding:5px 13px;border-radius:20px;font-size:11px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:5px;letter-spacing:0.5px;white-space:nowrap;font-family:'Inter',sans-serif;"
                     onmouseover="this.style.borderColor='#a67c52';this.style.color='#a67c52'"
                     onmouseout="this.style.borderColor='#555';this.style.color='#ddd'"
                     onclick="openSubpage('propresent')">
@@ -1161,6 +1401,7 @@
         <div class="panel" style="overflow:hidden;padding:0;">
             <div style="padding:9px 14px 8px;border-bottom:1px solid rgba(255,255,255,0.09);display:flex;align-items:center;flex-shrink:0;">
                 <span style="font-size:9px;font-weight:800;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;">Scripture Feed</span>
+                <span onclick="clearScriptureFeed()" style="margin-left:auto;font-size:9px;font-weight:700;color:#6b7280;cursor:pointer;letter-spacing:0.5px;text-transform:uppercase;padding:2px 6px;border-radius:4px;border:1px solid rgba(255,255,255,0.08);transition:color 0.15s;" onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='#6b7280'">Clear</span>
             </div>
             <div id="scripture-feed" style="flex:1;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;gap:0;"><div class="empty-state">No verses shown yet</div></div>
         </div>
@@ -1185,8 +1426,11 @@
                 </div>
                 <!-- Book+Chapter selector row -->
                 <div id="tab-ref-panel" style="display:flex;flex-direction:column;flex:1;overflow:hidden;">
-                    <!-- Verse lookup result strip -->
-                    <div id="chapter-result" style="display:none;padding:5px 12px;font-size:11px;background:rgba(166,124,82,0.08);border-bottom:1px solid rgba(166,124,82,0.18);color:#e5e7eb;line-height:1.5;"></div>
+                    <!-- Verse lookup result strip removed: was causing stale verse
+                         to display above book search while live display showed a different verse.
+                         The chapterInput, highlighted verse row, and Preview panel already
+                         communicate the looked-up verse — this strip was redundant. -->
+                    <div id="chapter-result" style="display:none;"></div>
                     <div style="display:none;gap:0;border-bottom:1px solid rgba(255,255,255,0.07);flex-shrink:0;">
                         <select id="bookSelect" style="flex:1;background:rgba(255,255,255,0.04);border:none;border-right:1px solid rgba(255,255,255,0.07);color:#e5e7eb;font-size:12px;padding:7px 10px;outline:none;cursor:pointer;" onchange="onBookChange()">
                             <option value="">— Select Book —</option>
@@ -2933,10 +3177,7 @@
             if (input) input.value = `${book} ${chapter}`;
         }
 
-        if (resultEl) {
-            resultEl.style.display = 'block';
-            resultEl.innerHTML = `<strong style="color:#a67c52;">${book} ${chapter}</strong> <span style="color:#6b7280;">— chapter loaded</span>`;
-        }
+        if (resultEl) { resultEl.style.display = 'none'; }  // strip permanently hidden
 
         hideReferenceSuggestions();
     }
@@ -3162,7 +3403,7 @@
         const rawInput = normalizeReferenceText(document.getElementById('chapterInput').value);
         if (!rawInput) return;
         const resultEl = document.getElementById('chapter-result');
-        if (resultEl) { resultEl.style.display = 'block'; resultEl.textContent = 'Searching…'; resultEl.style.color = '#6b7280'; }
+        if (resultEl) { resultEl.style.display = 'none'; }  // strip permanently hidden
 
         const input = rawInput;
 
@@ -3209,10 +3450,10 @@
             } else if (data && data.ref && !data.error) {
                 _applyVerseResult(data, resultEl);
             } else {
-                if (resultEl) { resultEl.textContent = `"${input}" not found locally — connect backend for full Bible`; resultEl.style.color = '#6b7280'; }
+                if (resultEl) { resultEl.style.display = 'none'; }  // strip hidden; errors shown via toast
             }
         } catch(e) {
-            if (resultEl) { resultEl.textContent = 'Backend offline. Try: John 3:16 · Psalm 23:1 · Jeremiah 29:11'; resultEl.style.color = '#6b7280'; }
+            if (resultEl) { resultEl.style.display = 'none'; }  // strip hidden; use toast for errors
         }
     }
 
@@ -3220,10 +3461,8 @@
         if (!resultEl) resultEl = document.getElementById('chapter-result');
         const translation = document.getElementById('mainTranslation').value;
         const input = document.getElementById('chapterInput');
-        if (resultEl) {
-            resultEl.style.display = 'block';
-            resultEl.innerHTML = `<strong style="color:#a67c52;">${verse.ref} <span style="color:#f9cb42;">[${translation}]</span></strong> — <span style="font-size:11px;">${verse.text}</span>`;
-        }
+        // Strip is permanently hidden — verse ref shown via chapterInput + verse-list highlight
+        if (resultEl) { resultEl.style.display = 'none'; resultEl.innerHTML = ''; }
         if (input) input.value = verse.ref;
         appState.currentVerse = { ref: verse.ref, text: verse.text, translation };
         buildChapterQueue(verse.ref);
@@ -3403,7 +3642,7 @@
         // Clear verse context
         const ctx = document.getElementById('verse-context-panel');
         if (ctx) ctx.innerHTML = '';
-        // Hide result strip
+        // Result strip permanently hidden
         const strip = document.getElementById('chapter-result');
         if (strip) strip.style.display = 'none';
         // Clear live badge
@@ -3848,6 +4087,16 @@
     }
 
     async function startTranscription() {
+        // ── 20-minute trial gate ──────────────────────────────────────────
+        // Only blocks Deepgram. Whisper/Offline and all other features work.
+        const _wantsDeepgram = appState.transcriptionMode !== 'offline';
+        if (_wantsDeepgram && !getDgKey() && trialExpired()) {
+            _showTrialExpiredBadge();
+            openTrialModal();
+            showToast('⏰ Free trial ended — paste your Deepgram key to continue', 6000);
+            return;
+        }
+        // ─────────────────────────────────────────────────────────────────
         if (!window.isSecureContext && !['localhost', '127.0.0.1'].includes(location.hostname)) {
             showToast('Use localhost for desktop mic; keep 0.0.0.0 for phone remote', 6000);
         }
@@ -4054,11 +4303,16 @@
         setTranscribeBtn(true);
         setConnStatus('live');
         sendRemoteTranscriptionState();
+        // Start the 20-min trial countdown only when using Deepgram without own key
+        if (_wantsDeepgram && !getDgKey()) _startTrialCountdown();
+        startSessionTimer();   // ← timer ticks only while transcription is live
         showToast('🎙️ Live transcription started');
     }
 
     function stopTranscription(silent = false) {
         transcribing = false;
+        _stopTrialCountdown();   // stop counting trial seconds
+        stopSessionTimer();      // pause session timer — only runs during transcription
         setTranscribeBtn(false);
         setConnStatus('off');
         setInterim('');
@@ -5000,9 +5254,205 @@
         }, 1000);
     }
 
-    startSessionTimer();
+    function stopSessionTimer() {
+        if (sessionTimerInterval) { clearInterval(sessionTimerInterval); sessionTimerInterval = null; }
+    }
 
-    // Init: chapter-result hidden until a verse is looked up
+    // ═══════════════════════════════════════════════════════════════════
+    // 20-MINUTE DEEPGRAM TRIAL SYSTEM
+    // Tracks cumulative Deepgram transcription seconds in localStorage.
+    // Once 1200 seconds (20 min) are used up the user can no longer start
+    // Deepgram unless they paste their own API key.
+    // Every other feature in the app remains fully functional.
+    // ═══════════════════════════════════════════════════════════════════
+    const TRIAL_LIMIT_SECONDS = 1200;  // 20 minutes
+    const TRIAL_STORAGE_KEY   = 'itb_trial_seconds_used';
+
+    function _getTrialUsed() {
+        try { return parseInt(localStorage.getItem(TRIAL_STORAGE_KEY) || '0', 10) || 0; }
+        catch(e) { return 0; }
+    }
+    function _saveTrialUsed(s) {
+        try { localStorage.setItem(TRIAL_STORAGE_KEY, String(s)); } catch(e) {}
+    }
+    function trialExpired() {
+        // If user has their own DG key stored, they are never blocked
+        if (getDgKey()) return false;
+        return _getTrialUsed() >= TRIAL_LIMIT_SECONDS;
+    }
+    function trialSecondsLeft() {
+        return Math.max(0, TRIAL_LIMIT_SECONDS - _getTrialUsed());
+    }
+
+    // Live counter — ticks only while Deepgram is actively transcribing
+    let _trialCountInterval = null;
+    function _startTrialCountdown() {
+        if (_trialCountInterval) return;
+        _trialCountInterval = setInterval(() => {
+            if (!transcribing) return;
+            const used = _getTrialUsed() + 1;
+            _saveTrialUsed(used);
+            if (used >= TRIAL_LIMIT_SECONDS) {
+                _stopTrialCountdown();
+                // Stop transcription and show the upgrade modal
+                stopTranscription(true);
+                _showTrialExpiredBadge();
+                openTrialModal();
+                showToast('⏰ Your 20-min free trial has ended — enter your Deepgram key to continue', 7000);
+            }
+        }, 1000);
+    }
+    function _stopTrialCountdown() {
+        if (_trialCountInterval) { clearInterval(_trialCountInterval); _trialCountInterval = null; }
+    }
+
+    // Badge in header
+    function _showTrialExpiredBadge() {
+        const b = document.getElementById('trial-badge');
+        if (b) b.style.display = 'inline-flex';
+    }
+    function _hideTrialExpiredBadge() {
+        const b = document.getElementById('trial-badge');
+        if (b) b.style.display = 'none';
+    }
+
+    // Modal helpers
+    function openTrialModal() {
+        const m = document.getElementById('trial-modal');
+        if (m) m.classList.add('active');
+        // Pre-fill if a key already exists
+        const inp = document.getElementById('trial-key-input');
+        if (inp) inp.value = getDgKey() || '';
+    }
+    function closeTrialModal() {
+        const m = document.getElementById('trial-modal');
+        if (m) m.classList.remove('active');
+    }
+    function saveTrialKey() {
+        const inp = document.getElementById('trial-key-input');
+        const val = (inp ? inp.value : '').trim();
+        if (!val || val.length < 20) { showToast('⚠️ That doesn\'t look like a valid Deepgram key', 4000); return; }
+        saveDgKey(val);
+        _hideTrialExpiredBadge();
+        closeTrialModal();
+        showToast('✅ Deepgram key saved — you can now start transcription', 4000);
+    }
+
+    // Close on backdrop click
+    document.addEventListener('click', function(e) {
+        const m = document.getElementById('trial-modal');
+        if (m && e.target === m) closeTrialModal();
+    });
+
+    // Show badge on load if trial is already expired and no key
+    if (trialExpired()) { _showTrialExpiredBadge(); }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // PINNED VERSES SYSTEM
+    // Users can pin verses from the Detected Verses panel to the top of
+    // the Scripture Feed. Pins are stored in appState.pinnedVerses.
+    // ═══════════════════════════════════════════════════════════════════
+    appState.pinnedVerses = appState.pinnedVerses || [];
+
+    function pinVerseToFeed(verse) {
+        // Avoid duplicate pins
+        const already = appState.pinnedVerses.findIndex(v => v.ref === verse.ref);
+        if (already !== -1) {
+            showToast('Already in Scripture Feed: ' + verse.ref);
+            return;
+        }
+        appState.pinnedVerses.unshift({ ...verse, _pinned: true });
+        _repaintFeedWithPins();
+        showToast('+ Added to Scripture Feed: ' + verse.ref);
+        // Visually mark all pin buttons for this ref as active
+        document.querySelectorAll('.verse-pin-btn[data-ref="' + CSS.escape(verse.ref) + '"]').forEach(btn => {
+            btn.classList.add('pinned');
+            btn.title = 'Pinned';
+        });
+    }
+
+    function unpinVerseFromFeed(ref) {
+        appState.pinnedVerses = appState.pinnedVerses.filter(v => v.ref !== ref);
+        _repaintFeedWithPins();
+        document.querySelectorAll('.verse-pin-btn[data-ref="' + CSS.escape(ref) + '"]').forEach(btn => {
+            btn.classList.remove('pinned');
+            btn.title = 'Pin to Scripture Feed';
+        });
+    }
+
+    // Build the merged feed DOM: pinned first (top), then normal history
+    function _repaintFeedWithPins() {
+        const feed = document.getElementById('scripture-feed');
+        if (!feed) return;
+        feed.style.cssText = 'overflow-y:auto;max-height:100%;padding:0;margin:0;';
+        const pinned  = appState.pinnedVerses || [];
+        const history = (appState.verseHistory || []).filter(v =>
+            !pinned.some(p => p.ref === v.ref)
+        );
+        const all = [...pinned, ...history];
+        if (!all.length) {
+            feed.innerHTML = '<div class="empty-state">No verses shown yet</div>';
+            return;
+        }
+        feed.innerHTML = '';
+        all.forEach((v, i) => {
+            const div = document.createElement('div');
+            const isPinned = !!v._pinned;
+            div.className = isPinned ? 'feed-pinned' : '';
+            div.style.cssText = 'padding:8px 6px;border-bottom:1px solid rgba(255,255,255,0.05);cursor:pointer;font-size:11px;flex-shrink:0;user-select:none;' + (isPinned ? 'padding-left:9px;' : '');
+            const trans = v.translation || 'KJV';
+            const pinLabel = isPinned ? '<span class="feed-pin-label">▲ QUEUED</span>' : '';
+            div.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;">' +
+                '<span style="color:#a67c52;font-weight:700;font-size:10px;">' + v.ref +
+                ' <span style="color:#f9cb42;">[' + trans + ']</span>' + pinLabel + '</span>' +
+                (isPinned ? '<span onclick="event.stopPropagation();unpinVerseFromFeed(\'' + v.ref.replace(/'/g,"\\'") + '\')" style="font-size:9px;color:#6b7280;cursor:pointer;padding:2px 6px;border-radius:4px;border:1px solid rgba(255,255,255,0.08);" title="Unpin">✕</span>' : '') +
+                '</div>' +
+                '<div style="color:#d1d5db;margin-top:3px;line-height:1.5;">' + (v.text || '') + '</div>';
+            div.onclick = () => {
+                appState.currentVerse = { ref: v.ref, text: v.text, translation: v.translation };
+                sendToLive();
+            };
+            // Long-press to remove (non-pinned only)
+            if (!isPinned) {
+                let pressTimer;
+                div.addEventListener('mousedown', () => { pressTimer = setTimeout(() => { appState.verseHistory.splice(i - pinned.length, 1); _repaintFeedWithPins(); showToast('Verse removed from feed'); }, 700); });
+                div.addEventListener('mouseup',   () => clearTimeout(pressTimer));
+                div.addEventListener('mouseleave',() => clearTimeout(pressTimer));
+                div.addEventListener('touchstart',() => { pressTimer = setTimeout(() => { appState.verseHistory.splice(i - pinned.length, 1); _repaintFeedWithPins(); showToast('Verse removed from feed'); }, 700); }, {passive:true});
+                div.addEventListener('touchend',  () => clearTimeout(pressTimer));
+            }
+            feed.appendChild(div);
+        });
+    }
+
+    // Clear all pinned and history verses from the Scripture Feed
+    function clearScriptureFeed() {
+        appState.pinnedVerses = [];
+        appState.verseHistory = [];
+        // Also visually reset all + buttons that were marked as queued
+        document.querySelectorAll('.verse-pin-btn.pinned').forEach(btn => {
+            btn.classList.remove('pinned');
+            btn.title = 'Add to Scripture Feed';
+        });
+        _repaintFeedWithPins();
+        showToast('Scripture Feed cleared');
+    }
+
+    // Override addToScriptureFeed to use the merged render
+    function addToScriptureFeed(verse) {
+        const exists = appState.verseHistory.findIndex(v => v.ref === verse.ref);
+        if (exists !== -1) appState.verseHistory.splice(exists, 1);
+        appState.verseHistory.unshift(verse);
+        _repaintFeedWithPins();
+    }
+
+    // Override renderScriptureFeed to use the merged render
+    function renderScriptureFeed() { _repaintFeedWithPins(); }
+
+    // Session timer starts with transcription, not on page load
+    // (startSessionTimer called from startTranscription, stopSessionTimer from stopTranscription)
+
+    // chapter-result strip is permanently hidden (removed from visible UI)
     const chapterResult = document.getElementById('chapter-result');
     if (chapterResult) chapterResult.style.display = 'none';
 
@@ -5199,14 +5649,28 @@
         item.dataset.interim = isInterim ? 'true' : 'false';
         item.style.cssText = 'padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.05);cursor:pointer;border-left:3px solid #f9cb42;' + (isInterim ? 'opacity:0.5;' : '');
         if (isInterim) item.title = 'Live suggestion — sentence not yet complete';
+        // Build a local copy for the pin button closure
+        const _pinVerse = { ref: top.ref, text: top.text, translation: trans };
+        const _alreadyPinned = (appState.pinnedVerses || []).some(p => p.ref === top.ref);
         item.innerHTML =
             '<div style="display:flex;align-items:center;gap:6px;">' +
             '<span style="color:#f9cb42;font-weight:700;font-size:10px;">' + top.ref +
             ' <span style="color:#f9cb42;font-weight:400;">[' + trans + ']</span></span>' +
             (isInterim ? '<span style="font-size:9px;color:#6b7280;">…listening</span>' : '<span style="font-size:9px;padding:1px 5px;border-radius:6px;background:rgba(29,78,216,0.12);color:#f9cb42;border:1px solid rgba(29,78,216,0.30);">paraphrase</span>') +
+            '<button class="verse-pin-btn' + (_alreadyPinned ? ' pinned' : '') + '" data-ref="' + top.ref.replace(/"/g,'&quot;') + '" title="' + (_alreadyPinned ? 'Queued in Feed' : 'Add to Scripture Feed') + '">+</button>' +
             '</div>' +
             '<div style="font-size:11px;color:#d1d5db;margin-top:2px;line-height:1.4;">' + top.text.substring(0, 110) + (top.text.length > 110 ? '…' : '') + '</div>';
-        item.onclick = function() { stageParaphraseVerse(top.ref, top.text, trans); };
+        item.onclick = function(e) {
+            if (e.target.closest('.verse-pin-btn')) return;
+            stageParaphraseVerse(top.ref, top.text, trans);
+        };
+        const _paraBtn = item.querySelector('.verse-pin-btn');
+        if (_paraBtn) _paraBtn.onclick = function(e) {
+            e.stopPropagation();
+            const isPinned = (appState.pinnedVerses || []).some(p => p.ref === _pinVerse.ref);
+            if (isPinned) { unpinVerseFromFeed(_pinVerse.ref); }
+            else          { pinVerseToFeed(_pinVerse); }
+        };
         dv.insertBefore(item, dv.firstChild);
     }
 
@@ -5250,15 +5714,24 @@
                 item.dataset.ref = top.ref;
                 item.dataset.matchType = 'exact';
                 item.style.cssText = 'padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.05);cursor:pointer;border-left:3px solid #a67c52;';
-                item.innerHTML = `<div style="display:flex;align-items:center;gap:6px;"><span style="color:#a67c52;font-weight:700;font-size:10px;">${top.ref} <span style="color:#f9cb42;font-weight:400;">[${trans}]</span></span><span style="font-size:9px;padding:1px 6px;border-radius:6px;background:rgba(166,124,82,0.18);color:#a67c52;border:1px solid rgba(166,124,82,0.35);font-weight:700;">Queue</span></div>
+                const _exactPinned = (appState.pinnedVerses || []).some(p => p.ref === top.ref);
+                item.innerHTML = `<div style="display:flex;align-items:center;gap:6px;"><span style="color:#a67c52;font-weight:700;font-size:10px;">${top.ref} <span style="color:#f9cb42;font-weight:400;">[${trans}]</span></span><span style="font-size:9px;padding:1px 6px;border-radius:6px;background:rgba(166,124,82,0.18);color:#a67c52;border:1px solid rgba(166,124,82,0.35);font-weight:700;">Queue</span><button class="verse-pin-btn${_exactPinned?' pinned':''}" data-ref="${top.ref.replace(/"/g,'&quot;')}" title="${_exactPinned?'Queued in Feed':'Add to Scripture Feed'}" style="margin-left:auto;">+</button></div>
                     <div style="font-size:11px;color:#d1d5db;margin-top:2px;line-height:1.4;">${top.text}</div>`;
-                item.onclick = () => {
+                item.onclick = (e) => {
+                    if (e.target.closest('.verse-pin-btn')) return;
                     appState.currentVerse = verse;
                     sendToPreview(verse);
                     forceDisplayToLive();
                     // Switch to Book Search tab and open full chapter
                     switchTab('ref');
                     autoNavToRef(verse.ref);
+                };
+                const _exactBtn = item.querySelector('.verse-pin-btn');
+                if (_exactBtn) _exactBtn.onclick = function(e) {
+                    e.stopPropagation();
+                    const ip = (appState.pinnedVerses || []).some(p => p.ref === verse.ref);
+                    if (ip) { unpinVerseFromFeed(verse.ref); this.classList.remove('pinned'); this.title='Pin to Scripture Feed'; }
+                    else    { pinVerseToFeed(verse);          this.classList.add('pinned');    this.title='Pinned'; }
                 };
                 dv.insertBefore(item, dv.firstChild);
             }
@@ -5268,29 +5741,17 @@
     }
 
     function updateScriptureFeedFromBackend(feed) {
-        const el = document.getElementById('scripture-feed');
-        if (!el) return;
-        el.style.cssText = '';
-        el.innerHTML = '';
-        if (!feed || !feed.length) {
-            el.innerHTML = '<div class="empty-state">No verses shown yet</div>';
-            return;
-        }
+        // Merge backend feed into verseHistory (deduplicated), then repaint
+        // with pinned verses always on top.
+        if (!feed || !feed.length) { _repaintFeedWithPins(); return; }
         feed.slice().reverse().slice(0, 8).forEach(v => {
-            const trans = v.translation || document.getElementById('mainTranslation').value || 'KJV';
-            const div = document.createElement('div');
-            div.style.cssText = 'padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.05);cursor:pointer;font-size:11px;';
-            div.innerHTML =
-                '<div style="color:#a67c52;font-weight:700;font-size:10px;">' + v.ref +
-                ' <span style="color:#f9cb42;">[' + trans + ']</span></div>' +
-                '<div style="color:#d1d5db;margin-top:1px;">"' + (v.text || '').substring(0,55) + '..."</div>';
-            div.onclick = () => {
-                appState.currentVerse = { ref: v.ref, text: v.text, translation: trans };
-                sendToLive();
-                syncBackendVerseState(v.ref);
-            };
-            el.appendChild(div);
+            const trans = v.translation || (document.getElementById('mainTranslation') || {}).value || 'KJV';
+            const verseFull = { ref: v.ref, text: v.text, translation: trans };
+            const exists = (appState.verseHistory || []).findIndex(h => h.ref === v.ref);
+            if (exists !== -1) appState.verseHistory.splice(exists, 1);
+            (appState.verseHistory = appState.verseHistory || []).unshift(verseFull);
         });
+        _repaintFeedWithPins();
     }
 
     // Auto-navigate Book Search to the book+chapter of a verse ref
@@ -5946,6 +6407,32 @@ body{
             </select>
 
             <button onclick="closeTranslationManager()" style="width:100%;padding:10px;background:rgba(166,124,82,0.15);border:1px solid rgba(166,124,82,0.3);color:#a67c52;border-radius:10px;cursor:pointer;font-size:13px;font-weight:700;">Done</button>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════
+         DEEPGRAM TRIAL EXPIRED MODAL
+    ═══════════════════════════════════════════ -->
+    <div id="trial-modal">
+        <div class="trial-card" style="position:relative;">
+            <button class="trial-close-btn" onclick="closeTrialModal()">&times;</button>
+            <div class="trial-icon">🔑</div>
+            <div class="trial-title">Your 20-minute free trial has ended</div>
+            <div class="trial-body">
+                Thank you for trying <strong>In The Beginning</strong>!<br>
+                To continue using live transcription without interruption,
+                paste your own <strong>Deepgram API key</strong> below.<br>
+                Deepgram offers a <strong>free tier</strong> — no credit card needed to start.
+            </div>
+            <div class="trial-input-row">
+                <input id="trial-key-input" class="trial-key-input" type="password"
+                    placeholder="Paste your Deepgram API key here…"
+                    onkeydown="if(event.key==='Enter')saveTrialKey()">
+                <button class="trial-save-btn" onclick="saveTrialKey()">Activate</button>
+            </div>
+            <a class="trial-link" href="https://console.deepgram.com/signup" target="_blank">
+                ↗ Get your free Deepgram key at console.deepgram.com
+            </a>
         </div>
     </div>
 
