@@ -1,0 +1,1075 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Documentation — In the Beginning AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap" rel="stylesheet" />
+  <style>
+:root {
+  --bg-void:     #090807;
+  --bg-surface:  #0f0d0c;
+  --bg-card:     #141210;
+  --bg-card-2:   #1a1714;
+  --accent:      #A0714F;
+  --accent-warm: #B8845E;
+  --accent-glow: rgba(160,113,79,.18);
+  --text-primary:   #F5F0E8;
+  --text-secondary: #A89E92;
+  --text-muted:     #6B6460;
+  --border:      rgba(255,255,255,.06);
+  --border-warm: rgba(160,113,79,.22);
+  --font-display:'Cormorant Garamond', Georgia, serif;
+  --font-body:   'DM Sans', system-ui, sans-serif;
+  --radius-sm: 8px; --radius-md: 14px; --radius-lg: 22px; --radius-xl: 32px;
+  --sidebar-w: 270px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; font-size: 16px; }
+body { background: var(--bg-void); color: var(--text-secondary); font-family: var(--font-body); line-height: 1.7; display: flex; flex-direction: column; min-height: 100vh; }
+a { text-decoration: none; color: inherit; }
+em { font-style: italic; }
+
+/* ─── TOPBAR ─────────────────────────────────── */
+.topbar {
+  position: sticky; top: 0; z-index: 100;
+  display: flex; align-items: center; gap: 16px;
+  padding: 14px 32px;
+  background: rgba(9,8,7,.9); backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+}
+.topbar-logo { display: flex; align-items: center; gap: 10px; font-family: var(--font-display); font-size: 18px; font-weight: 600; color: var(--text-primary); white-space: nowrap; }
+.topbar-logo em { color: var(--accent); font-style: italic; }
+.topbar-divider { width: 1px; height: 20px; background: var(--border); margin: 0 4px; }
+.topbar-label { font-size: 13px; color: var(--text-muted); font-weight: 400; letter-spacing: .04em; }
+.topbar-back {
+  margin-left: auto; display: inline-flex; align-items: center; gap: 7px;
+  font-size: 13px; color: var(--text-secondary); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 7px 14px; transition: all .2s;
+}
+.topbar-back:hover { color: var(--text-primary); border-color: rgba(255,255,255,.15); }
+.hamburger-docs {
+  display: none; width: 36px; height: 36px; cursor: pointer; align-items: center;
+  justify-content: center; background: none; border: 1px solid var(--border); border-radius: var(--radius-sm);
+  color: var(--text-secondary); margin-left: auto;
+}
+
+/* ─── LAYOUT ─────────────────────────────────── */
+.docs-layout { display: flex; flex: 1; max-width: 1320px; margin: 0 auto; width: 100%; }
+
+/* ─── SIDEBAR ────────────────────────────────── */
+.sidebar {
+  width: var(--sidebar-w); flex-shrink: 0; position: sticky; top: 57px;
+  height: calc(100vh - 57px); overflow-y: auto; border-right: 1px solid var(--border);
+  padding: 32px 0 60px;
+  scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+}
+.sidebar::-webkit-scrollbar { width: 4px; }
+.sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+.sidebar-section { margin-bottom: 28px; }
+.sidebar-section-title {
+  font-size: 10px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--text-muted); padding: 0 24px 8px;
+}
+.sidebar-link {
+  display: flex; align-items: center; gap: 10px; padding: 8px 24px;
+  font-size: 13.5px; color: var(--text-muted); cursor: pointer; transition: all .18s;
+  border-left: 2px solid transparent;
+}
+.sidebar-link:hover { color: var(--text-primary); background: rgba(255,255,255,.025); border-left-color: var(--border-warm); }
+.sidebar-link.active { color: var(--accent); background: rgba(160,113,79,.08); border-left-color: var(--accent); font-weight: 500; }
+.sidebar-link svg { flex-shrink: 0; color: var(--accent); opacity: .7; }
+.sidebar-sublink {
+  display: flex; align-items: center; gap: 8px; padding: 5px 24px 5px 38px;
+  font-size: 12.5px; color: var(--text-muted); cursor: pointer; transition: all .18s;
+  border-left: 2px solid transparent; line-height: 1.4;
+}
+.sidebar-sublink:hover { color: var(--text-secondary); background: rgba(255,255,255,.015); border-left-color: var(--border-warm); }
+.sidebar-sublink.active { color: var(--accent-warm); background: rgba(160,113,79,.05); border-left-color: var(--accent); font-weight: 500; }
+.sidebar-sublink::before { content: ''; width: 4px; height: 4px; border-radius: 50%; background: var(--accent); opacity: .5; flex-shrink: 0; }
+
+/* ─── MAIN CONTENT ───────────────────────────── */
+.docs-main { flex: 1; padding: 52px clamp(24px,5vw,72px) 100px; min-width: 0; }
+
+/* Section wrapper */
+.doc-section { margin-bottom: 80px; scroll-margin-top: 80px; }
+.doc-section + .doc-section { border-top: 1px solid var(--border); padding-top: 72px; }
+
+/* Titles */
+.doc-section-tag {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: 11px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--accent); background: rgba(160,113,79,.1); border: 1px solid var(--border-warm);
+  border-radius: 100px; padding: 5px 14px; margin-bottom: 16px;
+}
+.doc-h1 {
+  font-family: var(--font-display); font-size: clamp(32px,5vw,52px); font-weight: 700;
+  color: var(--text-primary); line-height: 1.15; margin-bottom: 20px;
+}
+.doc-h1 em { color: var(--accent); font-style: italic; }
+.doc-h2 {
+  font-family: var(--font-display); font-size: clamp(22px,3vw,30px); font-weight: 700;
+  color: var(--text-primary); line-height: 1.25; margin: 40px 0 14px;
+}
+.doc-h2:first-child { margin-top: 0; }
+.doc-h3 {
+  font-family: var(--font-display); font-size: clamp(17px,2vw,22px); font-weight: 600;
+  color: var(--text-primary); line-height: 1.3; margin: 28px 0 10px;
+  padding-left: 14px; border-left: 3px solid var(--accent);
+}
+.doc-lead {
+  font-size: 17px; color: var(--text-secondary); line-height: 1.8; margin-bottom: 20px;
+}
+.doc-p { font-size: 15px; color: var(--text-secondary); line-height: 1.85; margin-bottom: 16px; }
+.doc-p strong { color: var(--text-primary); font-weight: 500; }
+.doc-p em { color: var(--accent); font-style: italic; }
+
+/* Call-out box */
+.doc-callout {
+  background: rgba(160,113,79,.08); border: 1px solid var(--border-warm); border-radius: var(--radius-md);
+  padding: 18px 22px; margin: 20px 0; display: flex; gap: 14px; align-items: flex-start;
+}
+.doc-callout svg { flex-shrink: 0; margin-top: 2px; color: var(--accent); }
+.doc-callout p { font-size: 14px; color: var(--text-secondary); line-height: 1.75; margin: 0; }
+.doc-callout p strong { color: var(--accent); font-weight: 500; }
+
+/* Step list */
+.doc-steps { display: flex; flex-direction: column; gap: 14px; margin: 20px 0; }
+.doc-step {
+  display: flex; gap: 16px; align-items: flex-start;
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md);
+  padding: 18px 20px;
+}
+.doc-step-num {
+  width: 32px; height: 32px; background: rgba(160,113,79,.12); border: 1px solid var(--border-warm);
+  border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 600; color: var(--accent); flex-shrink: 0;
+}
+.doc-step-content { flex: 1; }
+.doc-step-content strong { display: block; font-size: 14px; color: var(--text-primary); font-weight: 500; margin-bottom: 4px; }
+.doc-step-content span { font-size: 13.5px; color: var(--text-secondary); line-height: 1.7; }
+
+/* Panel table */
+.doc-table-wrap { overflow-x: auto; margin: 20px 0; border-radius: var(--radius-md); border: 1px solid var(--border); }
+.doc-table { width: 100%; border-collapse: collapse; }
+.doc-table th {
+  background: var(--bg-card-2); padding: 12px 18px; text-align: left;
+  font-size: 11px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--text-muted); border-bottom: 1px solid var(--border);
+}
+.doc-table td { padding: 12px 18px; font-size: 14px; color: var(--text-secondary); border-bottom: 1px solid var(--border); }
+.doc-table tr:last-child td { border-bottom: none; }
+.doc-table td:first-child { color: var(--accent); font-weight: 500; }
+.doc-table tr:hover td { background: rgba(255,255,255,.02); }
+
+/* Code / inline tag */
+.doc-code {
+  display: inline-block; background: var(--bg-card-2); border: 1px solid var(--border);
+  border-radius: 5px; font-size: 12.5px; color: var(--accent); padding: 2px 8px; font-family: monospace;
+}
+
+/* Feature grid */
+.doc-feature-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin: 20px 0; }
+.doc-feature-card {
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md);
+  padding: 20px 22px;
+}
+.doc-feature-card h4 { font-family: var(--font-display); font-size: 17px; font-weight: 600; color: var(--text-primary); margin-bottom: 8px; }
+.doc-feature-card p { font-size: 13.5px; color: var(--text-secondary); line-height: 1.7; }
+
+/* Bullet list */
+.doc-list { list-style: none; display: flex; flex-direction: column; gap: 8px; margin: 14px 0; }
+.doc-list li {
+  display: flex; align-items: flex-start; gap: 10px;
+  font-size: 14.5px; color: var(--text-secondary); line-height: 1.7;
+}
+.doc-list li::before {
+  content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--accent);
+  margin-top: 8px; flex-shrink: 0;
+}
+.doc-list li strong { color: var(--text-primary); font-weight: 500; }
+
+/* Warning / note */
+.doc-note {
+  background: rgba(50,120,180,.1); border: 1px solid rgba(50,120,180,.25);
+  border-radius: var(--radius-md); padding: 14px 18px; margin: 16px 0;
+  font-size: 13.5px; color: #8ab4d4; line-height: 1.75;
+}
+.doc-warning {
+  background: rgba(180,80,50,.1); border: 1px solid rgba(180,80,50,.25);
+  border-radius: var(--radius-md); padding: 14px 18px; margin: 16px 0;
+  font-size: 13.5px; color: #d4906a; line-height: 1.75;
+}
+
+/* Section divider */
+.doc-divider { height: 1px; background: var(--border); margin: 36px 0; }
+
+/* OSC table badge */
+.badge { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 100px; font-weight: 500; }
+.badge-green { background: rgba(26,120,58,.18); color: #5dba80; }
+.badge-blue  { background: rgba(50,100,200,.18); color: #80a8e0; }
+
+/* Policy block */
+.policy-block {
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg);
+  padding: 28px 32px; margin: 20px 0;
+}
+.policy-block h4 { font-family: var(--font-display); font-size: 19px; font-weight: 600; color: var(--text-primary); margin-bottom: 12px; }
+.policy-block p, .policy-block li { font-size: 14px; color: var(--text-secondary); line-height: 1.8; }
+
+/* Mobile sidebar overlay */
+.sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(9,8,7,.8); z-index: 200; }
+.sidebar-overlay.open { display: block; }
+.sidebar.mobile-open { transform: translateX(0) !important; }
+
+/* ─── RESPONSIVE ─────────────────────────────── */
+@media (max-width: 860px) {
+  .sidebar {
+    position: fixed; top: 0; left: 0; height: 100vh; z-index: 210; transform: translateX(-100%);
+    transition: transform .3s ease; background: var(--bg-surface); padding-top: 70px;
+  }
+  .hamburger-docs { display: flex; }
+  .topbar-back { display: none; }
+  .docs-main { padding: 36px 22px 80px; }
+  .doc-feature-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 480px) {
+  .doc-h1 { font-size: 28px; }
+  .doc-h2 { font-size: 20px; }
+}
+  </style>
+</head>
+<body>
+
+<!-- ══════ TOPBAR ══════ -->
+<header class="topbar">
+  <a href="index.html" class="topbar-logo">
+    <svg width="26" height="26" viewBox="0 0 680 590" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <ellipse cx="340" cy="292" rx="170" ry="102" fill="#F9CB42" opacity="0.16"/>
+      <path d="M155 210 Q155 195 170 193 L340 185 L510 193 Q525 195 525 210 L525 380 Q525 395 510 397 L340 405 L170 397 Q155 395 155 380 Z" fill="#7B3F1A" stroke="#3A1A06" stroke-width="10"/>
+      <path d="M340 188 Q300 192 260 196 Q220 200 185 208 Q165 214 162 228 L158 365 Q160 378 180 382 Q220 388 270 392 Q305 396 340 398 Z" fill="#F5F0E8" stroke="#C8B89A" stroke-width="7"/>
+      <path d="M340 188 Q380 192 420 196 Q460 200 495 208 Q515 214 518 228 L522 365 Q520 378 500 382 Q460 388 410 392 Q375 396 340 398 Z" fill="#ECE4D8" stroke="#C8B89A" stroke-width="7"/>
+      <path d="M340 188 Q343 280 340 398" fill="none" stroke="#B0A090" stroke-width="8" opacity="0.62"/>
+    </svg>
+    In the Beginning <em>AI</em>
+  </a>
+  <div class="topbar-divider"></div>
+  <span class="topbar-label">Documentation</span>
+  <a href="index.html" class="topbar-back">
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M9 2L4 7l5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+    Back to Site
+  </a>
+  <button class="hamburger-docs" id="hamburgerDocs" aria-label="Open menu">
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M2 4h14M2 9h14M2 14h14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+  </button>
+</header>
+
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+<div class="docs-layout">
+
+  <!-- ══════ SIDEBAR ══════ -->
+  <aside class="sidebar" id="docsSidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-section-title">Overview</div>
+      <a class="sidebar-link active" href="#intro">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="5.5" stroke="currentColor" stroke-width="1.4"/><path d="M7 5v4M7 4.5v-.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+        Introduction
+      </a>
+      <a class="sidebar-sublink" href="#key-capabilities">Key Capabilities</a>
+      <a class="sidebar-link" href="#how-it-works">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 7h8M7 4l4 3-4 3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+        How It Works
+      </a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-section-title">Getting Started</div>
+      <a class="sidebar-link" href="#installation">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 2v7M4 6l3 3 3-3M2 11h10" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+        Installation
+      </a>
+      <a class="sidebar-sublink" href="#sys-req">System Requirements</a>
+      <a class="sidebar-sublink" href="#after-install">After Installation</a>
+      <a class="sidebar-link" href="#dashboard">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="2" y="2" width="4" height="4" rx="1" stroke="currentColor" stroke-width="1.3"/><rect x="8" y="2" width="4" height="4" rx="1" stroke="currentColor" stroke-width="1.3"/><rect x="2" y="8" width="4" height="4" rx="1" stroke="currentColor" stroke-width="1.3"/><rect x="8" y="8" width="4" height="4" rx="1" stroke="currentColor" stroke-width="1.3"/></svg>
+        Dashboard Panels
+      </a>
+      <a class="sidebar-sublink" href="#get-started">Getting Started in a Session</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-section-title">Transcription</div>
+      <a class="sidebar-link" href="#transcription">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M4 4h6M4 7h6M4 10h4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><rect x="1.5" y="1.5" width="11" height="11" rx="2" stroke="currentColor" stroke-width="1.3"/></svg>
+        Transcription Modes
+      </a>
+      <a class="sidebar-sublink" href="#switch-mode">Switching Online / Offline</a>
+      <a class="sidebar-sublink" href="#deepgram-key">Deepgram API Key</a>
+      <a class="sidebar-sublink" href="#free-plan">Free Plan</a>
+      <a class="sidebar-link" href="#starting">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="5.5" stroke="currentColor" stroke-width="1.3"/><path d="M5.5 5l4 2-4 2V5z" fill="currentColor"/></svg>
+        Start &amp; Stop
+      </a>
+      <a class="sidebar-sublink" href="#idle-timeout">Idle Timeout</a>
+      <a class="sidebar-link" href="#microphone">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="4.5" y="1.5" width="5" height="7" rx="2.5" stroke="currentColor" stroke-width="1.3"/><path d="M2 7c0 2.76 2.24 5 5 5s5-2.24 5-5M7 12v1.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+        Microphone Setup
+      </a>
+      <a class="sidebar-sublink" href="#conn-health">Connection Health</a>
+      <a class="sidebar-link" href="#network">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M1 4c3.3-3.3 8.7-3.3 12 0M3.5 6.5c1.9-1.9 5.1-1.9 7 0M6 9c.6-.6 2-.6 2 0" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="7" cy="11.5" r="1" fill="currentColor"/></svg>
+        Network Requirements
+      </a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-section-title">Bible Detection</div>
+      <a class="sidebar-link" href="#detection">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="6" cy="6" r="4" stroke="currentColor" stroke-width="1.3"/><path d="M9.5 9.5l3 3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+        Verse Detection
+      </a>
+      <a class="sidebar-sublink" href="#direct-ref">Direct Reference</a>
+      <a class="sidebar-sublink" href="#semantic-search">Semantic AI Search</a>
+      <a class="sidebar-sublink" href="#results-appear">How Results Appear</a>
+      <a class="sidebar-sublink" href="#confidence">Confidence Scores</a>
+      <a class="sidebar-link" href="#search">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 7h8M7 4l4 3-4 3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+        Bible Search
+      </a>
+      <a class="sidebar-link" href="#remote">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="4" y="1.5" width="6" height="11" rx="2" stroke="currentColor" stroke-width="1.3"/><circle cx="7" cy="10" r="1" fill="currentColor"/><path d="M5.5 4h3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+        Remote Control
+      </a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-section-title">Display &amp; Output</div>
+      <a class="sidebar-link" href="#display">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1" y="2" width="12" height="8" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M5 10v2M9 10v2M3.5 12h7" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+        Display Modes
+      </a>
+      <a class="sidebar-sublink" href="#preview-golive">Preview &amp; Go Live</a>
+      <a class="sidebar-link" href="#broadcast">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="2" stroke="currentColor" stroke-width="1.3"/><path d="M2 7c0 2.76 2.24 5 5 5s5-2.24 5-5-2.24-5-5-5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-dasharray="2 1.5"/></svg>
+        Broadcast Output
+      </a>
+      <a class="sidebar-sublink" href="#ndi-output">NDI Output</a>
+      <a class="sidebar-sublink" href="#hdmi-output">HDMI Output</a>
+      <a class="sidebar-sublink" href="#osc-api">OSC &amp; HTTP API</a>
+      <a class="sidebar-link" href="#themes">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="5.5" stroke="currentColor" stroke-width="1.3"/><path d="M7 3v8M3 7h8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+        Themes
+      </a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-section-title">Legal &amp; Policy</div>
+      <a class="sidebar-link" href="#device-compat">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1" y="3" width="9" height="7" rx="1.5" stroke="currentColor" stroke-width="1.3"/><rect x="10" y="6" width="3.5" height="5.5" rx="1" stroke="currentColor" stroke-width="1.2"/></svg>
+        Device Compatibility
+      </a>
+      <a class="sidebar-sublink" href="#gen-req">General Requirements</a>
+      <a class="sidebar-link" href="#age-policy">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="5" r="2.5" stroke="currentColor" stroke-width="1.3"/><path d="M2 12c0-2.76 2.24-4 5-4s5 1.24 5 4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+        Age &amp; User Policy
+      </a>
+      <a class="sidebar-link" href="#privacy">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1.5L2 4v4c0 3 2 5 5 5.5C10 13 12 11 12 8V4L7 1.5z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M5 7l1.5 1.5L9 5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+        Privacy &amp; Data
+      </a>
+      <a class="sidebar-link" href="#terms">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="2" y="1.5" width="10" height="11" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M5 5h4M5 7.5h4M5 10h2.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+        Terms &amp; Licence
+      </a>
+      <a class="sidebar-link" href="#troubleshoot">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 2v5l3 2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><circle cx="7" cy="7" r="5.5" stroke="currentColor" stroke-width="1.3"/></svg>
+        Troubleshooting
+      </a>
+      <a class="sidebar-sublink" href="#ts-transcription">Transcription Not Working</a>
+      <a class="sidebar-sublink" href="#ts-detection">Verses Not Detected</a>
+      <a class="sidebar-sublink" href="#ts-ndi">NDI Not Appearing</a>
+      <a class="sidebar-sublink" href="#ts-slow">App Is Slow</a>
+      <a class="sidebar-sublink" href="#ts-display">Display Looks Different</a>
+    </div>
+  </aside>
+
+  <!-- ══════ MAIN CONTENT ══════ -->
+  <main class="docs-main">
+
+    <!-- ══════════════════════════════════
+         1. INTRODUCTION
+    ═══════════════════════════════════ -->
+    <section class="doc-section" id="intro">
+      <div class="doc-section-tag">
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="6.5" cy="6.5" r="5" stroke="currentColor" stroke-width="1.3"/><path d="M6.5 4.5v3M6.5 9v.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+        Introduction
+      </div>
+      <h1 class="doc-h1">In the Beginning <em>AI</em></h1>
+      <p class="doc-lead">In the Beginning AI is a desktop application that detects Bible verses in real time during sermons and displays them on screen — automatically, with zero manual typing.</p>
+      <p class="doc-p">The software listens to the sermon as it is being preached, identifies scripture references whether they are quoted directly, read aloud, or simply paraphrased, and presents the matching verse on your broadcast output — through NDI, HDMI, or an in-app preview window. What used to require a full-time operator manually searching and pushing verses can now happen on its own, letting your media team focus on everything else that matters during a service.</p>
+      <p class="doc-p">In the Beginning AI is designed for any church, of any size. It runs on Windows ONLY for now, works with the same equipment your team already uses, and is <strong>completely free</strong> for all churches. Anything that gets used up — such as transcription minutes — can be topped up affordably as needed.</p>
+
+      <div class="doc-callout">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="7.5" stroke="currentColor" stroke-width="1.4"/><path d="M9 6v4M9 12v.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+        <p><strong>Who is this for?</strong> Pastors, church media operators, AV teams, projection operators, and anyone responsible for displaying scripture during live services, Bible studies, or rehearsals.</p>
+      </div>
+
+      <h2 class="doc-h2" id="key-capabilities">Key Capabilities</h2>
+      <div class="doc-feature-grid">
+        <div class="doc-feature-card">
+          <h4>&#9889; Real-time Detection</h4>
+          <p>Identifies scripture references within 0.5 seconds of being spoken — including direct citations, partial references, verbatim quotations, and semantic paraphrases.</p>
+        </div>
+        <div class="doc-feature-card">
+          <h4>&#128214; Multiple Bible Translations</h4>
+          <p>Currently supports KJV. Additional translations can be purchased directly from their licensed holders — import the raw file, paste the licensed API key, and tap <strong>Connect API</strong> to activate.</p>
+        </div>
+        <div class="doc-feature-card">
+          <h4>&#127916; Projection Integration</h4>
+          <p>NDI output for OBS, vMix, HDMI, and ProPresenter; direct secondary-display rendering. Works with the same broadcast equipment your team already uses.</p>
+        </div>
+        <div class="doc-feature-card">
+          <h4>&#129302; Fully Autonomous</h4>
+          <p>Once you press Start, ITB operates without manual input for the entire service — detecting, matching, and displaying verses automatically from start to finish.</p>
+        </div>
+        <div class="doc-feature-card">
+          <h4>&#128scroll; Scripture Feed</h4>
+          <p>A live feed of detected scriptures throughout the service. Long-press any verse in the feed to remove it when it is no longer needed.</p>
+        </div>
+        <div class="doc-feature-card">
+          <h4>&#128268; Offline Capable</h4>
+          <p>Once Bible translation data is downloaded, verse detection runs entirely on your device. Only transcription requires an active internet connection.</p>
+        </div>
+        <div class="doc-feature-card">
+          <h4>&#128187; Local REST API &amp; WebSocket</h4>
+          <p>Build custom integrations, dashboards, or logging pipelines using the built-in developer API — hosted locally on your church computer.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════
+         2. HOW IT WORKS
+    ═══════════════════════════════════ -->
+    <section class="doc-section" id="how-it-works">
+      <div class="doc-section-tag">
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 6.5h9M7 3.5l3 3-3 3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+        How It Works
+      </div>
+      <h2 class="doc-h2">How In the Beginning AI Works</h2>
+      <p class="doc-p">In the Beginning AI combines real-time speech-to-text transcription with two layers of AI-powered Bible verse detection. The entire pipeline — from spoken word to verse appearing on screen — runs in under a second.</p>
+
+      <div class="doc-steps">
+        <div class="doc-step">
+          <div class="doc-step-num">1</div>
+          <div class="doc-step-content">
+            <strong>Audio Capture</strong>
+            <span>In the Beginning AI captures audio from your selected microphone or audio interface. For the best results, connect directly to your church mixing board via a USB audio interface. This gives you a clean feed of the pastor's microphone with no room noise or congregation chatter.</span>
+          </div>
+        </div>
+        <div class="doc-step">
+          <div class="doc-step-num">2</div>
+          <div class="doc-step-content">
+            <strong>Live Transcription</strong>
+            <span>The audio is transcribed in real time. Online mode uses Deepgram's cloud service (Nova-3 model) for the lowest latency and highest accuracy. Offline mode uses Whisper tiny model running entirely on your device — no internet required.</span>
+          </div>
+        </div>
+        <div class="doc-step">
+          <div class="doc-step-num">3</div>
+          <div class="doc-step-content">
+            <strong>Verse Detection</strong>
+            <span>The transcript is analysed two ways simultaneously: <em>Verbatim reference detection</em> catches explicit references like "John 3:16" using fast pattern matching (under 50ms). <em>Semantic AI search</em> catches paraphrased or quoted scripture by comparing the spoken text against an index of 31,000+ Bible verses using FAISS vector search and AI embeddings (200–400ms).</span>
+          </div>
+        </div>
+        <div class="doc-step">
+          <div class="doc-step-num">4</div>
+          <div class="doc-step-content">
+            <strong>Display</strong>
+            <span>Detected verses appear in the AI Detections panel and can be sent to your broadcast output with a single click. In Auto mode they go to screen automatically. The output reaches your projector, livestream, or secondary display via NDI, HDMI, or the in-app preview window.</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════
+         3. INSTALLATION
+    ═══════════════════════════════════ -->
+    <section class="doc-section" id="installation">
+      <div class="doc-section-tag">
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 2v7M3.5 6l3 3 3-3M1.5 11h10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+        Getting Started
+      </div>
+      <h2 class="doc-h2">Installation</h2>
+      <p class="doc-p">Download the latest version of In the Beginning AI from <strong>iinthebeginningai.com</strong>. The software is available for only Windows at the moment as a standard installer.</p>
+
+      <h3 class="doc-h3" id="sys-req">System Requirements</h3>
+      <p class="doc-p">ITB is a lightweight desktop app, but real-time audio processing does require a modern system.</p>
+      <ul class="doc-list">
+        <li><strong>Operating system —</strong> Windows 10 (build 1903) or later only for now.</li>
+        <li><strong>Processor —</strong> Intel Core i5 (8th gen) or equivalent. ARM and x64 both supported.</li>
+        <li><strong>Disk space —</strong> ~200 MB for the app, plus 50–200 MB per Bible translation you download.</li>
+        <li><strong>Network —</strong> Required only for initial download and live transcription. Verse detection runs fully offline once Bible data is downloaded.</li>
+        <li><strong>Memory —</strong> 4 GB RAM minimum, 8 GB recommended for best real-time performance.</li>
+        <li><strong>Audio input —</strong> Any Windows-recognised audio device (USB mic, audio interface, or virtual device).</li>
+      </ul>
+
+      <div class="doc-steps">
+        <div class="doc-step">
+          <div class="doc-step-num">1</div>
+          <div class="doc-step-content">
+            <strong>Download the installer</strong>
+            <span>Visit the download page at <strong>iinthebeginningai.com</strong> and select the version for your operating system — Windows (.exe).</span>
+          </div>
+        </div>
+        <div class="doc-step">
+          <div class="doc-step-num">2</div>
+          <div class="doc-step-content">
+            <strong>Run the installer</strong>
+            <span>Open the downloaded file and follow the on-screen prompts. On Windows, run as Administrator if prompted.</span>
+          </div>
+        </div>
+        <div class="doc-step">
+          <div class="doc-step-num">3</div>
+          <div class="doc-step-content">
+            <strong>First-launch setup</strong>
+            <span>On first launch, In the Beginning AI sets up its internal components — the embedding server, Bible translation databases, and local AI indexes. This takes about one minute and only happens once.</span>
+          </div>
+        </div>
+        <div class="doc-step">
+          <div class="doc-step-num">4</div>
+          <div class="doc-step-content">
+            <strong>Interactive tutorial</strong>
+            <span>An interactive guided tour walks you through every panel automatically on first launch. You can restart it at any time from <span class="doc-code">Settings → Help → Restart Tutorial</span>.</span>
+          </div>
+        </div>
+      </div>
+
+      <h3 class="doc-h3" id="after-install">After Installation</h3>
+      <p class="doc-p">Once installed, launch ITB and you will land on the main detection screen. The waveform visualiser will be at rest until you select an audio source. Go to <span class="doc-code">Settings &rarr; Mic Input</span> to choose your microphone or soundboard feed, then press the brown <strong>START</strong> button to begin detection.</p>
+    </section>
+
+    <!-- ══════════════════════════════════
+         4. DASHBOARD PANELS
+    ═══════════════════════════════════ -->
+    <section class="doc-section" id="dashboard">
+      <h2 class="doc-h2">Your Dashboard — Six Panels</h2>
+      <p class="doc-p">When In the Beginning AI opens, you will see the main dashboard divided into six panels. Each serves a specific role in the verse display workflow.</p>
+
+      <div class="doc-table-wrap">
+        <table class="doc-table">
+          <thead><tr><th>Panel</th><th>Location</th><th>Purpose</th></tr></thead>
+          <tbody>
+            <tr><td>Live Transcript</td><td>Top left</td><td>Shows the real-time transcription of the sermon as it is being spoken. Detected Bible verses are highlighted in amber directly in the text.</td></tr>
+            <tr><td>Program Preview</td><td>Top centre-left</td><td>Shows exactly how the verse will look — with your selected theme applied — before it goes live to your audience.</td></tr>
+            <tr><td>Live Output</td><td>Top centre-right</td><td>Shows what is currently being broadcast to your NDI, HDMI, or display output. This is what your congregation sees.</td></tr>
+            <tr><td>Scripture feed</td><td>Top right</td><td>A playlist of verses waiting to be displayed. Add verses here from the AI Detections panel or Bible Search for use later in the service.</td></tr>
+            <tr><td>Scripture Search</td><td>Bottom left</td><td>Look up verses manually by reference (Book mode) or by topic, quote, or paraphrase (Context mode). Press Tab to switch between modes.</td></tr>
+            <tr><td>AI Detections</td><td>Bottom right</td><td>Verses automatically detected by the AI from the live sermon audio. Each detection shows the verse, paraphrase and queue label, and detection method.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 class="doc-h3" id="get-started">To Get Started in a Session</h3>
+      <div class="doc-steps">
+        <div class="doc-step"><div class="doc-step-num">1</div><div class="doc-step-content"><strong>Click Start Transcript</strong><span>in the Live Transcript panel to begin audio capture and transcription.</span></div></div>
+        <div class="doc-step"><div class="doc-step-num">2</div><div class="doc-step-content"><strong>Select your microphone</strong><span>when prompted, or configure it beforehand in <span class="doc-code">Settings → Microphone</span>.</span></div></div>
+        <div class="doc-step"><div class="doc-step-num">3</div><div class="doc-step-content"><strong>Start speaking or play a sermon</strong><span>detected and paraphrases verses will appear in the AI Detections panel in real time.</span></div></div>
+        <div class="doc-step"><div class="doc-step-num">4</div><div class="doc-step-content"><strong>Click any queue or paraphrase verse</strong><span>on the detected verse to section to live display.</span></div></div>
+        <div class="doc-step"><div class="doc-step-num">5</div><div class="doc-step-content"><strong>Press Go Live</strong><span>to push the preview to your broadcast output.</span></div></div>
+        <div class="doc-step"><div class="doc-step-num">6</div><div class="doc-step-content"><strong>Click on the projector icon</strong><span>to select your preferered mode of projection.</span></div></div>
+        <div class="doc-step"><div class="doc-step-num">7</div><div class="doc-step-content"><strong>Tap on the Display, Next, Clear and Prev button</strong><span>The Display button forecfully pushes scripture to the Live display, while the Next, Clear and Prev button moves scripture to the next verse, previous  verse and clear the display.</span></div></div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════
+         5. TRANSCRIPTION
+    ═══════════════════════════════════ -->
+    <section class="doc-section" id="transcription">
+      <div class="doc-section-tag">
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><rect x="1.5" y="1.5" width="10" height="10" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M4 4h5M4 6.5h5M4 9h3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+        Transcription
+      </div>
+      <h2 class="doc-h2">Transcription</h2>
+      <p class="doc-p">In the Beginning AI transcribes sermon audio in real time and uses that transcript to detect Bible verses. There are two transcription modes — each suited to a different situation.</p>
+
+      <div class="doc-feature-grid">
+        <div class="doc-feature-card">
+          <h4>&#127760; Online Mode — Deepgram Cloud</h4>
+          <p>The default mode. Audio is streamed to Deepgram's cloud service using their Nova-3 model — the most accurate speech-to-text engine available for conversational speech. This provides the lowest latency and highest word accuracy. Requires a stable internet connection throughout the session. Available on all plans and on all devices.</p>
+        </div>
+        <div class="doc-feature-card">
+          <h4>&#128187; Offline Mode — Whisper tiny</h4>
+          <p>For services where internet access is unreliable or unavailable. Uses Whisper tiny model running entirely on your device. Accuracy is slightly lower than Deepgram on fast speech, but excellent for most sermon delivery styles.</p>
+        </div>
+      </div>
+
+      <h3 class="doc-h3" id="switch-mode">Switching Between Online and Offline</h3>
+      <p class="doc-p">Go to <span class="doc-code">Settings → Transcription Mode</span> to toggle between modes. The switch is only available when transcription is not currently active — stop any running session first, then switch. Your microphone selection and gain settings carry over automatically.</p>
+
+      <h3 class="doc-h3" id="deepgram-key">Getting your own Deepgram API key</h3>
+      <p class="doc-p">Since In the Beginning AI is completely free for all churches, transcriptions are limited to a maximum duration of 10 minutes:</p>
+      <ul class="doc-list">
+        <li>When you reach the 10-minute limit, transcription will stop automatically. You can restart it immediately in offline mode or by entering your own Deepgram API key to continue using online mode.</li>
+        <li>To get an API key, visit deepgram.com and sign up for a free account. No credit card is required. Go to the Dashboard and you will find 'Create API Key', go ahead and create one. You might be given free credits of $200 to start with.</li>
+        <li>Once you have your API key, enter it in <span class="doc-code">Settings → Transcription Mode → Deepgram API Key</span>.</li>
+        <li>With your own API key, you can transcribe sermons of any length without interruption. The free tier on Deepgram includes 1,000 minutes of transcription per month — more than enough for most churches' weekly services.</li>
+
+      
+      <h3 class="doc-h3" id="free-plan">Free Plan Transcription</h3>
+      <p class="doc-p">In the Beginning AI is <strong>completely free for all churches</strong>. Once you notice transcription has stopped working, you can switch to the offline mode or visit deepgram.com to get an API key that you would use to enable online transcription. No subscriptions required, just top up what you need. Manual Bible search through the desktop app, the remote control on the phone and verse display continue to work even when transcription is not available.</p>
+
+      <div class="doc-callout">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M9 2l1.8 5.4H17l-5 3.6 1.9 5.8L9 13.2l-4.9 3.6 1.9-5.8-5-3.6h6.2z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>
+        <p><strong>Best practice:</strong> Connect a USB audio interface (such as a Focusrite Scarlett or Behringer UMC) directly to your mixing board and use that as your input device. The improvement in transcription accuracy compared to a laptop microphone is dramatic — cleaner audio means far more accurate verse detection.</p>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════
+         6. START & STOP
+    ═══════════════════════════════════ -->
+    <section class="doc-section" id="starting">
+      <h2 class="doc-h2">Starting and Stopping Transcription</h2>
+      <p class="doc-p">Click <strong>Start</strong> in the Live Transcript panel to begin. The button changes to <strong>Stop</strong> while active. Upon startup, the auido visualizer would remain calm until it perceives a speech or an audio signal.</p>
+
+      <p class="doc-p">While transcription is running:</p>
+      <ul class="doc-list">
+        <li>The audio level meter in the panel header shows real-time input levels — green to yellow to red.</li>
+        <li>An animated waveform appears while In the Beginning AI is listening for speech.</li>
+        <li>Transcribed text appears in real time with a short history of transcripts.</li>
+        <li>Verbatim Bible verses are highlighted in brown and appear as queue while semantic verses appear in yellow and are tagged as paraphrase.</li>
+      </ul>
+
+      <p class="doc-p">When you stop transcription, the session is automatically saved to your local transcript history (provided it contains text).</p>
+
+      <h3 class="doc-h3" id="idle-timeout">Idle Timeout</h3>
+      <p class="doc-p">If Deepgram detects no voice input for 2–3 minutes, transcription pauses automatically to conserve resources. This helps keep operating costs low and ensures the system does not run needlessly between services.</p>
+
+      <div class="doc-note">
+        <strong>Tip:</strong> Start transcribing a few minutes before the sermon begins. This gives the system time to warm up and captures any opening scripture references from the prayer or announcements.
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════
+         7. MICROPHONE SETUP
+    ═══════════════════════════════════ -->
+    <section class="doc-section" id="microphone">
+      <h2 class="doc-h2">Microphone Setup</h2>
+      <p class="doc-p">Select your audio input device in <span class="doc-code">Settings → Microphone</span>. In the Beginning AI lists all available input devices and remembers your selection between sessions. Each device shows whether it is the current system default.</p>
+      <p class="doc-p">Use the <strong>Input Gain</strong> slider (0–100%) to adjust sensitivity if the audio level is too low or too high. Changes take effect immediately, even while transcription is active. Aim to keep the level meter in the green-to-yellow range during normal speech.</p>
+
+      <h3 class="doc-h3" id="conn-health">Connection Health</h3>
+      <p class="doc-p">When using online transcription, In the Beginning AI continuously monitors the connection to Deepgram. If audio is being captured but no transcription comes back for 15 or more seconds, a warning banner appears: <em>"Connection unstable — transcription may be delayed."</em> The app will attempt to reconnect automatically. If the connection drops entirely, manual Bible search and verse display continue to work.</p>
+
+      <div class="doc-callout">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M9 2l1.8 5.4H17l-5 3.6 1.9 5.8L9 13.2l-4.9 3.6 1.9-5.8-5-3.6h6.2z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>
+        <p><strong>Best practice:</strong> Use a direct audio feed from your church mixing board rather than a laptop or room microphone. A USB audio interface connected to the mixing board gives you the cleanest possible audio — this single change makes the biggest difference to transcription accuracy of any setting in the app.</p>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════
+         8. NETWORK REQUIREMENTS
+    ═══════════════════════════════════ -->
+    <section class="doc-section" id="network">
+      <h2 class="doc-h2">Internet and Network Requirements</h2>
+      <p class="doc-p">Online transcription streams audio to Deepgram's servers and requires a stable internet connection throughout the session. Here is what to know:</p>
+      <ul class="doc-list">
+        <li><strong>Minimum speed:</strong> A basic broadband connection (1 Mbps upload) is sufficient. Audio streaming uses very little bandwidth.</li>
+        <li><strong>Latency matters more than speed:</strong> A low-latency connection produces faster transcription. Wired ethernet is always better than Wi-Fi.</li>
+        <li><strong>Wi-Fi considerations:</strong> Wi-Fi works fine in most cases but can cause occasional delays in large venues where hundreds of phones are on the same network. Position the church computer close to the router or switch if possible.</li>
+        <li><strong>Connection drops:</strong> If the connection drops briefly, the app reconnects automatically. If no transcription returns for 15+ seconds, a warning appears.</li>
+        <li><strong>Offline fallback:</strong> If internet fails completely, manual Bible search, remote control and verse display continue to work. Users can choose to switch to Whisper tiny model that runs entirely on their device.</li>
+      </ul>
+
+      <div class="doc-note">
+        <strong>Best practice for unreliable venues:</strong> Keep a mobile hotspot as a backup internet source. Pre-load key sermon verses in the Queue before the service starts — that way, verse display works regardless of connectivity.
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════
+         9. BIBLE VERSE DETECTION
+    ═══════════════════════════════════ -->
+    <section class="doc-section" id="detection">
+      <div class="doc-section-tag">
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="5.5" cy="5.5" r="4" stroke="currentColor" stroke-width="1.3"/><path d="M8.5 8.5l3 3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+        Bible Detection
+      </div>
+      <h2 class="doc-h2">Bible Verse Detection</h2>
+      <p class="doc-p">In the Beginning AI detects Bible verses two ways simultaneously. The results from both methods are combined and ranked to give you the most accurate detection possible.</p>
+
+      <h3 class="doc-h3" id="direct-ref">Direct Reference Detection</h3>
+      <p class="doc-p">When the speaker cites a scripture reference explicitly — such as <em>"Turn to John chapter three verse sixteen"</em> or <em>"Proverbs 4:18"</em> — the app picks it up immediately using pattern matching. This method handles:</p>
+      <ul class="doc-list">
+        <li><strong>Standard references:</strong> "1 John 1:1", "Hebrews 4:12"</li>
+        <li><strong>Spoken references:</strong> "Esther chapter 3 verse 17"</li>
+        <li><strong>Abbreviated books:</strong> "Zec 9:10", "1 Cor 13:4"</li>
+        <li><strong>Context-aware references:</strong> If the pastor says "verse 5" after already calling out Psalms chapter 50, the app resolves it as Psalms 50:5 automatically.</li>
+      </ul>
+      <p class="doc-p">Direct reference detection is near-instant — under 5ms — and produces confidence scores of 90–100%.</p>
+
+      <h3 class="doc-h3" id="semantic-search">Semantic Search — AI Detection</h3>
+      <p class="doc-p">When the speaker quotes or paraphrases scripture without giving a reference — for example, <em>"For God so loved the world that He gave His only begotten Son"</em> — In the Beginning AI uses its AI engine to find the verse. The spoken text is converted into a numerical representation of its meaning (an embedding) and compared against a pre-built index of 31,000+ Bible verses. Results are re-ranked using word overlap, distinctive biblical language, and word order to improve accuracy.</p>
+      <p class="doc-p">Semantic search takes 200–400ms for new queries. Common queries are cached for near-instant results on repeat detection.</p>
+
+      <h3 class="doc-h3" id="results-appear">How Results Appear</h3>
+      <p class="doc-p">All detected verses appear in the <strong>AI Detections</strong> panel at the bottom right of the dashboard. Each detection shows:</p>
+      <ul class="doc-list">
+        <li>The verse text and reference</li>
+        <li>A source badge — Direct Reference, Semantic Search, or Both</li>
+        <li>Verbatim scriptures appears on the scripture feed for easy reference</li>
+        <li>Translations can be easily changed from where scriptures are displayed in full.</li>
+      </ul>
+      <p class="doc-p">New detections appear at the top. If you scroll away, a badge shows how many new detections have arrived and a button lets you jump back. From the panel you can click the <strong>play icon</strong> to display the verse immediately, or click the <strong>+ icon</strong> to add it to the queue.</p>
+
+      <h3 class="doc-h3" id="confidence">Confidence Scores</h3>
+      <div class="doc-table-wrap">
+        <table class="doc-table">
+          <thead><tr><th>Method</th><th>Score Range</th><th>What It Means</th></tr></thead>
+          <tbody>
+            <tr><td>Direct Reference</td><td>90–100%</td><td>Near-certain match. The speaker said a scripture reference explicitly.</td></tr>
+            <tr><td>Semantic — Strong</td><td>80–89%</td><td>High confidence paraphrase or quote. In Auto mode, these go to screen automatically.</td></tr>
+            <tr><td>Semantic — Medium</td><td>35–79%</td><td>Probable match. Review before sending to screen in important services.</td></tr>
+            <tr><td>Low confidence</td><td>Below 35%</td><td>Filtered out by default and not shown in the panel.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="doc-p">The confidence threshold (default 30%) can be adjusted in the Broadcast panel. Raise it if you are seeing too many false detections; lower it if the app is missing verses that were clearly quoted.</p>
+    </section>
+
+    <!-- ══════════════════════════════════
+         10. BIBLE SEARCH
+    ═══════════════════════════════════ -->
+    <section class="doc-section" id="search">
+      <h2 class="doc-h2">Bible Search</h2>
+      <p class="doc-p">The Scripture Search panel lets you look up verses manually at any time. There are two modes — press <span class="doc-code">Tab</span> to toggle between them.</p>
+
+      <div class="doc-feature-grid">
+        <div class="doc-feature-card">
+          <h4>&#128213; Book Mode</h4>
+          <p>For when you know the reference. Type a book name, chapter, and verse to navigate directly. In the Beginning AI autocompletes book names as you type. You can also use the number keys 0–9 while viewing a chapter to jump to a specific verse instantly. You can also visit the navigator icon and search scripture manually.</p>
+        </div>
+        <div class="doc-feature-card">
+          <h4>&#129504; Context Mode</h4>
+          <p>For when you do not know the reference. Type a phrase, theme, question, or partial quote and the AI finds the matching verse. It understands meaning — searching "God's love for humanity" will find John 3:16 even though those exact words do not appear in the verse.</p>
+        </div>
+      </div>
+
+      <p class="doc-p">Press <span class="doc-code">Enter</span> to display the selected verse in Preview. Press Enter twice quickly to display it and enable Go Live in one action. Click the <strong>+ icon</strong> to add it to the queue instead.</p>
+      <p class="doc-p">In the Beginning AI supports six Bible translations: <strong>KJV, NKJV, NIV, NLT, ESV, and NASB</strong>. Change your translation in <span class="doc-code">Settings → Translation</span> — the change takes effect immediately.</p>
+
+      <h3 class="doc-h3" id="remote">Remote Control</h3>
+      <p class="doc-p">Have the full In the Beginning AI experience on your phone. The remote control lets you navigate verses, start and stop transcription, and search scripture manually — all from your mobile browser on the same Wi-Fi network. Any action you take on the remote is reflected on the desktop immediately, giving you complete control from anywhere in the room without touching the church computer.</p>
+      <p class="doc-section"id="starting">Follow these steps to get started:</p>
+      <div class="doc-steps">
+        <div class="doc-step"><div class="doc-step-num">1</div><div class="doc-step-content"><strong>Open the Remote panel</strong><span>on the desktop app and find the IP address listed under "Remote Control".</span></div></div>
+        <div class="doc-step"><div class="doc-step-num">2</div><div class="doc-step-content"><strong>Scan the QR Code</strong><span> or copy the URL address to your phone's browser.</span></div></div>
+        <div class="doc-step"><div class="doc-step-num">3</div><div class="doc-step-content"><strong>You will be directed to your phone's browser</strong><span>Make sure your phone is connected to the same Wi-Fi network as the church computer. Type the IP address exactly as shown, including the port number (e.g., 192.168.1.100:8080).</span></div></div>
+        <div class="doc-step"><div class="doc-step-num">4</div><div class="doc-step-content"><strong>Use the remote control</strong><span>The remote control interface gives you buttons to navigate verses, start and stop transcription, and search scripture manually. Any action you take on the remote is reflected on the desktop immediately.</span></div></div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════
+         11. DISPLAY MODES
+    ═══════════════════════════════════ -->
+    <section class="doc-section" id="display">
+      <div class="doc-section-tag">
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><rect x="1" y="1.5" width="11" height="7.5" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M4.5 9v2M8.5 9v2M3 11h7" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+        Display &amp; Output
+      </div>
+      <h2 class="doc-h2">Display Modes</h2>
+      <p class="doc-p">In the Beginning AI has two display modes. Set your preference in <span class="doc-code">Settings → Display Mode</span>.</p>
+
+      <div class="doc-feature-grid">
+        <div class="doc-feature-card">
+          <h4>&#9889; Auto Mode</h4>
+          <p>In the Beginning AI displays the highest-confidence detected verse automatically after a 2.5-second cooldown between verse changes. Best for informal services, Bible studies, or any setting where you want completely hands-off operation.</p>
+        </div>
+        <div class="doc-feature-card">
+          <h4>&#9654; Manual Mode</h4>
+          <p>Nothing goes to the broadcast output until you explicitly send it. You decide which verse appears and when. Best for Sunday services where you need complete control over what the congregation sees at all times.</p>
+        </div>
+      </div>
+
+      <h3 class="doc-h3" id="preview-golive">Preview and Go Live</h3>
+      <p class="doc-p">The <strong>Program Preview</strong> panel is your staging area — verses appear here first so you can see exactly how they will look with your theme applied before your congregation sees them. The <strong>Live Output</strong> panel shows what is actually broadcasting right now.</p>
+      <p class="doc-p">The <strong>Go Live</strong> toggle (or press <span class="doc-code">L</span>) connects Preview to the broadcast output. When Go Live is ON, any verse you send to Preview goes to your audience immediately. When Go Live is OFF, you can stage and review verses in Preview without changing what is on screen.</p>
+    </section>
+
+    <!-- ══════════════════════════════════
+         12. BROADCAST OUTPUT
+    ═══════════════════════════════════ -->
+    <section class="doc-section" id="broadcast">
+      <h2 class="doc-h2">Broadcast Output</h2>
+      <p class="doc-p">In the Beginning AI can send your verse display to external broadcast software and displays using several output methods.</p>
+
+      <h3 class="doc-h3" id="ndi-output">NDI (Network Device Interface)</h3>
+      <p class="doc-p">NDI lets you send the verse display as a video source to any NDI-compatible software on your network — OBS, vMix, Resolume, ProPresenter, and more. In the Beginning AI appears as a source named <em>"In the Beginning AI main"</em>. Simply add it as a source in your broadcast software. Supports alpha transparency for overlay use. Available in 720p, 1080p, and 4K at 24, 30, or 60fps.</p>
+
+      <h3 class="doc-h3" id="hdmi-output">HDMI Output</h3>
+      <p class="doc-p">Send the verse display directly to a projector or external monitor via HDMI. Connect your external display, open the Broadcast panel, select your target monitor, and enable output. In the Beginning AI opens a fullscreen borderless window on the selected display only — it will never cover your own screen.</p>
+
+      <h3 class="doc-h3" id="osc-api">Remote Control — OSC &amp; HTTP API</h3>
+      <p class="doc-p">The software can be controlled from other devices on the same network using OSC (port 8000) or a local HTTP API (port 8080). This is useful for connecting a physical control surface, a mixing console, or a second computer to trigger verse changes.</p>
+
+      <div class="doc-table-wrap">
+        <table class="doc-table">
+          <thead><tr><th>OSC Address</th><th>Action</th></tr></thead>
+          <tbody>
+            <tr><td>/pew/next</td><td>Next verse in queue</td></tr>
+            <tr><td>/pew/prev</td><td>Previous verse</td></tr>
+            <tr><td>/pew/show</td><td>Show current verse</td></tr>
+            <tr><td>/pew/hide</td><td>Hide current verse</td></tr>
+            <tr><td>/pew/theme</td><td>Set theme by name (string parameter)</td></tr>
+            <tr><td>/pew/on_air</td><td>Toggle on-air status (bool parameter)</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="doc-callout">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="7.5" stroke="currentColor" stroke-width="1.4"/><path d="M9 6v4M9 12v.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+        <p>The OSC and HTTP API addresses are shown in the Broadcast panel for easy reference during setup. The mobile remote app connects over the same local Wi-Fi network and does <strong>not</strong> interrupt transcription — both run independently at the same time.</p>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════
+         13. THEMES
+    ═══════════════════════════════════ -->
+    <section class="doc-section" id="themes">
+      <h2 class="doc-h2">Themes</h2>
+      <p class="doc-p">Themes control how your verses look on screen — fonts, colours, backgrounds, positioning, and effects. In the Beginning AI includes built-in themes ready to use (<em>Selah</em> and <em>Eden</em>) and a full visual Theme Designer for creating your own.</p>
+      <p class="doc-p">Open the Theme Designer from the paintbrush icon in the top bar. The designer has three panels: the Theme Library (browse and manage all themes), the Design Canvas (a live 1:1 preview at 1920×1080), and the Properties Panel (Text, Background, and Layout tabs for full customisation).</p>
+      <p class="doc-p">You can export any theme as a JSON file and share it between devices, making it easy to keep a consistent church brand across multiple In the Beginning AI installations.</p>
+    </section>
+
+    <!-- ══════════════════════════════════
+         14. DEVICE COMPATIBILITY
+    ═══════════════════════════════════ -->
+    <section class="doc-section" id="device-compat">
+      <div class="doc-section-tag">
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><rect x="1" y="2.5" width="8.5" height="6" rx="1.5" stroke="currentColor" stroke-width="1.3"/><rect x="9.5" y="5" width="3" height="4.5" rx="1" stroke="currentColor" stroke-width="1.2"/></svg>
+        Device Compatibility
+      </div>
+      <h2 class="doc-h2">Device Compatibility &amp; System Requirements</h2>
+      <p class="doc-p">In the Beginning AI is designed to run on the dedicated church computer or laptop that your media team already uses for AV and projection duties.</p>
+
+      <div class="doc-feature-grid">
+        <div class="doc-feature-card">
+          <h4>&#127968; Windows</h4>
+          <p><strong>Windows 10 or 11 (64-bit)</strong> required. A 64-bit x64 processor is required — 32-bit (x86) and ARM Windows are not supported. The app runs as a standard desktop application.</p>
+        </div>
+        <div class="doc-feature-card">
+          <h4>&#127822; macOS</h4>
+          <p><strong>macOS 12 Monterey or later</strong> required. Both Intel Macs and Apple Silicon (M1+) are supported for all features. Offline transcription (MLX-Whisper) requires Apple Silicon (M1 or newer).</p>
+        </div>
+      </div>
+
+      <h3 class="doc-h3" id="gen-req">General Requirements</h3>
+      <ul class="doc-list">
+        <li><strong>RAM:</strong> 4 GB minimum, 8 GB recommended for smooth performance during live services.</li>
+        <li><strong>Storage:</strong> 500 MB free disk space for the app and Bible databases.</li>
+        <li><strong>Internet:</strong> Required for online transcription mode. Not required for offline mode, manual Bible search, or verse display.</li>
+        <li><strong>Audio:</strong> Any microphone input works. A USB audio interface connected to the mixing board is strongly recommended for the best transcription accuracy.</li>
+        <li><strong>NDI output:</strong> Both devices must be on the same local network. Broadcast software must have NDI support installed.</li>
+      </ul>
+
+      <div class="doc-warning">
+        <strong>Not supported:</strong> 32-bit Windows, Windows on ARM, iOS, Android, Chromebook, or any mobile operating system. The mobile remote app (accessed via a browser on your phone) is a controller only — the main software must run on a Windows computer.
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════
+         15. AGE & USER POLICY
+    ═══════════════════════════════════ -->
+    <section class="doc-section" id="age-policy">
+      <div class="doc-section-tag">
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="6.5" cy="4.5" r="2.5" stroke="currentColor" stroke-width="1.3"/><path d="M1.5 11c0-2.8 2.2-4 5-4s5 1.2 5 4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+        Age &amp; User Policy
+      </div>
+      <h2 class="doc-h2">Age &amp; User Policy</h2>
+
+      <div class="policy-block">
+        <h4>Who Can Use In the Beginning AI</h4>
+        <p>In the Beginning AI is intended for ministry professionals, church media operators, pastors, AV technicians, and projection teams. The software is designed for use in a church or ministry context.</p>
+        <br/>
+        <ul class="doc-list">
+          <li><strong>18 years or older:</strong> Any person aged 18 or over may create an account and use the full software independently.</li>
+          <li><strong>Ages 13–17:</strong> Individuals in this age range may use the software under the direct supervision of a registered adult user (parent, guardian, or church staff member over 18).</li>
+          <li><strong>Under 13:</strong> Use of In the Beginning AI by anyone under the age of 13 is not permitted under any circumstances.</li>
+        </ul>
+        <br/>
+        <p>By creating an account, you confirm that you meet the age requirement applicable in your region. In the Beginning AI reserves the right to suspend or remove any account found to be in violation of this policy.</p>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════
+         16. PRIVACY & DATA
+    ═══════════════════════════════════ -->
+    <section class="doc-section" id="privacy">
+      <div class="doc-section-tag">
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 1L1.5 3.5v3.5c0 3 2 5 5 5.5 3-.5 5-2.5 5-5.5V3.5L6.5 1z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M4 7l1.5 1.5L9 5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+        Privacy &amp; Data
+      </div>
+      <h2 class="doc-h2">Privacy Policy</h2>
+
+      <div class="policy-block">
+        <h4>Your Sermon Data Stays on Your Device</h4>
+        <p>Sermon transcripts are stored <strong>locally on your device only</strong>. They are never uploaded to In the Beginning AI servers. You are in full control of your transcript history and can delete individual sessions or all data at any time from within the app.</p>
+      </div>
+
+      <div class="policy-block">
+        <h4>Transcription Processing</h4>
+        <p>When using online transcription mode, audio is streamed to Deepgram for processing. Deepgram processes audio in real time for transcription purposes only and does not retain it after processing. We use Beijing Academy of AI (BAAI) to convert Bible verse text (and the preacher's spoken words) into numerical vectors — lists of numbers that capture meaning. Verses with similar meanings end up with similar numbers, which is how FAISS can find "for God so loved the world" even when the preacher says "God's love for humanity" — no exact words match, but the meaning is close enough to hit.
+In short: it's what makes paraphrase detection work.</p>
+      </div>
+
+      <div class="policy-block">
+        <h4>Account Registration Data</h4>
+        <p>When you create an account, your church or organisation name, country, and email address are stored securely. This information is never sold to third parties and is used only for account management and service communications. You can request deletion of your account and all associated data at any time by contacting support.</p>
+      </div>
+
+      <div class="policy-block">
+        <h4>Usage Analytics</h4>
+        <p>In the Beginning AI collects anonymous usage data (feature usage counts, crash reports, app version) to help improve the product. This data contains no sermon content, no personal information, and no audio. You can disable analytics at any time in <span class="doc-code">Settings → Help → Usage Analytics</span>.</p>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════
+         17. TERMS & LICENCE
+    ═══════════════════════════════════ -->
+    <section class="doc-section" id="terms">
+      <div class="doc-section-tag">
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><rect x="2" y="1" width="9" height="11" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M4.5 4.5h4M4.5 6.5h4M4.5 8.5h2.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+        Terms &amp; Licence
+      </div>
+      <h2 class="doc-h2">Terms &amp; Conditions</h2>
+
+      <div class="policy-block">
+        <h4>End User Licence Agreement (EULA)</h4>
+        <p>In the Beginning AI is provided free for church and personal ministry use. By downloading and installing the software, you agree to this licence. You may install and use the software on devices you own or control for the purposes of sermon presentation and scripture display in a church context.</p>
+        <br/>
+        <p>You may <strong>not</strong>:</p>
+        <ul class="doc-list" style="margin-top:8px">
+          <li>Redistribute, resell, or sublicence the software to others for commercial gain.</li>
+          <li>Reverse-engineer, decompile, or modify the software or its AI models.</li>
+          <li>Use the software for any purpose that violates applicable law or these terms.</li>
+        </ul>
+        <br/>
+        <p>Licence keys, where applicable, are non-transferable and tied to the registered device. In the Beginning AI reserves the right to suspend access for accounts that violate these terms.</p>
+      </div>
+
+      <div class="policy-block">
+        <h4>Updates to These Terms</h4>
+        <p>In the Beginning AI reserves the right to update these Terms and Conditions at any time. Registered users will be notified of significant changes by email. Continued use of the software after the effective date of any update constitutes acceptance of the revised terms.</p>
+      </div>
+
+      <div class="policy-block">
+        <h4>Limitation of Liability</h4>
+        <p>In the Beginning AI is provided on an as-is basis. We do not guarantee uninterrupted service or that the software will be error-free. To the maximum extent permitted by law, In the Beginning AI and its developers are not liable for any indirect, incidental, or consequential damages arising from the use of the software.</p>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════
+         18. TROUBLESHOOTING
+    ═══════════════════════════════════ -->
+    <section class="doc-section" id="troubleshoot">
+      <div class="doc-section-tag">
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 2v4.5l2.5 2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="6.5" cy="6.5" r="5" stroke="currentColor" stroke-width="1.3"/></svg>
+        Troubleshooting
+      </div>
+      <h2 class="doc-h2">Troubleshooting</h2>
+
+      <h3 class="doc-h3" id="ts-transcription">Transcription Is Not Working</h3>
+      <ul class="doc-list">
+        <li>Check that your microphone is selected in <span class="doc-code">Settings → Microphone</span>.</li>
+        <li>Make sure the audio level meter shows activity when you speak.</li>
+        <li>If using online mode, verify your internet connection is active and stable.</li>
+        <li>Try restarting transcription — click Stop Transcribing, wait a moment, then Start Transcribing again.</li>
+        <li>Check that no other application has exclusive access to the microphone.</li>
+        <li>On Windows, ensure the app has permission to access the microphone in system privacy settings.</li>
+        <li>Service requires active Deepgram balance. Transcription will halt if credits reach zero.</li>
+      </ul>
+
+      <h3 class="doc-h3" id="ts-detection">Verses Are Not Being Detected</h3>
+      <ul class="doc-list">
+        <li>Ensure transcription is active and the Live Transcript panel is showing text.</li>
+        <li>Speak clearly and at a normal pace. Mumbled speech reduces accuracy.</li>
+        <li>Direct references like "John 3:16" are detected faster and more reliably than paraphrased scripture.</li>
+        <li>Check that the embedding server is running — the app shows a status indicator on the dashboard during startup.</li>
+        <li>Improve your audio source — a direct feed from the mixing board makes a significant difference.</li>
+        <li>For the remote control app, ensure it's connected to the same network as the main software.</li>
+      </ul>
+
+      <h3 class="doc-h3" id="ts-ndi">NDI Output Not Appearing in OBS / vMix</h3>
+      <ul class="doc-list">
+        <li>Make sure NDI output is enabled in the Broadcast panel.</li>
+        <li>Both the church computer and broadcast computer must be on the same local network.</li>
+        <li>Ensure your broadcast software has the NDI plugin installed and enabled.</li>
+        <li>Look for "In the Beginning AI main" in your software's source list.</li>
+        <li>Temporarily disable your firewall to test — then re-enable and add an exception for the app if it resolves the issue.</li>
+      </ul>
+
+      <h3 class="doc-h3" id="ts-slow">App Is Slow or Unresponsive</h3>
+      <ul class="doc-list">
+        <li>Close other memory-intensive applications running at the same time.</li>
+        <li>Check your app version in <span class="doc-code">Settings → Help → App Version</span> — update if a newer version is available.</li>
+        <li>In the Broadcast panel, reduce broadcast FPS from 60 to 24 or 30 on older hardware.</li>
+        <li>Restart In the Beginning AI and the computer if the issue persists.</li>
+      </ul>
+
+      <h3 class="doc-h3" id="ts-display">Verse Display Looks Different from Preview</h3>
+      <p class="doc-p">The preview panel on your laptop uses your laptop's display profile. The actual NDI or HDMI output may render colours and fonts slightly differently due to the projector's colour calibration, resolution scaling, or the broadcast software's rendering settings. Always test your theme on the actual output display before a service begins.</p>
+
+      <div class="doc-callout">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="7.5" stroke="currentColor" stroke-width="1.4"/><path d="M9 6v4M9 12v.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+        <p>Still stuck? Use <strong>Settings → Help → Contact Support</strong> to send a report. The app automatically includes your version number, platform, and settings to help the support team resolve your issue faster.</p>
+      </div>
+    </section>
+
+  </main><!-- end docs-main -->
+</div><!-- end docs-layout -->
+
+<script>
+/* Sidebar toggle (mobile) */
+const hamburger = document.getElementById('hamburgerDocs');
+const sidebar   = document.getElementById('docsSidebar');
+const overlay   = document.getElementById('sidebarOverlay');
+
+hamburger.addEventListener('click', () => {
+  sidebar.classList.toggle('mobile-open');
+  overlay.classList.toggle('open');
+});
+overlay.addEventListener('click', () => {
+  sidebar.classList.remove('mobile-open');
+  overlay.classList.remove('open');
+});
+
+/* Active sidebar link on scroll */
+/* Collect all anchored elements — sections AND h3 subheadings */
+const allAnchors = document.querySelectorAll('[id]');
+const sideLinks  = document.querySelectorAll('.sidebar-link, .sidebar-sublink');
+
+function setActive() {
+  let current = '';
+  allAnchors.forEach(el => {
+    if (window.scrollY + 140 >= el.offsetTop) current = el.id;
+  });
+  sideLinks.forEach(link => {
+    link.classList.toggle('active', link.getAttribute('href') === '#' + current);
+  });
+}
+window.addEventListener('scroll', setActive, { passive: true });
+setActive();
+
+/* Smooth-scroll sidebar links, close mobile sidebar */
+sideLinks.forEach(link => {
+  link.addEventListener('click', (e) => {
+    const href = link.getAttribute('href');
+    const target = href ? document.querySelector(href) : null;
+    if (target) {
+      e.preventDefault();
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      sidebar.classList.remove('mobile-open');
+      overlay.classList.remove('open');
+    }
+  });
+});
+</script>
+</body>
+</html>
