@@ -740,13 +740,29 @@ async def _ensure_lan_proxy():
 @app.on_event("startup")
 async def startup():
     bible.load()
-    await asyncio.to_thread(bible.build_vector_index)
+    # FAISS index is NOT loaded at startup to stay within 512MB free-tier RAM.
+    # It loads lazily the first time transcription begins (see _ensure_vector_index).
     await _ensure_lan_proxy()
     dg  = f"✅ ({SERVER_DG_KEY[:8]}…)" if SERVER_DG_KEY else "⚠  no key"
-    ai  = "✅ FAISS + BGE" if VECTOR_READY else f"⚠  {VECTOR_STATUS}"
     wh  = "✅" if WHISPER_AVAILABLE else "❌"
-    print(f"🚀 Ready | Deepgram: {dg} | Whisper: {wh} | Vector search: {ai}")
+    print(f"🚀 Ready | Deepgram: {dg} | Whisper: {wh} | Vector search: lazy (loads on first use)")
     print(f"📖 Frontend: {FRONTEND_FILE or 'NOT FOUND'}")
+
+_vector_index_loaded = False
+_vector_index_lock   = asyncio.Lock()
+
+async def _ensure_vector_index():
+    """Load FAISS + embedding model once, on first transcription start."""
+    global _vector_index_loaded
+    if _vector_index_loaded:
+        return
+    async with _vector_index_lock:
+        if _vector_index_loaded:
+            return
+        print("⏳ Loading FAISS vector index on first use…")
+        await asyncio.to_thread(bible.build_vector_index)
+        _vector_index_loaded = True
+        print("✅ FAISS vector index ready")
 
 # ── Safe WebSocket send ───────────────────────────────────────
 # FIXES the "send after close" crash. Every ws.send_json() call in this file
@@ -2707,6 +2723,9 @@ async def live_ws(ws: WebSocket):
         "whisper": engine == "whisper", "key_source": key_source,
     })
     print(f"🔌 Engine: {engine} | key_source: {key_source}")
+
+    # Load FAISS lazily — only when transcription actually starts
+    await _ensure_vector_index()
 
     if engine == "deepgram":
         await _run_deepgram(ws, effective_dg_key, session_state, prefetched_audio)
