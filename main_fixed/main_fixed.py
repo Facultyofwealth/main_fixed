@@ -749,13 +749,15 @@ async def startup():
     print(f"📖 Frontend: {FRONTEND_FILE or 'NOT FOUND'}")
 
 _vector_index_loaded = False
-_vector_index_lock   = asyncio.Lock()
+_vector_index_lock = None   # created lazily inside the event loop (asyncio.Lock() at module level crashes Python 3.12+)
 
 async def _ensure_vector_index():
     """Load FAISS + embedding model once, on first transcription start."""
-    global _vector_index_loaded
+    global _vector_index_loaded, _vector_index_lock
     if _vector_index_loaded:
         return
+    if _vector_index_lock is None:
+        _vector_index_lock = asyncio.Lock()
     async with _vector_index_lock:
         if _vector_index_loaded:
             return
@@ -765,13 +767,15 @@ async def _ensure_vector_index():
         print("✅ FAISS vector index ready")
 
 _whisper_model_loaded = False
-_whisper_model_lock   = asyncio.Lock()
+_whisper_model_lock = None  # created lazily inside the event loop
 
 async def _ensure_whisper_model():
     """Load Whisper 'tiny' model once, on first Whisper session start."""
-    global whisper_model, _whisper_model_loaded
+    global whisper_model, _whisper_model_loaded, _whisper_model_lock
     if _whisper_model_loaded:
         return
+    if _whisper_model_lock is None:
+        _whisper_model_lock = asyncio.Lock()
     async with _whisper_model_lock:
         if _whisper_model_loaded:
             return
