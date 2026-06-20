@@ -72,18 +72,18 @@ OPENAI_AVAILABLE = False
 _openai_client = None
 
 # ── Whisper (offline fallback) ────────────────────────────────
+# Model is NOT loaded at startup — it loads lazily the first time a Whisper
+# session begins (see _ensure_whisper_model), keeping boot memory light.
 WHISPER_AVAILABLE = False
 whisper_model     = None
 
 try:
-    import whisper
-    whisper_model     = whisper.load_model("tiny")
-    WHISPER_AVAILABLE = True
-    print("✅ Whisper 'tiny' model loaded")
+    import whisper as _whisper_lib
+    WHISPER_AVAILABLE = True          # library is present; model loads on demand
+    print("✅ Whisper library found — model will load on first use")
 except ImportError:
+    _whisper_lib = None
     print("⚠  Whisper not installed — run: pip install openai-whisper")
-except Exception as e:
-    print(f"⚠  Whisper failed to load: {e}")
 
 # ── FastAPI app ───────────────────────────────────────────────
 app = FastAPI(title="In The Beginning API", version="6.0.0")
@@ -744,8 +744,8 @@ async def startup():
     # It loads lazily the first time transcription begins (see _ensure_vector_index).
     await _ensure_lan_proxy()
     dg  = f"✅ ({SERVER_DG_KEY[:8]}…)" if SERVER_DG_KEY else "⚠  no key"
-    wh  = "✅" if WHISPER_AVAILABLE else "❌"
-    print(f"🚀 Ready | Deepgram: {dg} | Whisper: {wh} | Vector search: lazy (loads on first use)")
+    wh  = "✅ lib ready" if WHISPER_AVAILABLE else "❌ not installed"
+    print(f"🚀 Ready | Deepgram: {dg} | Whisper: {wh} | Both Whisper & FAISS load lazily on first use")
     print(f"📖 Frontend: {FRONTEND_FILE or 'NOT FOUND'}")
 
 _vector_index_loaded = False
@@ -763,6 +763,25 @@ async def _ensure_vector_index():
         await asyncio.to_thread(bible.build_vector_index)
         _vector_index_loaded = True
         print("✅ FAISS vector index ready")
+
+_whisper_model_loaded = False
+_whisper_model_lock   = asyncio.Lock()
+
+async def _ensure_whisper_model():
+    """Load Whisper 'tiny' model once, on first Whisper session start."""
+    global whisper_model, _whisper_model_loaded
+    if _whisper_model_loaded:
+        return
+    async with _whisper_model_lock:
+        if _whisper_model_loaded:
+            return
+        print("⏳ Loading Whisper 'tiny' model on first use…")
+        try:
+            whisper_model = await asyncio.to_thread(_whisper_lib.load_model, "tiny")
+            _whisper_model_loaded = True
+            print("✅ Whisper 'tiny' model ready")
+        except Exception as e:
+            print(f"⚠  Whisper failed to load: {e}")
 
 # ── Safe WebSocket send ───────────────────────────────────────
 # FIXES the "send after close" crash. Every ws.send_json() call in this file
@@ -3093,6 +3112,12 @@ async def _run_deepgram(
 
 # ── Whisper session ───────────────────────────────────────────
 async def _run_whisper(ws: WebSocket, session: SessionState, prefetched_audio: Optional[List[bytes]] = None):
+    # Load the Whisper model lazily — only on first Whisper session.
+    # This keeps boot memory light; the model (~150MB) stays resident after first load.
+    if WHISPER_AVAILABLE and whisper_model is None:
+        await safe_send(ws, {"type": "status", "message": "⏳ Loading Whisper model (first use)…"})
+        await _ensure_whisper_model()
+
     # Guard: check socket is still alive before sending anything
     if not await safe_send(ws, {"type": "whisper_ready", "message": "🎙️ Whisper ready — speak now (Offline Mode)"}):
         print("⚠  Whisper: socket already closed, aborting")
