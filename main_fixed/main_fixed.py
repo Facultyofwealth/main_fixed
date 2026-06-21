@@ -1134,6 +1134,14 @@ def serve_website():
 @app.get("/download-package")
 def download_package():
     base = os.path.dirname(os.path.abspath(__file__))
+    exe_path = os.path.join(base, "start_in_the_beginning.exe")
+    if os.path.exists(exe_path):
+        return FileResponse(
+            exe_path,
+            media_type="application/octet-stream",
+            filename="In The Beginning AI.exe"
+        )
+    # Fallback to zip if exe not found
     files = [
         ("main_fixed.py", os.path.join(base, "main_fixed.py")),
         ("In the Beginning.html", os.path.join(base, "In the Beginning.html")),

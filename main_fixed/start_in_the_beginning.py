@@ -1,9 +1,11 @@
+import multiprocessing
 import socket
 import threading
 import time
 import webbrowser
 
 import uvicorn
+from main_fixed import app
 
 
 HOST = "0.0.0.0"
@@ -53,5 +55,6 @@ if __name__ == "__main__":
     print("Use the localhost desktop URL for transcription, and the phone URL/QR for remote.")
     print("")
 
+    multiprocessing.freeze_support()
     threading.Thread(target=wait_for_server_then_open, daemon=True).start()
-    uvicorn.run("main_fixed:app", host=HOST, port=PORT, reload=False)
+    uvicorn.run(app, host=HOST, port=PORT, reload=False)
