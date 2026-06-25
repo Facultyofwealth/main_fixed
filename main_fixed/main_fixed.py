@@ -13,6 +13,16 @@ except Exception:
 
 # ── Load .env BEFORE anything else ───────────────────────────
 _script_dir = os.path.dirname(os.path.abspath(__file__))
+
+def get_resource_path(relative_path: str) -> str:
+    """Resolve a resource path that works both in dev and inside a PyInstaller .exe.
+    When frozen, files are stored in sys._MEIPASS; otherwise use the script directory."""
+    if getattr(sys, "frozen", False):
+        base = sys._MEIPASS
+    else:
+        base = _script_dir
+    return os.path.join(base, relative_path)
+
 _env_path   = os.path.join(_script_dir, ".env")
 if not os.path.exists(_env_path):
     _env_path = os.path.join(os.getcwd(), ".env")
@@ -99,6 +109,8 @@ app.add_middleware(
 def _find_frontend() -> Optional[str]:
     base = os.path.dirname(os.path.abspath(__file__))
     candidates = [
+        get_resource_path("In_the_Beginning.html"),
+        get_resource_path("In the Beginning.html"),
         os.path.join(base, "In_the_Beginning.html"),
         os.path.join(base, "In the Beginning.html"),
         os.path.join(os.getcwd(), "In_the_Beginning.html"),
@@ -310,6 +322,10 @@ class BibleIndex:
 
     def load(self):
         candidates = [
+            get_resource_path("kjv.json/kjv-master/json/verses-1769.json"),
+            get_resource_path("kjv.json"),
+            get_resource_path("verses-1769.json"),
+            get_resource_path("bible.json"),
             "kjv.json/kjv-master/json/verses-1769.json",
             "kjv.json", "verses-1769.json", "bible.json",
         ]
@@ -1070,6 +1086,7 @@ async def desktop_control_ws(ws: WebSocket):
 def _find_remote_html() -> Optional[str]:
     base = os.path.dirname(os.path.abspath(__file__))
     candidates = [
+        get_resource_path("remote.html"),
         os.path.join(base, "remote.html"),
         os.path.join(os.getcwd(), "remote.html"),
     ]
@@ -3283,5 +3300,43 @@ async def _run_text(ws: WebSocket, session: SessionState):
 
 if __name__ == "__main__":
     import uvicorn
+    import threading
+
     port = int(os.environ.get("PORT", 8000))
-    uvicorn.run("main_fixed:app", host="0.0.0.0", port=port, reload=False)
+
+    # ── Detect if we can show a desktop window ────────────────────
+    # On Railway / headless servers pywebview is not available or has no display.
+    # Guard: only attempt pywebview when running as a frozen .exe OR when the
+    # library is explicitly present and a display is available.
+    _use_webview = False
+    try:
+        import webview
+        _use_webview = True
+    except ImportError:
+        _use_webview = False
+
+    if _use_webview:
+        # ── Desktop .exe mode — pywebview wraps the FastAPI server ────
+        def _run_server():
+            """Boot uvicorn in a background thread so pywebview can start."""
+            uvicorn.run("main_fixed:app", host="127.0.0.1", port=port, reload=False)
+
+        server_thread = threading.Thread(target=_run_server, daemon=True)
+        server_thread.start()
+
+        # Give uvicorn a moment to bind the port before opening the window
+        import time
+        time.sleep(1.5)
+
+        print(f"🖥️  Launching desktop window → http://127.0.0.1:{port}")
+        webview.create_window(
+            title="In The Beginning",
+            url=f"http://127.0.0.1:{port}",
+            fullscreen=True,
+        )
+        webview.start()
+
+    else:
+        # ── Headless / Railway mode — plain uvicorn, no window ────────
+        print("ℹ  pywebview not available — running headless (Railway / server mode)")
+        uvicorn.run("main_fixed:app", host="0.0.0.0", port=port, reload=False)
