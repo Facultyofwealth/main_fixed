@@ -1,0 +1,23 @@
+# flyctl launch added from .gitignore
+# Environments and Secrets
+**/.env
+**/.env.*
+!**/.env.example
+**/venv
+**/.venv
+
+# Python Cache
+**/__pycache__
+**/*.py[cod]
+
+# PyInstaller & Build Files
+**/dist
+**/build
+**/*.spec
+**/*.exe
+
+# flyctl launch added from kjv.json/kjv-master/.gitignore
+kjv.json/kjv-master/**/node_modules
+kjv.json/kjv-master/**/yarn.lock
+kjv.json/kjv-master/**/package-lock.json
+fly.toml
