@@ -1604,7 +1604,7 @@
                 </div>
                     <!-- Open standalone /display page (OBS browser source / NDI) -->
                     <div style="margin-top:10px;text-align:center;">
-                        <a href="/display" target="_blank"
+                        <a href="/display" id="openDisplayPageLink" target="_blank"
                            style="display:inline-flex;align-items:center;gap:6px;padding:8px 18px;background:rgba(166,124,82,0.15);border:1px solid rgba(166,124,82,0.4);border-radius:7px;color:#a67c52;font-size:12px;font-weight:700;text-decoration:none;cursor:pointer;"
                            title="Open the standalone display page in a new window — use as OBS Browser Source or drag to projector">
                             🖥 Open Display Page (OBS / NDI / Projector)
@@ -3749,11 +3749,13 @@
         if (_displayPushDebounce) clearTimeout(_displayPushDebounce);
         _displayPushDebounce = setTimeout(function () {
             const payload = {
+                church: CHURCH_ID,
                 verse: { ref: verse.ref, text: verse.text },
                 translation: translation || 'KJV',
                 theme: appState.currentTheme || 'dark-blue',
                 bg: bg || '#000011'
             };
+            if (!CHURCH_ID) return; // identity not resolved yet — skip this push rather than send it unscoped
             fetch(BACKEND_URL + '/display/push', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -3889,15 +3891,97 @@
     }
 
     // ===================== BACKEND CONFIG =====================
+    // When this HTML is served BY the backend itself (desktop .exe, Railway,
+    // or Fly serving its own frontend), BACKEND_URL is same-origin — no change
+    // needed. When this HTML is hosted separately (e.g. Netlify), location.host
+    // is the Netlify domain, NOT the backend — so we point explicitly to Fly.
+    const FLY_BACKEND_HOST = 'inthebeginning.fly.dev'; // ← update if your Fly app name changes
+    const _isSameOriginBackend =
+        ['localhost', '127.0.0.1'].includes(location.hostname)
+        || location.hostname.endsWith('.fly.dev')
+        || location.hostname.endsWith('.railway.app');
+
     if (
         location.protocol === 'http:'
         && !['localhost', '127.0.0.1'].includes(location.hostname)
+        && _isSameOriginBackend
     ) {
         location.replace(`http://127.0.0.1:${location.port || '8000'}${location.pathname}${location.search}${location.hash}`);
     }
-    const BACKEND_URL = `${location.protocol}//${location.host}`;
-    const WS_URL      = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws/live`;
-    const CTRL_WS_URL = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws/control`;
+
+    const _backendOrigin = _isSameOriginBackend
+        ? `${location.protocol}//${location.host}`
+        : `https://${FLY_BACKEND_HOST}`;
+    const _backendWsOrigin = _isSameOriginBackend
+        ? `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}`
+        : `wss://${FLY_BACKEND_HOST}`;
+
+    const BACKEND_URL = _backendOrigin;
+
+    // ===================== CHURCH IDENTITY =====================
+    // Every desktop app instance needs to identify which church it belongs
+    // to, so its live session and remote-control room stay isolated from
+    // every other church sharing this backend. We ask once, on first launch,
+    // and remember it locally from then on.
+    const CHURCH_ID_KEY = 'itb_church_id';
+
+    function getChurchId() {
+        try { return (localStorage.getItem(CHURCH_ID_KEY) || '').trim().toLowerCase(); } catch(_) { return ''; }
+    }
+    function setChurchId(id) {
+        try { localStorage.setItem(CHURCH_ID_KEY, id.trim().toLowerCase()); } catch(_) {}
+    }
+
+    function ensureChurchId() {
+        return new Promise((resolve) => {
+            const existing = getChurchId();
+            if (existing) { resolve(existing); return; }
+
+            const overlay = document.createElement('div');
+            overlay.style.cssText = 'position:fixed;inset:0;background:rgba(9,8,7,.92);z-index:99999;display:flex;align-items:center;justify-content:center;font-family:system-ui,sans-serif;';
+            overlay.innerHTML = `
+                <div style="background:#141210;border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:32px;max-width:380px;width:90%;text-align:center;">
+                    <p style="color:#F5F0E8;font-size:19px;margin:0 0 8px;">Welcome to In the Beginning AI</p>
+                    <p style="color:#A89E92;font-size:13px;margin:0 0 20px;">Enter the email you used to register your church on the website. This keeps your remote control and live display private to your church only.</p>
+                    <input id="churchIdInput" type="email" placeholder="church@example.com" style="width:100%;box-sizing:border-box;padding:11px 14px;border-radius:8px;border:1px solid rgba(160,113,79,.3);background:#0f0d0c;color:#F5F0E8;font-size:14px;margin-bottom:14px;" />
+                    <div id="churchIdError" style="color:#e06060;font-size:12px;margin-bottom:10px;display:none;"></div>
+                    <button id="churchIdSubmit" style="width:100%;padding:11px;border:none;border-radius:8px;background:#A0714F;color:#1a120b;font-weight:600;font-size:14px;cursor:pointer;">Continue</button>
+                </div>`;
+            document.body.appendChild(overlay);
+
+            const input = overlay.querySelector('#churchIdInput');
+            const err   = overlay.querySelector('#churchIdError');
+            const submit = () => {
+                const val = input.value.trim().toLowerCase();
+                if (!val.includes('@')) {
+                    err.textContent = 'Please enter a valid email address.';
+                    err.style.display = 'block';
+                    return;
+                }
+                setChurchId(val);
+                document.body.removeChild(overlay);
+                resolve(val);
+            };
+            overlay.querySelector('#churchIdSubmit').addEventListener('click', submit);
+            input.addEventListener('keydown', e => { if (e.key === 'Enter') submit(); });
+            input.focus();
+        });
+    }
+
+    // Resolved before any websocket connects — see the async IIFE guarding
+    // WS_URL/CTRL_WS_URL usage further down in the app's connect functions.
+    let CHURCH_ID = getChurchId();
+    const churchIdReady = ensureChurchId().then(id => {
+        CHURCH_ID = id;
+        const dl = document.getElementById('openDisplayPageLink');
+        if (dl) dl.href = '/display?church=' + encodeURIComponent(id);
+        return id;
+    });
+
+    const WS_URL      = `${_backendWsOrigin}/ws/live`;
+    const CTRL_WS_URL = `${_backendWsOrigin}/ws/control`;
+    function liveWsUrl()    { return `${WS_URL}?church=${encodeURIComponent(CHURCH_ID)}`; }
+    function controlWsUrl() { return `${CTRL_WS_URL}?church=${encodeURIComponent(CHURCH_ID)}`; }
 
     // ===================== WEBSOCKET + DEEPGRAM TRANSCRIPTION =====================
     let ws           = null;
@@ -4258,7 +4342,8 @@
         }
 
         // ── 5. WebSocket — mic already running, audio buffered ────────────────
-        ws = new WebSocket(WS_URL);
+        await churchIdReady;
+        ws = new WebSocket(liveWsUrl());
         ws.binaryType = 'arraybuffer';
 
         ws.onopen = () => {
@@ -5150,9 +5235,15 @@
     function connectDesktopControl() {
         clearTimeout(controlReconnectTimer);
         if (controlWs && [WebSocket.OPEN, WebSocket.CONNECTING].includes(controlWs.readyState)) return;
+        if (!CHURCH_ID) {
+            // Identity prompt hasn't been answered yet — retry shortly instead
+            // of connecting with a blank church id (the backend would reject it).
+            controlReconnectTimer = setTimeout(connectDesktopControl, 1000);
+            return;
+        }
 
         try {
-            controlWs = new WebSocket(CTRL_WS_URL);
+            controlWs = new WebSocket(controlWsUrl());
         } catch (_) {
             controlReconnectTimer = setTimeout(connectDesktopControl, 2000);
             return;
@@ -5517,6 +5608,7 @@
         const modal = document.getElementById('remote-modal');
         if (!modal) return;
         modal.style.display = 'flex';
+        await churchIdReady;
 
         // Determine the remote URL. The backend detects the LAN IP so the
         // desktop can stay on localhost while phones connect over Wi-Fi.
@@ -5527,6 +5619,7 @@
             const info = await fetch(BACKEND_URL + '/remote-info').then(r => r.json());
             if (info && info.remote_url) remoteUrl = info.remote_url;
         } catch (_) {}
+        remoteUrl += (remoteUrl.includes('?') ? '&' : '?') + 'church=' + encodeURIComponent(CHURCH_ID);
 
         // Update URL display
         const urlEl = document.getElementById('remote-url-display');
@@ -5805,7 +5898,8 @@
         // status badge so the operator knows external display is live.
         var _pingInterval = null;
         function _checkDisplayClients() {
-            fetch(BACKEND_URL + '/display/status')
+            if (!CHURCH_ID) return; // identity not resolved yet — skip this poll
+            fetch(BACKEND_URL + '/display/status?church=' + encodeURIComponent(CHURCH_ID))
                 .then(function(r){ return r.json(); })
                 .then(function(d){
                     var badge = document.getElementById('display-client-badge');
@@ -6093,11 +6187,11 @@
             ndiPanel.style.cssText = 'margin:0 16px 14px;padding:12px 14px;background:rgba(166,124,82,0.08);border:1px solid rgba(166,124,82,0.3);border-radius:8px;font-size:11px;color:#d1d5db;line-height:1.8;';
             ndiPanel.innerHTML =
                 '<div style="font-weight:700;color:#a67c52;margin-bottom:6px;">📡 NDI / OBS — How to set up</div>' +
-                '<strong>Quick option (no OBS):</strong> Open <a href="/display" target="_blank" style="color:#a67c52;">http://localhost:8000/display</a> in a browser on your projector screen or as an OBS Browser Source — it auto-receives verses with no extra steps.<br><br>' +
+                '<strong>Quick option (no OBS):</strong> Open <a href="/display?church=' + encodeURIComponent(CHURCH_ID) + '" target="_blank" style="color:#a67c52;">http://localhost:8000/display</a> in a browser on your projector screen or as an OBS Browser Source — it auto-receives verses with no extra steps.<br><br>' +
                 '<strong>OBS + NDI route:</strong><br>' +
                 '1. Download <strong>NDI Tools</strong> at <a href="https://ndi.video/tools" target="_blank" style="color:#a67c52;">ndi.video/tools</a> and install it.<br>' +
                 '2. Download <strong>OBS Studio</strong> + <strong>obs-ndi plugin</strong> and install both.<br>' +
-                '3. In OBS → Add Source → <em>Browser</em> → URL: <code style="color:#f9cb42">http://localhost:8000/display</code> → W:1920 H:1080.<br>' +
+                '3. In OBS → Add Source → <em>Browser</em> → URL: <code style="color:#f9cb42">http://localhost:8000/display?church=' + encodeURIComponent(CHURCH_ID) + '</code> → W:1920 H:1080.<br>' +
                 '4. In OBS → Tools → <em>NDI Output Settings</em> → enable <em>Main Output</em>.<br>' +
                 '5. On your switcher / vMix → scan NDI sources → select <strong>"OBS"</strong>.<br>' +
                 '<div style="margin-top:6px;color:#9ca3af;font-size:10px;">ℹ The /display page is a transparent overlay — it works alongside ProPresenter, EasyWorship, or any presentation software without covering their output.</div>';
@@ -6113,6 +6207,10 @@
 
     // ── External Display ─────────────────────────────────────────
     function _launchExternalDisplay() {
+        if (!CHURCH_ID) {
+            showToast('Still setting up — please try again in a moment', 3000);
+            return;
+        }
         if (window._projectorWindow && !window._projectorWindow.closed) {
             updateProjectorText();
             showToast(' Projector window already open — drag it to your projector screen & press F', 4000);
@@ -6201,7 +6299,7 @@ body{
 
   // ── WebSocket from server (auto-push, no tab-switch needed) ──
   var proto = location.protocol === 'https:' ? 'wss' : 'ws';
-  var wsUrl = proto + '://' + location.host + '/ws/display';
+  var wsUrl = proto + '://' + location.host + '/ws/display?church=${encodeURIComponent(CHURCH_ID)}';
   var retryDelay = 1500;
   var ws;
   function connectWS() {

@@ -8,6 +8,9 @@ primary_region = 'ord'
 
 [build]
 [http_service]
+[[mounts]]
+  source = "itb_data"
+  destination = "/data"
   internal_port = 8000
   force_https = true
   auto_stop_machines = 'stop'

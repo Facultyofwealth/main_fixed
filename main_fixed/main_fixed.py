@@ -23,6 +23,26 @@ def get_resource_path(relative_path: str) -> str:
         base = _script_dir
     return os.path.join(base, relative_path)
 
+def get_data_dir() -> str:
+    """Resolve a WRITABLE directory for persistent app data (e.g. the church accounts
+    database). This is intentionally separate from get_resource_path, which points inside
+    the read-only PyInstaller bundle. Priority:
+      1. ITB_DATA_DIR env var — set this to a mounted Fly volume path in production so
+         data survives redeploys/restarts (a bare Fly container filesystem is ephemeral).
+      2. Windows AppData — for the frozen desktop .exe, since Program Files is often
+         not writable.
+      3. Script directory — local development fallback.
+    """
+    env_dir = os.environ.get("ITB_DATA_DIR")
+    if env_dir:
+        os.makedirs(env_dir, exist_ok=True)
+        return env_dir
+    if getattr(sys, "frozen", False) and os.name == "nt":
+        base = os.path.join(os.environ.get("APPDATA", _script_dir), "InTheBeginningAI")
+        os.makedirs(base, exist_ok=True)
+        return base
+    return _script_dir
+
 _env_path   = os.path.join(_script_dir, ".env")
 if not os.path.exists(_env_path):
     _env_path = os.path.join(os.getcwd(), ".env")
@@ -31,14 +51,20 @@ from dotenv import load_dotenv
 load_dotenv(dotenv_path=_env_path, override=True)
 print(f"📄 .env loaded from: {_env_path}  (exists={os.path.exists(_env_path)})")
 
-import time, json, asyncio, re, tempfile, io, zipfile, socket
+import time, json, asyncio, re, tempfile, io, zipfile, socket, contextvars
+import sqlite3, hashlib, secrets
+from datetime import datetime, timezone
+try:
+    import redis.asyncio as aioredis
+except ImportError:
+    aioredis = None
 import xml.etree.ElementTree as ET
 from collections import deque
 from dataclasses import dataclass
 from typing import Any, List, Dict, Optional, Tuple
 from urllib.parse import quote
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
@@ -94,6 +120,41 @@ try:
 except ImportError:
     _whisper_lib = None
     print("⚠  Whisper not installed — run: pip install openai-whisper")
+
+# ── Church accounts (SQLite) ────────────────────────────────────
+# NOTE: on Fly/Railway, this file lives in the CONTAINER filesystem by default,
+# which is wiped on every redeploy/restart. To persist real church accounts in
+# production, attach a Fly volume and set ITB_DATA_DIR to its mount path
+# (e.g. `fly volumes create itb_data` then `fly secrets set ITB_DATA_DIR=/data`
+# with a matching [[mounts]] entry in fly.toml). Until that's done, accounts
+# will reset on every `fly deploy`.
+DB_PATH = os.path.join(get_data_dir(), "churches.db")
+
+def _db_conn():
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+def _init_church_db():
+    conn = _db_conn()
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS churches (
+            email          TEXT PRIMARY KEY,
+            church_name    TEXT NOT NULL,
+            country        TEXT NOT NULL,
+            password_hash  TEXT NOT NULL,
+            salt           TEXT NOT NULL,
+            created_at     TEXT NOT NULL
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+_init_church_db()
+print(f"🗄️  Church accounts DB: {DB_PATH}")
+
+def _hash_password(password: str, salt: str) -> str:
+    return hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt.encode("utf-8"), 200_000).hex()
 
 # ── FastAPI app ───────────────────────────────────────────────
 app = FastAPI(title="In The Beginning API", version="6.0.0")
@@ -189,14 +250,33 @@ TRANSLATION_ALIASES = {
     "young literal": "YLT",
 }
 
-# ── Scripture feed ────────────────────────────────────────────
-scripture_feed: deque = deque(maxlen=200)
+# ── Scripture feed (per-church) ─────────────────────────────────
+# Each church's feed lives on its own ChurchRoom (see ChurchRoom.feed,
+# defined further down). _current_church_ctx is set once at the top of
+# /ws/control and /ws/live for the duration of that connection's async
+# task, so every nested function below — add_to_feed(), execute_voice_intent,
+# _send_exact_match, _run_deepgram/_run_whisper/_run_text, etc. — reads and
+# writes the CORRECT church's feed automatically, with no signature changes
+# needed anywhere in that call chain.
+_current_church_ctx: "contextvars.ContextVar[str]" = contextvars.ContextVar("current_church", default="")
+
+# Fallback feed used only if something reads/writes a feed with no church
+# context set (shouldn't happen in normal operation, but keeps old
+# non-websocket call paths from crashing instead of silently misbehaving).
+_fallback_feed: deque = deque(maxlen=200)
+
+def _get_current_feed() -> deque:
+    church_id = _current_church_ctx.get()
+    if church_id:
+        return get_room(church_id).feed
+    return _fallback_feed
 
 def add_to_feed(verse: Dict, match_type: str = "match"):
+    feed = _get_current_feed()
     entry = {**verse, "type": match_type, "timestamp": time.time()}
-    if scripture_feed and scripture_feed[-1].get("ref") == verse.get("ref"):
+    if feed and feed[-1].get("ref") == verse.get("ref"):
         return
-    scripture_feed.append(entry)
+    feed.append(entry)
 
 # ── Bible Index ───────────────────────────────────────────────
 STOP_WORDS = {
@@ -692,12 +772,12 @@ class BibleIndex:
 
 bible = BibleIndex()
 
-# ── Shared session state ───────────────────────────────────────
-# One module-level SessionState is kept in sync by every code path that
-# displays a verse (/ws/live transcription + /ws/control remote commands).
-# This ensures remote NEXT/PREV always move relative to the *last displayed*
-# verse, even when the preacher has jumped to a completely new reference.
-global_session: "SessionState" = None   # populated after SessionState is defined
+# ── Per-church session state ────────────────────────────────────
+# Each church's SessionState (see ChurchRoom.session, above) is kept in sync
+# by every code path that displays a verse for that church (/ws/live
+# transcription + /ws/control remote commands). This ensures remote
+# NEXT/PREV always move relative to that church's *last displayed* verse —
+# and never touches any other church's session.
 
 async def _copy_stream(reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
     try:
@@ -756,6 +836,7 @@ async def _ensure_lan_proxy():
 @app.on_event("startup")
 async def startup():
     bible.load()
+    await init_redis()
     # FAISS index is NOT loaded at startup to stay within 512MB free-tier RAM.
     # It loads lazily the first time transcription begins (see _ensure_vector_index).
     await _ensure_lan_proxy()
@@ -803,6 +884,49 @@ async def _ensure_whisper_model():
         except Exception as e:
             print(f"⚠  Whisper failed to load: {e}")
 
+# ── Redis (optional — enables correct room delivery across MULTIPLE Fly
+# machines). Without REDIS_URL set, rooms still work correctly as long as
+# you run a single machine (e.g. local dev, or min_machines_running=1).
+# Set up with: `fly redis create` (or Upstash), then `fly secrets set REDIS_URL=...`
+REDIS_URL = os.environ.get("REDIS_URL")
+redis_client = None
+
+async def init_redis():
+    global redis_client
+    if not REDIS_URL:
+        print("ℹ  REDIS_URL not set — church rooms are correct on a single machine only")
+        return
+    if aioredis is None:
+        print("⚠  REDIS_URL is set but the 'redis' package isn't installed — run: pip install redis")
+        return
+    redis_client = aioredis.from_url(REDIS_URL, decode_responses=True)
+    asyncio.create_task(_redis_room_listener())
+    print("✅ Redis connected — church rooms now work correctly across multiple Fly machines")
+
+async def _redis_room_listener():
+    """Runs on every machine. Delivers a published room message to whichever
+    LOCAL connections belong to that church, on whichever machine they're on."""
+    pubsub = redis_client.pubsub()
+    await pubsub.psubscribe("itb:room:*")
+    async for msg in pubsub.listen():
+        if msg.get("type") != "pmessage":
+            continue
+        try:
+            _, _, church_id, target = msg["channel"].split(":", 3)
+            payload = json.loads(msg["data"])
+            room = church_rooms.get(church_id)
+            if not room:
+                continue
+            if target == "desktop" and room.desktop:
+                await safe_send(room.desktop, payload)
+            elif target == "remotes":
+                dead = [r for r in list(room.remotes) if not await safe_send(r, payload)]
+                for r in dead:
+                    if r in room.remotes:
+                        room.remotes.remove(r)
+        except Exception as e:
+            print(f"⚠  Room relay error: {e}")
+
 # ── Safe WebSocket send ───────────────────────────────────────
 # FIXES the "send after close" crash. Every ws.send_json() call in this file
 # goes through here so we never touch a dead socket.
@@ -815,60 +939,99 @@ async def safe_send(ws: WebSocket, payload: dict) -> bool:
     except Exception:
         return False
 
-# ── Remote Control Manager ───────────────────────────────────
-# Tracks the single active desktop client and all phone remotes.
-# Remote clients send commands; the manager relays them to the desktop.
+# ── Church Rooms ──────────────────────────────────────────────
+# Every church gets its own isolated desktop connection, phone remotes, and
+# verse-navigation session — replacing the old setup where ALL churches
+# sharing this backend fought over one single global desktop/session.
+class ChurchRoom:
+    def __init__(self, church_id: str):
+        self.church_id = church_id
+        self.desktop: Optional[WebSocket] = None
+        self.remotes: List[WebSocket] = []
+        self.session: "SessionState" = None   # populated after SessionState is defined below
+        self.feed: deque = deque(maxlen=200)
+        self.display_clients: List[WebSocket] = []   # projector / OBS / NDI output windows
+
+church_rooms: Dict[str, "ChurchRoom"] = {}
+
+def get_room(church_id: str) -> "ChurchRoom":
+    room = church_rooms.get(church_id)
+    if room is None:
+        room = ChurchRoom(church_id)
+        room.session = SessionState()
+        church_rooms[church_id] = room
+    return room
 
 class RemoteControlManager:
-    def __init__(self):
-        self.desktop: Optional[WebSocket] = None          # the main dashboard
-        self.remotes: List[WebSocket]     = []            # phone controllers
+    """Church-scoped: every method takes a church_id and only ever touches
+    that church's own room. When Redis is configured, delivery goes through
+    it (so it works no matter which Fly machine each connection landed on);
+    otherwise it delivers directly to the local room (correct for a single
+    machine)."""
 
-    async def register_desktop(self, ws: WebSocket):
-        self.desktop = ws
-        print("📺 Desktop client registered for remote control")
-        await safe_send(ws, {
-            "type": "desktop_control_connected",
-            "remotes": len(self.remotes),
-        })
+    async def register_desktop(self, church_id: str, ws: WebSocket):
+        room = get_room(church_id)
+        room.desktop = ws
+        if redis_client:
+            await redis_client.set(f"itb:room:{church_id}:desktop_online", "1", ex=120)
+        print(f"📺 Desktop registered for church '{church_id}'")
+        await safe_send(ws, {"type": "desktop_control_connected", "remotes": len(room.remotes)})
 
-    def unregister_desktop(self, ws: WebSocket):
-        if self.desktop is ws:
-            self.desktop = None
-            print("📺 Desktop client unregistered")
+    async def refresh_desktop_presence(self, church_id: str):
+        """Call on any desktop keepalive/ping so the Redis presence key doesn't expire mid-service."""
+        if redis_client:
+            await redis_client.set(f"itb:room:{church_id}:desktop_online", "1", ex=120)
 
-    async def register_remote(self, ws: WebSocket):
-        self.remotes.append(ws)
-        print(f"📱 Remote client connected  (total: {len(self.remotes)})")
-        # Confirm connection to the phone
+    async def unregister_desktop(self, church_id: str, ws: WebSocket):
+        room = church_rooms.get(church_id)
+        if room and room.desktop is ws:
+            room.desktop = None
+            if redis_client:
+                await redis_client.delete(f"itb:room:{church_id}:desktop_online")
+            print(f"📺 Desktop unregistered for church '{church_id}'")
+
+    async def register_remote(self, church_id: str, ws: WebSocket):
+        room = get_room(church_id)
+        room.remotes.append(ws)
+        print(f"📱 Remote connected for church '{church_id}' (total: {len(room.remotes)})")
         await safe_send(ws, {"type": "remote_connected", "message": "Remote control active"})
-        # Notify the desktop that a remote just joined
-        if self.desktop:
-            await safe_send(self.desktop, {
-                "type":    "remote_joined",
-                "remotes": len(self.remotes),
-            })
+        await self._deliver(church_id, "desktop", {"type": "remote_joined", "remotes": len(room.remotes)}, room)
 
-    def unregister_remote(self, ws: WebSocket):
-        if ws in self.remotes:
-            self.remotes.remove(ws)
-            print(f"📱 Remote client disconnected (total: {len(self.remotes)})")
+    def unregister_remote(self, church_id: str, ws: WebSocket):
+        room = church_rooms.get(church_id)
+        if room and ws in room.remotes:
+            room.remotes.remove(ws)
+            print(f"📱 Remote disconnected for church '{church_id}' (total: {len(room.remotes)})")
 
-    async def relay_to_desktop(self, payload: dict) -> bool:
-        """Forward a remote action to the desktop client."""
-        if not self.desktop:
+    async def relay_to_desktop(self, church_id: str, payload: dict) -> bool:
+        """Forward a remote action to this church's desktop client."""
+        room = get_room(church_id)
+        if redis_client:
+            online = await redis_client.get(f"itb:room:{church_id}:desktop_online")
+            if not online:
+                return False
+            await redis_client.publish(f"itb:room:{church_id}:desktop", json.dumps(payload))
+            return True
+        if not room.desktop:
             return False
-        return await safe_send(self.desktop, payload)
+        return await safe_send(room.desktop, payload)
 
-    async def broadcast_to_remotes(self, payload: dict):
-        """Push a state update from the desktop to all phones."""
-        dead = []
-        for r in list(self.remotes):
-            ok = await safe_send(r, payload)
-            if not ok:
-                dead.append(r)
-        for r in dead:
-            self.unregister_remote(r)
+    async def broadcast_to_remotes(self, church_id: str, payload: dict):
+        """Push a state update from this church's desktop to its phones only."""
+        room = get_room(church_id)
+        await self._deliver(church_id, "remotes", payload, room)
+
+    async def _deliver(self, church_id: str, target: str, payload: dict, room: "ChurchRoom"):
+        if redis_client:
+            await redis_client.publish(f"itb:room:{church_id}:{target}", json.dumps(payload))
+            return
+        if target == "desktop" and room.desktop:
+            await safe_send(room.desktop, payload)
+        elif target == "remotes":
+            dead = [r for r in list(room.remotes) if not await safe_send(r, payload)]
+            for r in dead:
+                if r in room.remotes:
+                    room.remotes.remove(r)
 
 
 remote_manager = RemoteControlManager()
@@ -879,11 +1042,18 @@ remote_manager = RemoteControlManager()
 async def remote_ws(ws: WebSocket):
     """
     Phone remote-control endpoint.
-    Each phone opens this connection, identifies itself as 'remote',
-    then sends action messages that get relayed to the desktop.
+    Each phone opens this connection with a `?church=<id>` query param
+    (read from the QR code the desktop displays), identifies itself as
+    'remote' within that church's room, then sends action messages that
+    get relayed to that church's desktop only.
     """
     await ws.accept()
-    await remote_manager.register_remote(ws)
+    church_id = (ws.query_params.get("church") or "").strip().lower()
+    if not church_id:
+        await safe_send(ws, {"type": "error", "message": "Missing 'church' identifier — reconnect from the in-app QR code."})
+        await ws.close(code=4001)
+        return
+    await remote_manager.register_remote(church_id, ws)
     try:
         while True:
             data = await ws.receive()
@@ -897,28 +1067,28 @@ async def remote_ws(ws: WebSocket):
                     action = msg.get("action", "")
                     # Map remote actions → desktop message types
                     if action == "next":
-                        ok = await remote_manager.relay_to_desktop({
+                        ok = await remote_manager.relay_to_desktop(church_id, {
                             "type":   "remote_next",
                             "source": "remote",
                         })
                         if not ok:
                             await safe_send(ws, {"type": "remote_action_status", "ok": False, "message": "Desktop control is not connected"})
                     elif action == "prev":
-                        ok = await remote_manager.relay_to_desktop({
+                        ok = await remote_manager.relay_to_desktop(church_id, {
                             "type":   "remote_prev",
                             "source": "remote",
                         })
                         if not ok:
                             await safe_send(ws, {"type": "remote_action_status", "ok": False, "message": "Desktop control is not connected"})
                     elif action == "clear":
-                        ok = await remote_manager.relay_to_desktop({
+                        ok = await remote_manager.relay_to_desktop(church_id, {
                             "type":   "remote_clear",
                             "source": "remote",
                         })
                         if not ok:
                             await safe_send(ws, {"type": "remote_action_status", "ok": False, "message": "Desktop control is not connected"})
                     elif action in {"start_transcription", "stop_transcription", "toggle_transcription"}:
-                        ok = await remote_manager.relay_to_desktop({
+                        ok = await remote_manager.relay_to_desktop(church_id, {
                             "type":   "remote_" + action,
                             "source": "remote",
                         })
@@ -936,7 +1106,7 @@ async def remote_ws(ws: WebSocket):
                             if verse:
                                 payload["verse"] = verse
                                 await safe_send(ws, {"type": "verse_state", "verse": verse, "translation": msg.get("translation", "KJV")})
-                            ok = await remote_manager.relay_to_desktop(payload)
+                            ok = await remote_manager.relay_to_desktop(church_id, payload)
                             if not ok:
                                 await safe_send(ws, {"type": "remote_action_status", "ok": False, "message": "Desktop control is not connected"})
                     elif action == "ping":
@@ -950,13 +1120,15 @@ async def remote_ws(ws: WebSocket):
     except WebSocketDisconnect:
         pass
     finally:
-        remote_manager.unregister_remote(ws)
-        # Notify desktop that remote count changed
-        if remote_manager.desktop:
-            await safe_send(remote_manager.desktop, {
+        remote_manager.unregister_remote(church_id, ws)
+        # Notify this church's desktop that its remote count changed
+        room = church_rooms.get(church_id)
+        if room and room.desktop:
+            await safe_send(room.desktop, {
                 "type":    "remote_left",
-                "remotes": len(remote_manager.remotes),
+                "remotes": len(room.remotes),
             })
+
 
 
 @app.websocket("/ws/control")
@@ -966,9 +1138,20 @@ async def desktop_control_ws(ws: WebSocket):
     This stays alive as long as the desktop page is open, independent of the
     transcription/audio WebSocket, so phone commands can control the screen even
     when transcription is stopped or briefly paused.
+
+    Requires `?church=<id>` — the desktop app identifies which church it
+    belongs to (its account email) so its room stays fully isolated from
+    every other church sharing this backend.
     """
     await ws.accept()
-    await remote_manager.register_desktop(ws)
+    church_id = (ws.query_params.get("church") or "").strip().lower()
+    if not church_id:
+        await safe_send(ws, {"type": "error", "message": "Missing 'church' identifier — please sign in again."})
+        await ws.close(code=4001)
+        return
+    room = get_room(church_id)
+    _current_church_ctx.set(church_id)
+    await remote_manager.register_desktop(church_id, ws)
     try:
         while True:
             data = await ws.receive()
@@ -981,73 +1164,75 @@ async def desktop_control_ws(ws: WebSocket):
 
             t = msg.get("type")
             if t == "desktop_state":
-                # Desktop tells us the current verse — keep global_session in sync
+                # Desktop tells us the current verse — keep this church's session in sync
                 verse_data = msg.get("verse")
                 if verse_data and verse_data.get("ref"):
-                    global_session.set_current(verse_data)
+                    room.session.set_current(verse_data)
                     bible.set_manual_index(verse_data["ref"])
-                await remote_manager.broadcast_to_remotes({
+                await remote_manager.broadcast_to_remotes(church_id, {
                     "type": "verse_state",
                     "verse": msg.get("verse"),
                     "translation": msg.get("translation", "KJV"),
                     "transcribing": bool(msg.get("transcribing", False)),
                 })
             elif t == "transcription_state":
-                await remote_manager.broadcast_to_remotes({
+                await remote_manager.broadcast_to_remotes(church_id, {
                     "type": "transcription_state",
                     "active": bool(msg.get("active", False)),
                 })
             elif t == "desktop_ping":
-                await safe_send(ws, {"type": "desktop_pong", "remotes": len(remote_manager.remotes)})
+                await remote_manager.refresh_desktop_presence(church_id)
+                await safe_send(ws, {"type": "desktop_pong", "remotes": len(room.remotes)})
 
             # ── Remote NEXT / PREV / NAVIGATE commands ────────────────
-            # These arrive here (via relay_to_desktop) from the phone remote.
-            # We handle them against global_session so they always act on the
-            # last displayed verse, not an older transcription snapshot.
+            # These arrive here (via relay_to_desktop) from this church's phone
+            # remote. We handle them against this church's own session so they
+            # always act on the last displayed verse for THIS church, not
+            # another church's session or an older transcription snapshot.
             elif t == "remote_next":
-                if not global_session.current_ref:
+                if not room.session.current_ref:
                     await safe_send(ws, {"type": "remote_action_status", "ok": False, "message": "No verse loaded yet"})
                 else:
-                    verse = bible.get_adjacent_to_ref(global_session.current_ref, 1)
+                    verse = bible.get_adjacent_to_ref(room.session.current_ref, 1)
                     if verse:
-                        global_session.set_current(verse)
+                        room.session.set_current(verse)
                         bible.set_manual_index(verse["ref"])
                         add_to_feed(verse, "next_verse")
                         await safe_send(ws, {
                             "type": "next_verse",
                             "results": [verse],
-                            "feed": list(scripture_feed),
+                            "feed": list(_get_current_feed()),
                             "transcript_finalized": True,
-                            "state": global_session.payload(),
+                            "state": room.session.payload(),
                         })
-                        await remote_manager.broadcast_to_remotes({
+                        await remote_manager.broadcast_to_remotes(church_id, {
                             "type": "verse_state",
                             "verse": verse,
-                            "translation": global_session.active_translation,
+                            "translation": room.session.active_translation,
                         })
                     else:
                         await safe_send(ws, {"type": "remote_action_status", "ok": False, "message": "No next verse available"})
 
             elif t == "remote_prev":
-                if not global_session.current_ref:
+                if not room.session.current_ref:
                     await safe_send(ws, {"type": "remote_action_status", "ok": False, "message": "No verse loaded yet"})
                 else:
-                    verse = bible.get_adjacent_to_ref(global_session.current_ref, -1)
+                    verse = bible.get_adjacent_to_ref(room.session.current_ref, -1)
                     if verse:
-                        global_session.set_current(verse)
+                        room.session.set_current(verse)
                         bible.set_manual_index(verse["ref"])
                         add_to_feed(verse, "previous_verse")
                         await safe_send(ws, {
                             "type": "exact_match",
                             "results": [verse],
-                            "feed": list(scripture_feed),
+                            "feed": list(_get_current_feed()),
                             "transcript_finalized": True,
-                            "state": global_session.payload(),
+                            "state": room.session.payload(),
                         })
-                        await remote_manager.broadcast_to_remotes({
+                        await remote_manager.broadcast_to_remotes(church_id, {
                             "type": "verse_state",
                             "verse": verse,
-                            "translation": global_session.active_translation,
+                            "translation": room.session.active_translation,
                         })
                     else:
                         await safe_send(ws, {"type": "remote_action_status", "ok": False, "message": "No previous verse available"})
@@ -1056,20 +1241,20 @@ async def desktop_control_ws(ws: WebSocket):
                 ref = msg.get("ref", "")
                 verse = msg.get("verse") or (bible.find_by_ref(ref) if ref else None)
                 if verse:
-                    global_session.set_current(verse)
+                    room.session.set_current(verse)
                     bible.set_manual_index(verse["ref"])
                     add_to_feed(verse, "navigate")
                     await safe_send(ws, {
                         "type": "exact_match",
                         "results": [verse],
-                        "feed": list(scripture_feed),
+                        "feed": list(_get_current_feed()),
                         "transcript_finalized": True,
-                        "state": global_session.payload(),
+                        "state": room.session.payload(),
                     })
-                    await remote_manager.broadcast_to_remotes({
+                    await remote_manager.broadcast_to_remotes(church_id, {
                         "type": "verse_state",
                         "verse": verse,
-                        "translation": global_session.active_translation,
+                        "translation": room.session.active_translation,
                     })
                 else:
                     await safe_send(ws, {"type": "remote_action_status", "ok": False, "message": f"Verse not found: {ref}"})
@@ -1079,7 +1264,7 @@ async def desktop_control_ws(ws: WebSocket):
     except WebSocketDisconnect:
         pass
     finally:
-        remote_manager.unregister_desktop(ws)
+        await remote_manager.unregister_desktop(church_id, ws)
 
 
 # ── Serve remote.html ─────────────────────────────────────────
@@ -1179,6 +1364,67 @@ def download_package():
     return StreamingResponse(mem, media_type="application/zip", headers=headers)
 
 
+# ── Church Accounts ──────────────────────────────────────────
+class RegisterReq(BaseModel):
+    churchName: str
+    email: str
+    country: str
+    password: str
+
+class LoginReq(BaseModel):
+    email: str
+    password: str
+
+@app.post("/api/register")
+async def api_register(req: RegisterReq):
+    email       = req.email.strip().lower()
+    church_name = req.churchName.strip()
+    country     = req.country.strip()
+    password    = req.password
+
+    if not church_name:
+        raise HTTPException(status_code=400, detail="Please enter your church or organisation name.")
+    if not country:
+        raise HTTPException(status_code=400, detail="Please select your country.")
+    if "@" not in email:
+        raise HTTPException(status_code=400, detail="Please enter a valid email address.")
+    if len(password) < 6:
+        raise HTTPException(status_code=400, detail="Password must be at least 6 characters.")
+
+    conn = _db_conn()
+    try:
+        if conn.execute("SELECT 1 FROM churches WHERE email = ?", (email,)).fetchone():
+            raise HTTPException(status_code=409, detail="An account with this email already exists. Please sign in.")
+
+        salt    = secrets.token_hex(16)
+        pw_hash = _hash_password(password, salt)
+        conn.execute(
+            "INSERT INTO churches (email, church_name, country, password_hash, salt, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+            (email, church_name, country, pw_hash, salt, datetime.now(timezone.utc).isoformat()),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+    return {"email": email, "churchName": church_name, "country": country}
+
+@app.post("/api/login")
+async def api_login(req: LoginReq):
+    email = req.email.strip().lower()
+
+    conn = _db_conn()
+    try:
+        row = conn.execute("SELECT * FROM churches WHERE email = ?", (email,)).fetchone()
+    finally:
+        conn.close()
+
+    if not row:
+        raise HTTPException(status_code=404, detail="No account found. Please create one first.")
+    if _hash_password(req.password, row["salt"]) != row["password_hash"]:
+        raise HTTPException(status_code=401, detail="Incorrect password. Please try again.")
+
+    return {"email": row["email"], "churchName": row["church_name"], "country": row["country"]}
+
 # ── Health ────────────────────────────────────────────────────
 @app.get("/health")
 def health():
@@ -1212,11 +1458,12 @@ async def lookup(ref: str):
     return {"error": f"Verse not found: {ref}", "ref": ref}
 
 @app.get("/feed")
-def get_feed(): return {"feed": list(scripture_feed)}
+def get_feed(church: str = Query(..., description="Church account email")):
+    return {"feed": list(get_room(church.strip().lower()).feed)}
 
 @app.delete("/feed")
-def clear_feed():
-    scripture_feed.clear()
+def clear_feed(church: str = Query(..., description="Church account email")):
+    get_room(church.strip().lower()).feed.clear()
     return {"status": "cleared"}
 
 # ── Display broadcast WebSocket ──────────────────────────────
@@ -1230,13 +1477,19 @@ def clear_feed():
 # browser source, ProPresenter Stage Display, or any external software can
 # grab it at any size without it taking over the operator's screen.
 
-_display_clients: List[WebSocket] = []
-
 @app.websocket("/ws/display")
 async def display_ws(ws: WebSocket):
-    """Projector / NDI browser-source connects here for live verse pushes."""
+    """Projector / NDI browser-source connects here for live verse pushes.
+    Requires ?church=<id> so each church's projector output only ever shows
+    that church's own verses."""
     await ws.accept()
-    _display_clients.append(ws)
+    church_id = (ws.query_params.get("church") or "").strip().lower()
+    if not church_id:
+        await safe_send(ws, {"type": "error", "message": "Missing 'church' identifier."})
+        await ws.close(code=4001)
+        return
+    room = get_room(church_id)
+    room.display_clients.append(ws)
     try:
         while True:
             # Keep alive; projector only receives, never sends
@@ -1249,23 +1502,25 @@ async def display_ws(ws: WebSocket):
     except Exception:
         pass
     finally:
-        if ws in _display_clients:
-            _display_clients.remove(ws)
+        if ws in room.display_clients:
+            room.display_clients.remove(ws)
 
 
-async def _broadcast_to_display(payload: dict):
-    """Push a verse to every connected projector/NDI client."""
+async def _broadcast_to_display(church_id: str, payload: dict):
+    """Push a verse to this church's connected projector/NDI clients only."""
+    room = get_room(church_id)
     dead = []
-    for client in list(_display_clients):
+    for client in list(room.display_clients):
         ok = await safe_send(client, payload)
         if not ok:
             dead.append(client)
     for d in dead:
-        if d in _display_clients:
-            _display_clients.remove(d)
+        if d in room.display_clients:
+            room.display_clients.remove(d)
 
 
 class DisplayPushReq(BaseModel):
+    church: str
     verse: Dict
     translation: Optional[str] = "KJV"
     theme: Optional[str] = "dark-blue"
@@ -1276,9 +1531,10 @@ class DisplayPushReq(BaseModel):
 async def display_push(req: DisplayPushReq):
     """
     The desktop frontend calls this whenever a verse changes.
-    All connected /ws/display clients (projector windows, OBS browser sources)
-    receive the verse immediately — no operator tab-switching required.
+    Only THIS church's connected /ws/display clients (projector windows,
+    OBS browser sources) receive the verse — never any other church's.
     """
+    church_id = req.church.strip().lower()
     payload = {
         "type":        "verse",
         "verse":       req.verse,
@@ -1286,24 +1542,36 @@ async def display_push(req: DisplayPushReq):
         "theme":       req.theme,
         "bg":          req.bg,
     }
-    await _broadcast_to_display(payload)
-    return {"pushed": True, "clients": len(_display_clients)}
+    await _broadcast_to_display(church_id, payload)
+    return {"pushed": True, "clients": len(get_room(church_id).display_clients)}
 
 
 @app.get("/display/status")
-def display_status():
-    return {"connected_clients": len(_display_clients)}
+def display_status(church: str = Query(..., description="Church account email")):
+    return {"connected_clients": len(get_room(church.strip().lower()).display_clients)}
 
 
 @app.get("/display")
-def serve_display_page():
+def serve_display_page(church: str = Query("", description="Church account email")):
     """
     Standalone projector page — open in a browser window on the projector
     screen, OBS browser source, or NDI Tools virtual input.  It auto-connects
     to /ws/display and updates whenever a verse is pushed.  The overlay is
     anchored to the BOTTOM of the screen with a translucent pill so it never
     covers the full screen.
+    Requires ?church=<id> (the desktop app's "Open Display Page" link already
+    includes this) so the projector only ever shows this church's verses.
     """
+    church_id = church.strip().lower()
+    if not church_id:
+        from fastapi.responses import HTMLResponse
+        return HTMLResponse(
+            "<body style='background:#000;color:#fff;font-family:sans-serif;"
+            "display:flex;align-items:center;justify-content:center;height:100vh;text-align:center;'>"
+            "<div>This display link is missing its church code.<br>"
+            "Open it from the desktop app's \"Open Display Page\" button instead of bookmarking it directly.</div></body>",
+            status_code=400,
+        )
     html = r"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1375,7 +1643,7 @@ body{
   var vref  = document.getElementById('vref');
   var vtxt  = document.getElementById('vtxt');
   var proto = location.protocol === 'https:' ? 'wss' : 'ws';
-  var wsUrl = proto + '://' + location.host + '/ws/display';
+  var wsUrl = proto + '://' + location.host + '/ws/display?church=__CHURCH_ID__';
   var ws, retryDelay = 1500;
 
   function connect(){
@@ -1412,7 +1680,7 @@ body{
 </body>
 </html>"""
     from fastapi.responses import HTMLResponse
-    return HTMLResponse(html)
+    return HTMLResponse(html.replace("__CHURCH_ID__", church_id))
 
 
 @app.get("/chapter")
@@ -1979,8 +2247,9 @@ class SessionState:
             "active_translation": self.active_translation,
         }
 
-# Initialise the shared session now that SessionState is defined
-global_session = SessionState()
+# NOTE: there is no longer a single shared SessionState here — each church
+# gets its own via ChurchRoom.session (see get_room() above), so churches
+# sharing this backend can never see or affect each other's current verse.
 
 def _parse_spoken_int(value: str) -> Optional[int]:
     clean = _normalise_intent_text(value)
@@ -2157,7 +2426,7 @@ async def _send_command_execution(
         "transcript": query,
         "state": session.payload(),
         "results": [_annotate_for_session(verse, session)] if verse else [],
-        "feed": feed if feed is not None else list(scripture_feed),
+        "feed": feed if feed is not None else list(_get_current_feed()),
         "is_interim": is_interim,
         "transcript_finalized": transcript_finalized,
     }
@@ -2228,7 +2497,7 @@ async def execute_voice_intent(
             ws, session, query, intent, True,
             f"Showing {annotated['ref']} in {session.active_translation}.",
             verse=verse,
-            feed=list(scripture_feed),
+            feed=list(_get_current_feed()),
             is_interim=is_interim,
             transcript_finalized=transcript_finalized,
         )
@@ -2265,7 +2534,7 @@ def _quick_verbatim_match(query: str, candidates: List[Dict]) -> Optional[Dict]:
     return None
 
 def _is_last_feed_ref(ref: str) -> bool:
-    return bool(scripture_feed and scripture_feed[-1].get("ref") == ref)
+    return bool(_get_current_feed() and _get_current_feed()[-1].get("ref") == ref)
 
 async def _send_exact_match(
     ws: WebSocket,
@@ -2287,7 +2556,7 @@ async def _send_exact_match(
         "type":       payload_type,
         "transcript": query,
         "results":    [verse_payload],
-        "feed":       list(scripture_feed),
+        "feed":       list(_get_current_feed()),
         "is_exact":   True,
         "confidence": confidence,
         "openai":     openai,
@@ -2418,7 +2687,7 @@ async def _legacy_process_query_unused(
             add_to_feed(nxt, "next")
             await safe_send(ws, {
                 "type": "next_verse", "transcript": query,
-                "results": [nxt], "feed": list(scripture_feed)
+                "results": [nxt], "feed": list(_get_current_feed())
             })
         return
 
@@ -2434,7 +2703,7 @@ async def _legacy_process_query_unused(
                 "type":       "exact_match",  # → Detected Verses + Live screen
                 "transcript": query,
                 "results":    [exact],
-                "feed":       list(scripture_feed),
+                "feed":       list(_get_current_feed()),
                 "is_exact":   True,
                 "confidence": 1.0,
                 "openai":     False,
@@ -2482,7 +2751,7 @@ async def _legacy_process_query_unused(
                     "type":       "exact_match",  # → Detected Verses + Live screen
                     "transcript": query,
                     "results":    [verse],
-                    "feed":       list(scripture_feed),
+                    "feed":       list(_get_current_feed()),
                     "is_exact":   True,
                     "confidence": confidence,
                     "openai":     True,
@@ -2705,13 +2974,18 @@ async def process_query(
 @app.websocket("/ws/live")
 async def live_ws(ws: WebSocket):
     await ws.accept()
-    print("🔌 Desktop client connected")
+    church_id = (ws.query_params.get("church") or "").strip().lower()
+    if not church_id:
+        await safe_send(ws, {"type": "error", "message": "Missing 'church' identifier — please sign in again."})
+        await ws.close(code=4001)
+        return
+    print(f"🔌 Desktop client connected for church '{church_id}'")
+    _current_church_ctx.set(church_id)
 
     engine          = "auto"
     session_key     = ""
     prefetched_audio: List[bytes] = []
-    global global_session
-    session_state   = global_session   # share with /ws/control so remote NEXT/PREV tracks the latest verse
+    session_state   = get_room(church_id).session   # same object /ws/control uses for this church, so remote NEXT/PREV tracks the latest verse
 
     try:
         loop          = asyncio.get_running_loop()
@@ -3098,7 +3372,7 @@ async def _run_deepgram(
                                         dedupe=False,
                                     )
                             elif t == "get_feed":
-                                await safe_send(ws, {"type": "feed", "feed": list(scripture_feed)})
+                                await safe_send(ws, {"type": "feed", "feed": list(_get_current_feed())})
                             elif t == "set_index":
                                 ref = msg.get("ref", "")
                                 bible.set_manual_index(ref)
@@ -3223,7 +3497,7 @@ async def _run_whisper(ws: WebSocket, session: SessionState, prefetched_audio: O
                                 dedupe=False,
                             )
                     elif t == "get_feed":
-                        await safe_send(ws, {"type": "feed", "feed": list(scripture_feed)})
+                        await safe_send(ws, {"type": "feed", "feed": list(_get_current_feed())})
                     elif t == "set_index":
                         ref = msg.get("ref", "")
                         bible.set_manual_index(ref)
@@ -3281,7 +3555,7 @@ async def _run_text(ws: WebSocket, session: SessionState):
                                 dedupe=False,
                             )
                     elif t == "get_feed":
-                        await safe_send(ws, {"type": "feed", "feed": list(scripture_feed)})
+                        await safe_send(ws, {"type": "feed", "feed": list(_get_current_feed())})
                     elif t == "set_index":
                         ref = msg.get("ref", "")
                         bible.set_manual_index(ref)
@@ -3305,15 +3579,18 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))
 
     # ── Detect if we can show a desktop window ────────────────────
-    # On Railway / headless servers pywebview is not available or has no display.
+    # On Railway / Fly / headless servers pywebview is not available or has no display.
     # Guard: only attempt pywebview when running as a frozen .exe OR when the
-    # library is explicitly present and a display is available.
+    # library is explicitly present, a display is available, AND we're not in a
+    # cloud environment (Fly/Railway set these env vars automatically).
+    _is_cloud = bool(os.environ.get("FLY_APP_NAME") or os.environ.get("RAILWAY_ENVIRONMENT"))
     _use_webview = False
-    try:
-        import webview
-        _use_webview = True
-    except ImportError:
-        _use_webview = False
+    if not _is_cloud:
+        try:
+            import webview
+            _use_webview = True
+        except ImportError:
+            _use_webview = False
 
     if _use_webview:
         # ── Desktop .exe mode — pywebview wraps the FastAPI server ────
@@ -3337,6 +3614,6 @@ if __name__ == "__main__":
         webview.start()
 
     else:
-        # ── Headless / Railway mode — plain uvicorn, no window ────────
-        print("ℹ  pywebview not available — running headless (Railway / server mode)")
+        # ── Headless / Railway / Fly mode — plain uvicorn, no window ────────
+        print("ℹ  pywebview not available or cloud environment detected — running headless")
         uvicorn.run("main_fixed:app", host="0.0.0.0", port=port, reload=False)
