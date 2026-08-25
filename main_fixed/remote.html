@@ -843,11 +843,35 @@ let reconnectAttempts = 0;
 let transcriptionActive = false;
 let searchTimer = null;
 const MAX_RECONNECT = 8;
-const API_URL = `${location.protocol}//${location.host}`;
-const WS_URL = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws/remote`;
+// Same-origin when served by the backend itself (desktop LAN remote, Railway,
+// Fly serving its own frontend). If hosted separately (e.g. Netlify), point
+// explicitly at the Fly backend.
+const FLY_BACKEND_HOST = 'inthebeginning.fly.dev'; // ← update if your Fly app name changes
+const _isSameOriginBackend =
+    ['localhost', '127.0.0.1'].includes(location.hostname)
+    || location.hostname.endsWith('.fly.dev')
+    || location.hostname.endsWith('.railway.app')
+    || /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(location.hostname); // LAN IP (phone on same WiFi)
+
+const API_URL = _isSameOriginBackend
+    ? `${location.protocol}//${location.host}`
+    : `https://${FLY_BACKEND_HOST}`;
+const _wsBase = _isSameOriginBackend
+    ? `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws/remote`
+    : `wss://${FLY_BACKEND_HOST}/ws/remote`;
+
+// The desktop app's QR code embeds ?church=<id> so this phone always lands
+// in the correct church's room — never mixed up with any other church.
+const CHURCH_ID = (new URLSearchParams(location.search).get('church') || '').trim().toLowerCase();
+const WS_URL = CHURCH_ID ? `${_wsBase}?church=${encodeURIComponent(CHURCH_ID)}` : _wsBase;
 
 function connect() {
     clearTimeout(reconnectTimer);
+    if (!CHURCH_ID) {
+        setConnStatus('error');
+        appendSystemNote?.('This remote link is missing its church code — please rescan the QR code shown on the desktop app.');
+        return;
+    }
     if (ws) { try { ws.close(); } catch(_){} ws = null; }
     setConnStatus('connecting');
 

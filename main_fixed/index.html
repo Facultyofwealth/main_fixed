@@ -1779,7 +1779,7 @@ img, video { display: block; max-width: 100%; }
       </p>
       <div class="hero-ctas">
         <!-- â–‘â–‘ REPLACE href="#" with your actual .exe download link â–‘â–‘ -->
-        <a href="/download-package" class="btn-primary" id="hero-dl-btn">
+        <a href="https://github.com/Facultyofwealth/main_fixed/releases/download/v1.0.0/start_in_the_beginning.exe" download class="btn-primary" id="hero-dl-btn">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 1v9M5 7l3 3 3-3M2 13h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
           Download for Windows
           <span class="btn-sub">.exe Â· Free to start</span>
@@ -2277,7 +2277,7 @@ img, video { display: block; max-width: 100%; }
       <h2 class="dl-title">Revolutionizing Church<br>Presentations <em>with AI.</em></h2>
       <p class="dl-desc">Join hundreds of churches displaying scripture effortlessly during sermons. The download includes a launcher that keeps transcription on localhost and the phone remote on your Wi-Fi address at the same time.</p>
       <!-- â–‘â–‘ REPLACE href="#" with your actual .exe download URL â–‘â–‘ -->
-      <a href="/download-package" class="btn-primary btn-primary--large" id="main-dl-btn">
+      <a href="https://github.com/Facultyofwealth/main_fixed/releases/download/v1.0.0/start_in_the_beginning.exe" download class="btn-primary btn-primary--large" id="main-dl-btn">
         <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M9 1v10M6 8l3 3 3-3M2 15h14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
         Download for Windows (.exe)
         <span class="btn-sub">Free Â· No credit card required</span>
@@ -2285,6 +2285,7 @@ img, video { display: block; max-width: 100%; }
       <p class="dl-compat">Windows 10 / 11 Â· 64-bit Â· Version 2.x Â· Desktop + mobile remote ready</p>
     </div>
   </section>
+
 
   <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
        FOOTER
@@ -2312,7 +2313,7 @@ img, video { display: block; max-width: 100%; }
           <a href="#how-it-works">How It Works</a>
           <a href="#faq">FAQ</a>
           <a href="docs.html">Documentation</a>
-          <a href="/download-package">Download</a>
+          <a href="https://github.com/Facultyofwealth/main_fixed/releases/download/v1.0.0/start_in_the_beginning.exe" download>Download</a>
         </div>
         <div class="footer-col">
           <h5>Company</h5>
@@ -2708,47 +2709,18 @@ document.querySelectorAll('.faq-item').forEach(item => {
   });
 });
 
-/* ─── IndexedDB DATABASE ──────────────────────── */
-const ITB_DB = { name: 'InTheBeginningDB', version: 1, db: null };
-
-function initDB() {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open(ITB_DB.name, ITB_DB.version);
-    req.onupgradeneeded = e => {
-      const database = e.target.result;
-      if (!database.objectStoreNames.contains('users')) {
-        const store = database.createObjectStore('users', { keyPath: 'email' });
-        store.createIndex('churchName', 'churchName', { unique: false });
-        store.createIndex('country',    'country',    { unique: false });
-        store.createIndex('createdAt',  'createdAt',  { unique: false });
-      }
-    };
-    req.onsuccess  = e => { ITB_DB.db = e.target.result; resolve(); };
-    req.onerror    = ()  => reject(req.error);
-  });
-}
-
-async function hashPw(pw) {
-  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pw + ':ITB2026'));
-  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
-}
-
-function dbPut(email, data) {
-  return new Promise((res, rej) => {
-    const tx = ITB_DB.db.transaction('users','readwrite');
-    tx.objectStore('users').add(data).onsuccess = () => res(true);
-    tx.onerror = () => rej(tx.error);
-  });
-}
-
-function dbGet(email) {
-  return new Promise((res, rej) => {
-    const tx = ITB_DB.db.transaction('users','readonly');
-    const r  = tx.objectStore('users').get(email);
-    r.onsuccess = () => res(r.result || null);
-    r.onerror   = () => rej(r.error);
-  });
-}
+/* ─── BACKEND API (church accounts) ──────────── */
+// Same-origin when this page is served by the backend itself (desktop .exe,
+// Railway, or Fly serving its own frontend). If hosted separately (e.g.
+// Netlify), point explicitly at the Fly backend.
+const FLY_BACKEND_HOST = 'inthebeginning.fly.dev'; // ← update if your Fly app name changes
+const _isSameOriginBackend =
+    ['localhost', '127.0.0.1'].includes(location.hostname)
+    || location.hostname.endsWith('.fly.dev')
+    || location.hostname.endsWith('.railway.app');
+const BACKEND_URL = _isSameOriginBackend
+    ? `${location.protocol}//${location.host}`
+    : `https://${FLY_BACKEND_HOST}`;
 
 function showMsg(msg, type) {
   let el = document.getElementById('authMsg');
@@ -2785,10 +2757,12 @@ function reflectLogin(u) {
   });
 }
 
-initDB().then(() => {
-  const u = getSession();
-  if (u) reflectLogin(u);
-}).catch(console.error);
+function goToDashboard() {
+  window.location.href = 'dashboard.html';
+}
+
+const _existingSession = getSession();
+if (_existingSession) reflectLogin(_existingSession);
 
 /* ─── AUTH MODAL ──────────────────────────────── */
 const authOverlay = document.getElementById('authOverlay');
@@ -2822,7 +2796,13 @@ document.addEventListener('keydown', e => { if (e.key==='Escape') closeAuth(); }
 document.querySelectorAll('a[href="#signin"], a[href="#signup"]').forEach(btn => {
   btn.addEventListener('click', e => {
     e.preventDefault();
-    openAuth(btn.getAttribute('href').replace('#',''));
+    const tab = btn.getAttribute('href').replace('#','');
+    const session = getSession();
+    if (session && tab === 'signup') {
+      goToDashboard();
+      return;
+    }
+    openAuth(tab);
   });
 });
 
@@ -2840,17 +2820,25 @@ document.querySelector('#formSignUp .auth-submit')?.addEventListener('click', as
   if (pw.length < 6) return showMsg('Password must be at least 6 characters.','err');
 
   try {
-    if (await dbGet(email)) return showMsg('An account with this email already exists. Please sign in.','err');
-    const hash = await hashPw(pw);
-    await dbPut(email, { email, churchName, country, hash, createdAt: new Date().toISOString() });
-    saveSession({ email, churchName, country });
-    reflectLogin({ email, churchName, country });
+    const res = await fetch(`${BACKEND_URL}/api/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ churchName, email, country, password: pw }),
+    });
+    const data = await res.json();
+    if (!res.ok) return showMsg(data.detail || 'Could not create account. Please try again.', 'err');
+
+    saveSession(data);
+    reflectLogin(data);
     showMsg('Welcome, ' + churchName + '! Account created successfully.', 'ok');
     f.forEach(x => x.value = '');
-    setTimeout(closeAuth, 2200);
+    setTimeout(() => {
+      closeAuth();
+      goToDashboard();
+    }, 2200);
   } catch(err) {
     console.error(err);
-    showMsg('Could not create account. Please try again.','err');
+    showMsg('Could not reach the server. Please check your connection and try again.','err');
   }
 });
 
@@ -2864,20 +2852,28 @@ document.querySelector('#formSignIn .auth-submit')?.addEventListener('click', as
   if (!pw) return showMsg('Please enter your password.','err');
 
   try {
-    const user = await dbGet(email);
-    if (!user) return showMsg('No account found. Please create one first.','err');
-    const hash = await hashPw(pw);
-    if (hash !== user.hash) return showMsg('Incorrect password. Please try again.','err');
-    saveSession(user);
-    reflectLogin(user);
-    showMsg('Welcome back, ' + user.churchName + '!', 'ok');
+    const res = await fetch(`${BACKEND_URL}/api/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password: pw }),
+    });
+    const data = await res.json();
+    if (!res.ok) return showMsg(data.detail || 'Sign in failed. Please try again.', 'err');
+
+    saveSession(data);
+    reflectLogin(data);
+    showMsg('Welcome back, ' + data.churchName + '!', 'ok');
     f.forEach(x => x.value = '');
-    setTimeout(closeAuth, 2000);
+    setTimeout(() => {
+      closeAuth();
+      goToDashboard();
+    }, 2000);
   } catch(err) {
     console.error(err);
-    showMsg('Sign in failed. Please try again.','err');
+    showMsg('Could not reach the server. Please check your connection and try again.','err');
   }
 });
+
 
 /* ─── DOCS GATEWAY STAGGER ────────────────────── */
 if (typeof gsap !== 'undefined' && typeof ScrollTrigger !== 'undefined') {

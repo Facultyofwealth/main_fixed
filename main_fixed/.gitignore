@@ -1,7 +1,16 @@
+# Environments and Secrets
 .env
 .env.*
 !.env.example
 venv/
 .venv/
+
+# Python Cache
 __pycache__/
 *.py[cod]
+
+# PyInstaller & Build Files
+dist/
+build/
+*.spec
+*.exe
