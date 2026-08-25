@@ -1304,6 +1304,17 @@ def _get_lan_ip() -> str:
 
 @app.get("/remote-info")
 def remote_info(request: Request):
+    is_cloud = bool(os.environ.get("FLY_APP_NAME") or os.environ.get("RAILWAY_ENVIRONMENT"))
+    if is_cloud:
+        # The LAN IP below is meaningless inside a Fly/Railway container — phones
+        # need the actual public hostname instead.
+        host = request.url.hostname
+        return {
+            "lan_ip": None,
+            "remote_port": 443,
+            "remote_url": f"https://{host}/remote",
+            "desktop_url": f"https://{host}/",
+        }
     port = request.url.port or 8000
     lan_ip = _get_lan_ip()
     remote_port = LAN_PROXY_PORT_ACTIVE or port
