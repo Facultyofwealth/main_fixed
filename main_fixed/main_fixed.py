@@ -11,7 +11,7 @@ try:
 except Exception:
     pass
 
-# ── Load .env BEFORE anything else ───────────────────────────
+#  Load .env BEFORE anything else 
 _script_dir = os.path.dirname(os.path.abspath(__file__))
 
 def get_resource_path(relative_path: str) -> str:
@@ -49,7 +49,7 @@ if not os.path.exists(_env_path):
 
 from dotenv import load_dotenv
 load_dotenv(dotenv_path=_env_path, override=True)
-print(f"📄 .env loaded from: {_env_path}  (exists={os.path.exists(_env_path)})")
+print(f".env loaded from: {_env_path}  (exists={os.path.exists(_env_path)})")
 
 import time, json, asyncio, re, tempfile, io, zipfile, socket, contextvars
 import sqlite3, hashlib, secrets
@@ -70,20 +70,19 @@ from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
 from starlette.websockets import WebSocketState
 
-# ── Deepgram key ──────────────────────────────────────────────
+# Deepgram key
 SERVER_DG_KEY = os.getenv("DEEPGRAM_API_KEY", "").strip()
 if SERVER_DG_KEY and SERVER_DG_KEY != "your_deepgram_api_key_here":
-    print(f"🔑 Server DEEPGRAM_API_KEY found: {SERVER_DG_KEY[:8]}…")
+    print(f"Server DEEPGRAM_API_KEY found: {SERVER_DG_KEY[:8]}…")
 else:
     SERVER_DG_KEY = ""
-    print("ℹ  No server Deepgram key — clients may supply their own.")
+    print("No server Deepgram key — clients may supply their own.")
 
-# ── Local vector search (FAISS + BGE embeddings) ──────────────
-#  Lane 1: direct Bible references are caught by regex/state and never sent
+# Local vector search (FAISS + BGE embeddings)
+# Lane 1: direct Bible references are caught by regex/state and never sent
 #          into the semantic model.
-#  Lane 2: normal paraphrases are embedded locally with bge-small-en-v1.5 and
-#          searched in FAISS against verse text only.
-# ─────────────────────────────────────────────────────────────
+# Lane 2: normal paraphrases are embedded locally with bge-small-en-v1.5 and
+#         searched in FAISS against verse text only.
 EMBEDDING_MODEL_NAME = os.getenv("ITB_EMBEDDING_MODEL", "BAAI/bge-small-en-v1.5").strip()
 BGE_QUERY_PREFIX = "Represent this sentence for searching relevant passages: "
 VECTOR_MIN_SCORE = float(os.getenv("ITB_VECTOR_MIN_SCORE", "0.42"))
@@ -107,7 +106,7 @@ except ImportError:
 OPENAI_AVAILABLE = False
 _openai_client = None
 
-# ── Whisper (offline fallback) ────────────────────────────────
+#  Whisper (offline fallback) 
 # Model is NOT loaded at startup — it loads lazily the first time a Whisper
 # session begins (see _ensure_whisper_model), keeping boot memory light.
 WHISPER_AVAILABLE = False
@@ -116,12 +115,12 @@ whisper_model     = None
 try:
     import whisper as _whisper_lib
     WHISPER_AVAILABLE = True          # library is present; model loads on demand
-    print("✅ Whisper library found — model will load on first use")
+    print("Whisper library found — model will load on first use")
 except ImportError:
     _whisper_lib = None
-    print("⚠  Whisper not installed — run: pip install openai-whisper")
+    print(" Whisper not installed — run: pip install openai-whisper")
 
-# ── Church accounts (SQLite) ────────────────────────────────────
+#  Church accounts (SQLite) 
 # NOTE: on Fly/Railway, this file lives in the CONTAINER filesystem by default,
 # which is wiped on every redeploy/restart. To persist real church accounts in
 # production, attach a Fly volume and set ITB_DATA_DIR to its mount path
@@ -151,12 +150,12 @@ def _init_church_db():
     conn.close()
 
 _init_church_db()
-print(f"🗄️  Church accounts DB: {DB_PATH}")
+print(f"Church accounts DB: {DB_PATH}")
 
 def _hash_password(password: str, salt: str) -> str:
     return hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt.encode("utf-8"), 200_000).hex()
 
-# ── FastAPI app ───────────────────────────────────────────────
+# FastAPI app
 app = FastAPI(title="In The Beginning API", version="6.0.0")
 
 app.add_middleware(
@@ -179,9 +178,9 @@ def _find_frontend() -> Optional[str]:
     ]
     for p in candidates:
         if os.path.exists(p):
-            print(f"🌐 Frontend found: {p}")
+            print(f"Frontend found: {p}")
             return p
-    print("⚠  Frontend HTML not found")
+    print("Frontend HTML not found")
     return None
 
 FRONTEND_FILE = _find_frontend()
@@ -190,7 +189,7 @@ if FRONTEND_FILE:
     def serve_frontend():
         return FileResponse(FRONTEND_FILE)
 
-# ── Constants ─────────────────────────────────────────────────
+#  Constants 
 TOP_K     = 5   # retrieve top-5 from FAISS/keyword; display top-3
 MIN_WORDS = 3
 APP_PORT = int(os.getenv("ITB_APP_PORT", "8000"))
@@ -250,7 +249,7 @@ TRANSLATION_ALIASES = {
     "young literal": "YLT",
 }
 
-# ── Scripture feed (per-church) ─────────────────────────────────
+#  Scripture feed (per-church) 
 # Each church's feed lives on its own ChurchRoom (see ChurchRoom.feed,
 # defined further down). _current_church_ctx is set once at the top of
 # /ws/control and /ws/live for the duration of that connection's async
@@ -278,7 +277,7 @@ def add_to_feed(verse: Dict, match_type: str = "match"):
         return
     feed.append(entry)
 
-# ── Bible Index ───────────────────────────────────────────────
+#  Bible Index 
 STOP_WORDS = {
     "the","a","an","and","or","of","in","to","is","it","he","she","they",
     "i","that","this","was","be","are","his","her","not","but","for","with"
@@ -293,7 +292,7 @@ BOOK_ALIASES = {
 }
 
 BOOK_SHORT_CODES = {
-    # ── Old Testament ────────────────────────────────────────────
+    #  Old Testament 
     "gen": "Genesis",       "genesis": "Genesis",
     "exo": "Exodus",        "exodus": "Exodus",
     "lev": "Leviticus",     "leviticus": "Leviticus",
@@ -333,7 +332,7 @@ BOOK_SHORT_CODES = {
     "hag": "Haggai",        "haggai": "Haggai",
     "zec": "Zechariah",     "zechariah": "Zechariah",
     "mal": "Malachi",       "malachi": "Malachi",
-    # ── New Testament ────────────────────────────────────────────
+    #  New Testament 
     "mat": "Matthew",       "matthew": "Matthew",           "matt": "Matthew",
     "mar": "Mark",          "mark": "Mark",                 "mrk": "Mark",
     "luk": "Luke",          "luke": "Luke",
@@ -414,11 +413,11 @@ class BibleIndex:
             if verses:
                 self.verses = verses
                 self._rebuild_lookup_maps()
-                print(f"✅ Loaded {len(self.verses)} verses from {path}")
+                print(f"Loaded {len(self.verses)} verses from {path}")
                 return
         self.verses = self._sample()
         self._rebuild_lookup_maps()
-        print(f"ℹ  Using {len(self.verses)} built-in sample verses")
+        print(f"Using {len(self.verses)} built-in sample verses")
 
     def _try_load(self, filepath: str) -> List[Dict]:
         try:
@@ -531,7 +530,7 @@ class BibleIndex:
             VECTOR_READY = False
             return
 
-        # ── Cache paths (live next to this script) ────────────────
+        #  Cache paths (live next to this script) 
         _base = os.path.dirname(os.path.abspath(__file__))
         _faiss_path = os.path.join(_base, "bible_index.faiss")
         _emb_path   = os.path.join(_base, "bible_embeddings.npy")
@@ -555,8 +554,8 @@ class BibleIndex:
             import numpy as np
 
             if _cache_valid():
-                # ── Fast path: load everything from disk ─────────
-                print(f"⚡ Loading cached FAISS index & embeddings…")
+                #  Fast path: load everything from disk 
+                print(f"Loading cached FAISS index & embeddings…")
                 # Silence HuggingFace progress output
                 os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
                 os.environ["TRANSFORMERS_VERBOSITY"] = "error"
@@ -569,11 +568,11 @@ class BibleIndex:
                 self._vector_status = f"ready: {EMBEDDING_MODEL_NAME} ({self._faiss_index.ntotal} verses) [cached]"
                 VECTOR_READY = True
                 VECTOR_STATUS = self._vector_status
-                print(f"✅ FAISS vector index ready (from cache): {self._faiss_index.ntotal} verses")
+                print(f"FAISS vector index ready (from cache): {self._faiss_index.ntotal} verses")
                 return
 
-            # ── Slow path: build from scratch and save cache ──────
-            print(f"🔨 Building FAISS index for {len(self.verses)} verses (first run — will be cached)…")
+            #  Slow path: build from scratch and save cache 
+            print(f"Building FAISS index for {len(self.verses)} verses (first run — will be cached)…")
             os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
             os.environ["TRANSFORMERS_VERBOSITY"] = "error"
             os.environ["SENTENCE_TRANSFORMERS_VERBOSITY"] = "0"
@@ -594,17 +593,17 @@ class BibleIndex:
             self._vector_status = f"ready: {EMBEDDING_MODEL_NAME} ({index.ntotal} verses)"
             VECTOR_READY = True
             VECTOR_STATUS = self._vector_status
-            print(f"✅ FAISS vector index ready: {index.ntotal} verses")
+            print(f"FAISS vector index ready: {index.ntotal} verses")
 
-            # ── Persist to disk ───────────────────────────────────
+            #  Persist to disk 
             try:
                 faiss.write_index(index, _faiss_path)
                 np.save(_emb_path, embeddings)
                 with open(_cache_meta_path, "w", encoding="utf-8") as f:
                     json.dump({"model": EMBEDDING_MODEL_NAME, "verse_count": len(self.verses)}, f)
-                print(f"💾 FAISS cache saved → {_faiss_path}")
+                print(f"FAISS cache saved: {_faiss_path}")
             except Exception as save_err:
-                print(f"⚠  Could not save FAISS cache: {save_err}")
+                print(f"Could not save FAISS cache: {save_err}")
 
         except Exception as e:
             self._embedding_model = None
@@ -772,7 +771,7 @@ class BibleIndex:
 
 bible = BibleIndex()
 
-# ── Per-church session state ────────────────────────────────────
+#  Per-church session state 
 # Each church's SessionState (see ChurchRoom.session, above) is kept in sync
 # by every code path that displays a verse for that church (/ws/live
 # transcription + /ws/control remote commands). This ensures remote
@@ -840,10 +839,10 @@ async def startup():
     # FAISS index is NOT loaded at startup to stay within 512MB free-tier RAM.
     # It loads lazily the first time transcription begins (see _ensure_vector_index).
     await _ensure_lan_proxy()
-    dg  = f"✅ ({SERVER_DG_KEY[:8]}…)" if SERVER_DG_KEY else "⚠  no key"
-    wh  = "✅ lib ready" if WHISPER_AVAILABLE else "❌ not installed"
-    print(f"🚀 Ready | Deepgram: {dg} | Whisper: {wh} | Both Whisper & FAISS load lazily on first use")
-    print(f"📖 Frontend: {FRONTEND_FILE or 'NOT FOUND'}")
+    dg  = f"key present ({SERVER_DG_KEY[:8]}…)" if SERVER_DG_KEY else "no key"
+    wh  = "lib ready" if WHISPER_AVAILABLE else "not installed"
+    print(f"Ready | Deepgram: {dg} | Whisper: {wh} | Both Whisper & FAISS load lazily on first use")
+    print(f"Frontend: {FRONTEND_FILE or 'NOT FOUND'}")
 
 _vector_index_loaded = False
 _vector_index_lock = None   # created lazily inside the event loop (asyncio.Lock() at module level crashes Python 3.12+)
@@ -858,10 +857,10 @@ async def _ensure_vector_index():
     async with _vector_index_lock:
         if _vector_index_loaded:
             return
-        print("⏳ Loading FAISS vector index on first use…")
+        print("Loading FAISS vector index on first use…")
         await asyncio.to_thread(bible.build_vector_index)
         _vector_index_loaded = True
-        print("✅ FAISS vector index ready")
+        print("FAISS vector index ready")
 
 _whisper_model_loaded = False
 _whisper_model_lock = None  # created lazily inside the event loop
@@ -876,15 +875,15 @@ async def _ensure_whisper_model():
     async with _whisper_model_lock:
         if _whisper_model_loaded:
             return
-        print("⏳ Loading Whisper 'tiny' model on first use…")
+        print("Loading Whisper 'tiny' model on first use…")
         try:
             whisper_model = await asyncio.to_thread(_whisper_lib.load_model, "tiny")
             _whisper_model_loaded = True
-            print("✅ Whisper 'tiny' model ready")
+            print("Whisper 'tiny' model ready")
         except Exception as e:
-            print(f"⚠  Whisper failed to load: {e}")
+            print(f"Whisper failed to load: {e}")
 
-# ── Redis (optional — enables correct room delivery across MULTIPLE Fly
+#  Redis (optional — enables correct room delivery across MULTIPLE Fly
 # machines). Without REDIS_URL set, rooms still work correctly as long as
 # you run a single machine (e.g. local dev, or min_machines_running=1).
 # Set up with: `fly redis create` (or Upstash), then `fly secrets set REDIS_URL=...`
@@ -894,14 +893,14 @@ redis_client = None
 async def init_redis():
     global redis_client
     if not REDIS_URL:
-        print("ℹ  REDIS_URL not set — church rooms are correct on a single machine only")
+        print("REDIS_URL not set — church rooms are correct on a single machine only")
         return
     if aioredis is None:
-        print("⚠  REDIS_URL is set but the 'redis' package isn't installed — run: pip install redis")
+        print("REDIS_URL is set but the 'redis' package isn't installed — run: pip install redis")
         return
     redis_client = aioredis.from_url(REDIS_URL, decode_responses=True)
     asyncio.create_task(_redis_room_listener())
-    print("✅ Redis connected — church rooms now work correctly across multiple Fly machines")
+    print("Redis connected — church rooms now work correctly across multiple Fly machines")
 
 async def _redis_room_listener():
     """Runs on every machine. Delivers a published room message to whichever
@@ -925,9 +924,9 @@ async def _redis_room_listener():
                     if r in room.remotes:
                         room.remotes.remove(r)
         except Exception as e:
-            print(f"⚠  Room relay error: {e}")
+            print(f" Room relay error: {e}")
 
-# ── Safe WebSocket send ───────────────────────────────────────
+#  Safe WebSocket send 
 # FIXES the "send after close" crash. Every ws.send_json() call in this file
 # goes through here so we never touch a dead socket.
 async def safe_send(ws: WebSocket, payload: dict) -> bool:
@@ -939,7 +938,7 @@ async def safe_send(ws: WebSocket, payload: dict) -> bool:
     except Exception:
         return False
 
-# ── Church Rooms ──────────────────────────────────────────────
+#  Church Rooms 
 # Every church gets its own isolated desktop connection, phone remotes, and
 # verse-navigation session — replacing the old setup where ALL churches
 # sharing this backend fought over one single global desktop/session.
@@ -974,7 +973,7 @@ class RemoteControlManager:
         room.desktop = ws
         if redis_client:
             await redis_client.set(f"itb:room:{church_id}:desktop_online", "1", ex=120)
-        print(f"📺 Desktop registered for church '{church_id}'")
+        print(f"Desktop registered for church '{church_id}'")
         await safe_send(ws, {"type": "desktop_control_connected", "remotes": len(room.remotes)})
 
     async def refresh_desktop_presence(self, church_id: str):
@@ -988,12 +987,12 @@ class RemoteControlManager:
             room.desktop = None
             if redis_client:
                 await redis_client.delete(f"itb:room:{church_id}:desktop_online")
-            print(f"📺 Desktop unregistered for church '{church_id}'")
+            print(f"Desktop unregistered for church '{church_id}'")
 
     async def register_remote(self, church_id: str, ws: WebSocket):
         room = get_room(church_id)
         room.remotes.append(ws)
-        print(f"📱 Remote connected for church '{church_id}' (total: {len(room.remotes)})")
+        print(f"Remote connected for church '{church_id}' (total: {len(room.remotes)})")
         await safe_send(ws, {"type": "remote_connected", "message": "Remote control active"})
         await self._deliver(church_id, "desktop", {"type": "remote_joined", "remotes": len(room.remotes)}, room)
 
@@ -1001,7 +1000,7 @@ class RemoteControlManager:
         room = church_rooms.get(church_id)
         if room and ws in room.remotes:
             room.remotes.remove(ws)
-            print(f"📱 Remote disconnected for church '{church_id}' (total: {len(room.remotes)})")
+            print(f"Remote disconnected for church '{church_id}' (total: {len(room.remotes)})")
 
     async def relay_to_desktop(self, church_id: str, payload: dict) -> bool:
         """Forward a remote action to this church's desktop client."""
@@ -1037,7 +1036,7 @@ class RemoteControlManager:
 remote_manager = RemoteControlManager()
 
 
-# ── Remote WebSocket endpoint ─────────────────────────────────
+#  Remote WebSocket endpoint 
 @app.websocket("/ws/remote")
 async def remote_ws(ws: WebSocket):
     """
@@ -1065,7 +1064,7 @@ async def remote_ws(ws: WebSocket):
 
                 if t == "remote_action":
                     action = msg.get("action", "")
-                    # Map remote actions → desktop message types
+                    # Map remote actions  desktop message types
                     if action == "next":
                         ok = await remote_manager.relay_to_desktop(church_id, {
                             "type":   "remote_next",
@@ -1184,7 +1183,7 @@ async def desktop_control_ws(ws: WebSocket):
                 await remote_manager.refresh_desktop_presence(church_id)
                 await safe_send(ws, {"type": "desktop_pong", "remotes": len(room.remotes)})
 
-            # ── Remote NEXT / PREV / NAVIGATE commands ────────────────
+            #  Remote NEXT / PREV / NAVIGATE commands 
             # These arrive here (via relay_to_desktop) from this church's phone
             # remote. We handle them against this church's own session so they
             # always act on the last displayed verse for THIS church, not
@@ -1267,7 +1266,7 @@ async def desktop_control_ws(ws: WebSocket):
         await remote_manager.unregister_desktop(church_id, ws)
 
 
-# ── Serve remote.html ─────────────────────────────────────────
+#  Serve remote.html 
 def _find_remote_html() -> Optional[str]:
     base = os.path.dirname(os.path.abspath(__file__))
     candidates = [
@@ -1375,7 +1374,7 @@ def download_package():
     return StreamingResponse(mem, media_type="application/zip", headers=headers)
 
 
-# ── Church Accounts ──────────────────────────────────────────
+#  Church Accounts 
 class RegisterReq(BaseModel):
     churchName: str
     email: str
@@ -1436,7 +1435,7 @@ async def api_login(req: LoginReq):
 
     return {"email": row["email"], "churchName": row["church_name"], "country": row["country"]}
 
-# ── Health ────────────────────────────────────────────────────
+#  Health 
 @app.get("/health")
 def health():
     return {
@@ -1449,7 +1448,7 @@ def health():
         "mode":        "deepgram" if SERVER_DG_KEY else ("whisper" if WHISPER_AVAILABLE else "text-only"),
     }
 
-# ── REST ──────────────────────────────────────────────────────
+#  REST 
 class SearchReq(BaseModel):
     text: str
 
@@ -1477,7 +1476,7 @@ def clear_feed(church: str = Query(..., description="Church account email")):
     get_room(church.strip().lower()).feed.clear()
     return {"status": "cleared"}
 
-# ── Display broadcast WebSocket ──────────────────────────────
+#  Display broadcast WebSocket 
 # External projector windows (HDMI popup or OBS/NDI browser source) connect
 # here.  The desktop frontend pushes verse payloads via POST /display/push,
 # and every connected projector client receives them instantly without the
@@ -1729,7 +1728,7 @@ async def live_search(req: LiveSearchReq):
     results = await asyncio.to_thread(bible.vector_search, clean, TOP_K)
     return {"results": results, "is_exact": False, "query": text}
 
-# ── Helpers ───────────────────────────────────────────────────
+#  Helpers 
 NUMBER_WORDS = {
     "zero": 0, "oh": 0,
     "one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
@@ -1848,8 +1847,8 @@ def exact_lookup(ref: str) -> Optional[Dict]:
 
 def normalise_query(query: str) -> str:
     """
-    Translate spoken words → searchable numbers/symbols.
-    "First Corinthians ten verse twelve" → "1 corinthians 10:12"
+    Translate spoken words  searchable numbers/symbols.
+    "First Corinthians ten verse twelve"  "1 corinthians 10:12"
     """
     parsed_ref = parse_reference_from_text(query)
     if parsed_ref:
@@ -1873,7 +1872,7 @@ def normalise_query(query: str) -> str:
     clean = re.sub(r'\s*:\s*', ':', clean).strip()
     return clean
 
-# ── Semantic Topic Expander ───────────────────────────────────
+#  Semantic Topic Expander 
 # Maps church-preaching themes to enriched embedding queries so that
 # FAISS can surface topically relevant verses even when the preacher's
 # exact words don't appear in scripture text.
@@ -2576,11 +2575,11 @@ async def _send_exact_match(
         "state":      session.payload(),
     })
 
-# ── Whisper helper ────────────────────────────────────────────
+#  Whisper helper 
 def transcribe_whisper(raw_bytes: bytes) -> Optional[str]:
     if not WHISPER_AVAILABLE or whisper_model is None: return None
     if not raw_bytes or len(raw_bytes) < 3200:
-        print("⚠️ Whisper: audio chunk too small, skipped")
+        print("Whisper: audio chunk too small, skipped")
         return None
     try:
         import wave
@@ -2599,7 +2598,7 @@ def transcribe_whisper(raw_bytes: bytes) -> Optional[str]:
         print(f"Whisper error: {e}")
         return None
 
-# ── OpenAI two-stage ranker ───────────────────────────────────
+#  OpenAI two-stage ranker 
 # Called ONLY on final transcripts — never on interim words.
 # Returns: { exact, paraphrase, confidence, reason }
 # All values may be None — caller handles it.
@@ -2657,17 +2656,17 @@ async def openai_rank_verses(transcript: str, candidates: List[Dict]) -> Dict:
             "reason":     result.get("reason", ""),
         }
         print(
-            f"🤖 GPT-4o-mini | conf={out['confidence']:.2f} | "
+            f" GPT-4o-mini | conf={out['confidence']:.2f} | "
             f"exact={out['exact']} | para={out['paraphrase']} | {out['reason']}"
         )
         return out
     except json.JSONDecodeError as je:
-        print(f"⚠  OpenAI bad JSON: {je}")
+        print(f" OpenAI bad JSON: {je}")
     except Exception as e:
-        print(f"⚠  OpenAI rank error: {e}")
+        print(f" OpenAI rank error: {e}")
     return _null
 
-# ── Core query processor ──────────────────────────────────────
+#  Core query processor 
 async def _legacy_process_query_unused(
     ws: WebSocket,
     query: str,
@@ -2677,11 +2676,11 @@ async def _legacy_process_query_unused(
 ):
     """
     Pipeline:
-      1. Normalise spoken words → searchable text
-      2. Exact reference lookup  → exact_match  (→ Detected Verses + Live screen)
-      3. Keyword retrieval       → top-K candidates
-      4. [Optional] OpenAI rank  → best exact / paraphrase with confidence score
-      5. Send result             → fuzzy_match  (→ Paraphrase panel only)
+      1. Normalise spoken words  searchable text
+      2. Exact reference lookup   exact_match  ( Detected Verses + Live screen)
+      3. Keyword retrieval        top-K candidates
+      4. [Optional] OpenAI rank   best exact / paraphrase with confidence score
+      5. Send result              fuzzy_match  ( Paraphrase panel only)
 
     Interim calls (is_interim=True) skip exact lookup and OpenAI
     to stay fast — they only update the Paraphrase panel live.
@@ -2691,7 +2690,7 @@ async def _legacy_process_query_unused(
 
     clean_query = normalise_query(query)
 
-    # ── "next verse" command ──────────────────────────────────
+    #  "next verse" command 
     if NEXT_VERSE_RE.search(query):
         nxt = bible.get_next_verse()
         if nxt:
@@ -2702,7 +2701,7 @@ async def _legacy_process_query_unused(
             })
         return
 
-    # ── Step 1: Exact reference lookup (final transcripts only) ──
+    #  Step 1: Exact reference lookup (final transcripts only) 
     # This populates Detected Verses. Skipped on interim to avoid
     # false positives while the preacher is mid-sentence.
     if not is_interim:
@@ -2711,7 +2710,7 @@ async def _legacy_process_query_unused(
             bible.set_manual_index(exact["ref"])
             add_to_feed(exact, "exact")
             await safe_send(ws, {
-                "type":       "exact_match",  # → Detected Verses + Live screen
+                "type":       "exact_match",  #  Detected Verses + Live screen
                 "transcript": query,
                 "results":    [exact],
                 "feed":       list(_get_current_feed()),
@@ -2721,14 +2720,14 @@ async def _legacy_process_query_unused(
             })
             return
 
-    # ── Word count gate ───────────────────────────────────────
+    #  Word count gate 
     word_threshold = 2 if is_interim else MIN_WORDS
     if len(query.split()) < word_threshold:
         if not is_interim:
             await safe_send(ws, {"type": "partial", "transcript": query})
         return
 
-    # ── Step 2: Keyword retrieval (Stage 1) ───────────────────
+    #  Step 2: Keyword retrieval (Stage 1) 
     candidates = await asyncio.to_thread(bible.keyword_search, clean_query, TOP_K)
 
     if not candidates:
@@ -2747,19 +2746,19 @@ async def _legacy_process_query_unused(
         })
         return
 
-    # ── Step 3: OpenAI ranking (Stage 2 — final only) ────────
+    #  Step 3: OpenAI ranking (Stage 2 — final only) 
     if OPENAI_AVAILABLE:
         ranking    = await openai_rank_verses(query, candidates)
         confidence = ranking["confidence"]
 
-        # High-confidence exact citation → route to Detected Verses + Live screen
+        # High-confidence exact citation  route to Detected Verses + Live screen
         if ranking["exact"] and confidence >= 0.75:
             verse = _find_verse_by_ref(ranking["exact"], candidates)
             if verse:
                 bible.set_manual_index(verse["ref"])
                 add_to_feed(verse, "exact")
                 await safe_send(ws, {
-                    "type":       "exact_match",  # → Detected Verses + Live screen
+                    "type":       "exact_match",  #  Detected Verses + Live screen
                     "transcript": query,
                     "results":    [verse],
                     "feed":       list(_get_current_feed()),
@@ -2769,13 +2768,13 @@ async def _legacy_process_query_unused(
                 })
                 return
 
-        # Paraphrase match → route to Paraphrase panel only
+        # Paraphrase match  route to Paraphrase panel only
         if ranking["paraphrase"] and confidence >= 0.45:
             best = _find_verse_by_ref(ranking["paraphrase"], candidates)
             if best:
                 ordered = [best] + [r for r in candidates if r["ref"] != best["ref"]]
                 await safe_send(ws, {
-                    "type":       "fuzzy_match",  # → Paraphrase panel only
+                    "type":       "fuzzy_match",  #  Paraphrase panel only
                     "transcript": query,
                     "results":    ordered[:3],
                     "is_exact":   False,
@@ -2797,16 +2796,16 @@ async def _legacy_process_query_unused(
     else:
         # No OpenAI key — send keyword results directly to Paraphrase panel
         await safe_send(ws, {
-            "type":       "fuzzy_match",  # → Paraphrase panel only
+            "type":       "fuzzy_match",  #  Paraphrase panel only
             "transcript": query,
             "results":    candidates[:3],
             "is_exact":   False,
             "openai":     False,
         })
 
-# ─────────────────────────────────────────────────────────────
+# 
 # WebSocket — main entry
-# ─────────────────────────────────────────────────────────────
+# 
 async def process_query(
     ws: WebSocket,
     query: str,
@@ -2910,7 +2909,7 @@ async def process_query(
         )
         return
 
-    # ── Lane 2: Semantic search with topic-aware query expansion ──
+    #  Lane 2: Semantic search with topic-aware query expansion 
     # _expand_semantic_query enriches the embedding query when the preacher
     # speaks a recognised church theme (soul winning, Holy Spirit, etc.)
     # so FAISS surfaces topically-relevant verses even when the exact words
@@ -2990,7 +2989,7 @@ async def live_ws(ws: WebSocket):
         await safe_send(ws, {"type": "error", "message": "Missing 'church' identifier — please sign in again."})
         await ws.close(code=4001)
         return
-    print(f"🔌 Desktop client connected for church '{church_id}'")
+    print(f"Desktop client connected for church '{church_id}'")
     _current_church_ctx.set(church_id)
 
     engine          = "auto"
@@ -3010,7 +3009,7 @@ async def live_ws(ws: WebSocket):
             raw = await asyncio.wait_for(ws.receive(), timeout=remaining)
 
             if raw.get("type") == "websocket.disconnect":
-                print("🔌 Client disconnected before init")
+                print("Client disconnected before init")
                 return
 
             if "bytes" in raw and raw["bytes"]:
@@ -3030,7 +3029,7 @@ async def live_ws(ws: WebSocket):
                 session_key = msg.get("deepgram_key", "").strip()
                 break
     except WebSocketDisconnect:
-        print("🔌 Client disconnected before session start")
+        print("Client disconnected before session start")
         return
     except Exception:
         pass
@@ -3055,7 +3054,7 @@ async def live_ws(ws: WebSocket):
         "engine": engine, "deepgram": engine == "deepgram",
         "whisper": engine == "whisper", "key_source": key_source,
     })
-    print(f"🔌 Engine: {engine} | key_source: {key_source}")
+    print(f"Engine: {engine} | key_source: {key_source}")
 
     # Load FAISS lazily — only when transcription actually starts
     await _ensure_vector_index()
@@ -3067,7 +3066,7 @@ async def live_ws(ws: WebSocket):
     else:
         await _run_text(ws, session_state)
 
-# ── Deepgram session ──────────────────────────────────────────
+#  Deepgram session 
 async def _run_deepgram(
     ws: WebSocket,
     dg_key: str,
@@ -3075,11 +3074,11 @@ async def _run_deepgram(
     prefetched_audio: Optional[List[bytes]] = None,
 ):
     # Deepgram nova-3 — tuned for fast preachers:
-    # • endpointing=250 ms  → detect short silence between bursts quickly
-    # • utterance_end_ms=2400 → give a fast preacher 2.4 s of silence before
+    # • endpointing=250 ms   detect short silence between bursts quickly
+    # • utterance_end_ms=2400  give a fast preacher 2.4 s of silence before
     #   closing an utterance (was 1600 — too tight for rapid delivery)
-    # • filler_words=false → strip "uh/um" so they don't pollute verse lookup
-    # • diarize=false → single-speaker mode is faster
+    # • filler_words=false  strip "uh/um" so they don't pollute verse lookup
+    # • diarize=false  single-speaker mode is faster
     DG_URL = (
         "wss://api.deepgram.com/v1/listen"
         "?model=nova-3&language=en-US&encoding=linear16"
@@ -3179,7 +3178,7 @@ async def _run_deepgram(
                     break
             now = asyncio.get_event_loop().time()
             if dropped and (now - last_drop_notice_at) >= 2.0:
-                print(f"⚠️ Deepgram backlog detected — dropped {dropped} stale audio chunk(s) to stay live")
+                print(f"Deepgram backlog detected — dropped {dropped} stale audio chunk(s) to stay live")
                 last_drop_notice_at = now
         await audio_q.put(chunk)
 
@@ -3227,7 +3226,7 @@ async def _run_deepgram(
             finally:
                 final_query_q.task_done()
 
-    # ── Keepalive ─────────────────────────────────────────────
+    #  Keepalive 
     # Deepgram closes with net0001 after 10 s of silence.
     # We send a KeepAlive JSON message every 8 s when no audio is flowing.
     KEEPALIVE     = json.dumps({"type": "KeepAlive"})
@@ -3248,7 +3247,7 @@ async def _run_deepgram(
                         try:
                             await dg_ws.send(KEEPALIVE)
                             last_sent = asyncio.get_event_loop().time()
-                            print("💓 Deepgram KeepAlive sent")
+                            print("Deepgram KeepAlive sent")
                         except Exception as e:
                             print(f"KeepAlive failed: {e}")
                             break
@@ -3321,7 +3320,7 @@ async def _run_deepgram(
                 print(f"DG rcv error: {e}")
                 await safe_send(ws, {"type": "dg_error", "error": str(e)})
 
-    # ── Connect to Deepgram ───────────────────────────────────
+    #  Connect to Deepgram 
     try:
         _connect_sig = inspect.signature(_ws_lib.connect)
         _header_kwarg = (
@@ -3334,8 +3333,8 @@ async def _run_deepgram(
             **{_header_kwarg: {"Authorization": f"Token {dg_key}"}},
             ping_interval=20, ping_timeout=20,
         ) as dg_ws:
-            await safe_send(ws, {"type": "dg_ready", "message": "🎙️ Deepgram connected — speak now"})
-            print("✅ Deepgram stream open")
+            await safe_send(ws, {"type": "dg_ready", "message": "Deepgram connected — speak now"})
+            print("Deepgram stream open")
             fwd_t = asyncio.create_task(fwd(dg_ws))
             rcv_t = asyncio.create_task(rcv(dg_ws))
             final_worker_t = asyncio.create_task(final_query_worker())
@@ -3395,7 +3394,7 @@ async def _run_deepgram(
                         except json.JSONDecodeError:
                             pass
             except WebSocketDisconnect:
-                print("🔌 Browser disconnected during Deepgram session")
+                print("Browser disconnected during Deepgram session")
             finally:
                 stop_evt.set()
                 _cancel_interim_query()
@@ -3411,10 +3410,10 @@ async def _run_deepgram(
                 try: await dg_ws.send(json.dumps({"type": "CloseStream"}))
                 except Exception: pass
                 await asyncio.gather(fwd_t, rcv_t, final_worker_t, return_exceptions=True)
-                print("🔌 Deepgram closed")
+                print("Deepgram closed")
 
     except Exception as e:
-        print(f"❌ Deepgram connection failed: {e}")
+        print(f"Deepgram connection failed: {e}")
         # Only try to notify if the browser socket is still open
         await safe_send(ws, {
             "type":    "dg_error",
@@ -3424,19 +3423,19 @@ async def _run_deepgram(
         # Do NOT fall back to Whisper automatically — browser socket may be closed
         # The user can manually switch to Offline mode in the UI.
 
-# ── Whisper session ───────────────────────────────────────────
+#  Whisper session 
 async def _run_whisper(ws: WebSocket, session: SessionState, prefetched_audio: Optional[List[bytes]] = None):
     # Load the Whisper model lazily — only on first Whisper session.
     # This keeps boot memory light; the model (~150MB) stays resident after first load.
     if WHISPER_AVAILABLE and whisper_model is None:
-        await safe_send(ws, {"type": "status", "message": "⏳ Loading Whisper model (first use)…"})
+        await safe_send(ws, {"type": "status", "message": "Loading Whisper model (first use)…"})
         await _ensure_whisper_model()
 
     # Guard: check socket is still alive before sending anything
-    if not await safe_send(ws, {"type": "whisper_ready", "message": "🎙️ Whisper ready — speak now (Offline Mode)"}):
-        print("⚠  Whisper: socket already closed, aborting")
+    if not await safe_send(ws, {"type": "whisper_ready", "message": "Whisper ready — speak now (Offline Mode)"}):
+        print("Whisper: socket already closed, aborting")
         return
-    print("🎙️ Whisper session started")
+    print("Whisper session started")
 
     audio_buffer    = bytearray()
     CHUNK_THRESHOLD = 16000 * 2 * 1  # ~1 second — transcribe as soon as audio arrives
@@ -3452,7 +3451,7 @@ async def _run_whisper(ws: WebSocket, session: SessionState, prefetched_audio: O
         audio_buffer = bytearray()
         tx = await loop.run_in_executor(None, transcribe_whisper, chunk)
         if tx:
-            print(f"🎙️ Whisper: {tx}")
+            print(f"Whisper: {tx}")
             ok = await safe_send(ws, {"type": "interim", "transcript": tx})
             if ok:
                 await process_query(ws, tx, session)
@@ -3520,13 +3519,13 @@ async def _run_whisper(ws: WebSocket, session: SessionState, prefetched_audio: O
                 except json.JSONDecodeError:
                     pass
     except WebSocketDisconnect:
-        print("🔌 Browser disconnected during Whisper session")
+        print("Browser disconnected during Whisper session")
     finally:
-        print("🔌 Whisper session closed")
+        print("Whisper session closed")
 
-# ── Text-only fallback ────────────────────────────────────────
+# Text-only fallback
 async def _run_text(ws: WebSocket, session: SessionState):
-    print("⌨️  Text-only session")
+    print("Text-only session")
     try:
         while True:
             data = await ws.receive()
@@ -3578,9 +3577,9 @@ async def _run_text(ws: WebSocket, session: SessionState):
                 except json.JSONDecodeError:
                     pass
     except WebSocketDisconnect:
-        print("🔌 Browser disconnected during text session")
+        print("Browser disconnected during text session")
     finally:
-        print("🔌 Text-only session closed")
+        print("Text-only session closed")
 
 
 if __name__ == "__main__":
@@ -3589,7 +3588,7 @@ if __name__ == "__main__":
 
     port = int(os.environ.get("PORT", 8000))
 
-    # ── Detect if we can show a desktop window ────────────────────
+    # Detect if we can show a desktop window
     # On Railway / Fly / headless servers pywebview is not available or has no display.
     # Guard: only attempt pywebview when running as a frozen .exe OR when the
     # library is explicitly present, a display is available, AND we're not in a
@@ -3604,7 +3603,7 @@ if __name__ == "__main__":
             _use_webview = False
 
     if _use_webview:
-        # ── Desktop .exe mode — pywebview wraps the FastAPI server ────
+        # Desktop .exe mode — pywebview wraps the FastAPI server
         def _run_server():
             """Boot uvicorn in a background thread so pywebview can start."""
             uvicorn.run("main_fixed:app", host="127.0.0.1", port=port, reload=False)
@@ -3616,7 +3615,7 @@ if __name__ == "__main__":
         import time
         time.sleep(1.5)
 
-        print(f"🖥️  Launching desktop window → http://127.0.0.1:{port}")
+        print(f"Launching desktop window: http://127.0.0.1:{port}")
         webview.create_window(
             title="In The Beginning",
             url=f"http://127.0.0.1:{port}",
@@ -3625,6 +3624,6 @@ if __name__ == "__main__":
         webview.start()
 
     else:
-        # ── Headless / Railway / Fly mode — plain uvicorn, no window ────────
-        print("ℹ  pywebview not available or cloud environment detected — running headless")
+        # Headless / Railway / Fly mode — plain uvicorn, no window
+        print("pywebview not available or cloud environment detected — running headless")
         uvicorn.run("main_fixed:app", host="0.0.0.0", port=port, reload=False)

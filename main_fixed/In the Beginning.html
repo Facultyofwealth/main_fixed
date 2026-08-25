@@ -9,7 +9,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/intro.js/minified/introjs.min.css">
     <script src="https://cdn.jsdelivr.net/npm/intro.js/minified/intro.min.js"></script>
     <style>
-        /* ── Intro.js Dark Theme Override ── */
+        /*  Intro.js Dark Theme Override  */
         .introjs-tooltip {
             background: #13161c !important;
             border: 1px solid rgba(166,124,82,0.45) !important;
@@ -1163,7 +1163,7 @@
             margin-left: 6px;
         }
 
-        /* ── Custom icon tooltips ── */
+        /*  Custom icon tooltips  */
         [data-tip] {
             position: relative;
         }
@@ -1238,8 +1238,8 @@
         <div class="nav-controls">
             </span>
             <div style="position:absolute;left:50%;transform:translateX(-50%);font-size:13px;color:var(--text-dim);display:flex;align-items:center;gap:6px;font-weight:600;letter-spacing:0.5px;">
-              <span style="color:#4ade80;font-size:11px;">●</span> SESSION <span id="sessionTimer" style="color:#a67c52;font-weight:700;font-family:monospace;font-size:14px;">00:00:00</span>
-              <span id="trial-badge" onclick="openTrialModal()" title="Deepgram trial expired — click to enter your key">🔑 GET YOUR KEY</span>
+              SESSION <span id="sessionTimer" style="color:#a67c52;font-weight:700;font-family:monospace;font-size:14px;">00:00:00</span>
+              <span id="trial-badge" onclick="openTrialModal()" title="Deepgram trial expired — click to enter your key">GET YOUR KEY</span>
             </div>
             <div style="display:flex;align-items:center;gap:14px;margin-left:18px;padding-left:18px;border-left:1px solid rgba(255,255,255,0.1);">
 
@@ -1318,7 +1318,7 @@
             </div>
             <!-- Connection status bar -->
             <div id="conn-bar" style="font-size:10px;padding:4px 8px;border-radius:0;margin:0;background:rgba(255,255,255,0.02);border-bottom:1px solid rgba(255,255,255,0.05);color:#6b7280;display:flex;align-items:center;gap:6px;">
-                <span id="conn-label">⚫ Not connected</span>
+                <span id="conn-label"> Not connected</span>
                 <span id="conn-mode" style="margin-left:auto;font-weight:700;"></span>
             </div>
             <!-- Audio visualizer bar -->
@@ -1353,7 +1353,7 @@
                         <span style="margin-left:auto;font-size:9px;color:#8b8b95;font-weight:600;">STAGED</span>
                     </div>
                     <div class="preview-stage preview-screen-surface">
-                        <div id="preview1-icon" style="font-size:24px;opacity:0.22;margin-bottom:8px;">📖</div>
+                        <div id="preview1-icon" style="font-size:24px;opacity:0.22;margin-bottom:8px;"></div>
                         <div id="preview1-text" class="preview-stage-ref" style="font-size:11px;font-weight:700;color:#c9972a;letter-spacing:0.9px;text-transform:uppercase;margin-bottom:8px;">Ready to preview</div>
                         <div id="preview1-sub" class="preview-stage-body" style="font-size:15px;font-weight:600;color:#f3f4f6;line-height:1.5;padding:0 10px;font-family:Georgia,serif;">Search for a verse to see it here first</div>
                     </div>
@@ -1363,7 +1363,7 @@
                 <div class="preview-box screen2-box" style="justify-content:flex-start;padding-top:32px;align-items:center;text-align:center;">
                     <div class="screen2-toolbar" style="position:absolute;top:0;left:0;right:0;background:rgba(255,255,255,0.02);border-bottom:1px solid rgba(255,255,255,0.06);padding:8px 12px;border-radius:14px 14px 0 0;display:flex;align-items:center;gap:8px;">
                         <span style="font-size:10px;font-weight:800;color:#f5f5f5;letter-spacing:-0.1px;">Live display</span>
-                        <span id="live-on-air-badge" style="font-size:9px;font-weight:800;color:#4ade80;letter-spacing:1px;display:none;">● LIVE</span>
+                        <span id="live-on-air-badge" style="font-size:9px;font-weight:800;color:#4ade80;letter-spacing:1px;display:none;"> LIVE</span>
                         <div class="auto-toggle-wrap" style="margin-left:auto;">
                             <span class="auto-label" style="font-size:9px;color:#a3a3ad;font-weight:700;letter-spacing:0.2px;">Go live</span>
                             <label class="toggle-switch">
@@ -1374,7 +1374,7 @@
                         </div>
                     </div>
                     <div class="preview-stage preview-screen-surface">
-                        <div id="live-icon" style="font-size:24px;opacity:0.22;margin-bottom:8px;">📖</div>
+                        <div id="live-icon" style="font-size:24px;opacity:0.22;margin-bottom:8px;"></div>
                         <div id="live-text" class="preview-stage-ref" style="font-size:11px;font-weight:700;color:#c9972a;letter-spacing:0.9px;text-transform:uppercase;margin-bottom:8px;padding:4px 6px;word-break:break-word;">Waiting for verse...</div>
                         <div id="live-sub" class="preview-stage-body" style="font-size:15px;font-weight:600;color:#f3f4f6;margin-top:0;padding:0 10px;line-height:1.5;word-break:break-word;font-family:Georgia,serif;">Speak or enter a Bible reference</div>
                     </div>
@@ -1412,7 +1412,7 @@
                 <!-- Panel header with separator line like Frame 1 -->
                 <div style="padding:8px 12px;border-bottom:1px solid rgba(255,255,255,0.09);display:flex;align-items:center;gap:8px;flex-shrink:0;">
                     <button class="tab-btn active" id="tabRef" onclick="switchTab('ref')" style="font-size:9px;padding:3px 10px;border-radius:20px;border:1px solid rgba(166,124,82,0.4);color:#a67c52;"> Book Search</button>
-                    <button class="tab-btn" id="tabPara" onclick="switchTab('para')" style="font-size:9px;padding:3px 10px;border-radius:20px;border:1px solid rgba(255,255,255,0.1);color:#6b7280;">✦ Context Search</button>
+                    <button class="tab-btn" id="tabPara" onclick="switchTab('para')" style="font-size:9px;padding:3px 10px;border-radius:20px;border:1px solid rgba(255,255,255,0.1);color:#6b7280;"> Context Search</button>
                     <div style="margin-left:auto;display:flex;align-items:center;gap:8px;flex:1;min-width:0;">
                         <input type="text" id="bookSearchInput" style="display:none;">
                         <div class="ref-search-wrap">
@@ -1472,10 +1472,7 @@
             <div class="panel" style="padding:0;overflow:hidden;">
                 <div style="padding:9px 14px 8px;border-bottom:1px solid rgba(255,255,255,0.09);display:flex;align-items:center;gap:10px;flex-shrink:0;">
                     <span style="font-size:9px;font-weight:800;color:#a67c52;text-transform:uppercase;letter-spacing:1px;">Detected Verses</span>
-                    <span style="font-size:9px;color:#555;display:flex;align-items:center;gap:5px;">
-                        <span style="color:#a67c52;">●</span> Exact
-                        <span style="color:#f9cb42;margin-left:4px;">●</span> Paraphrase
-                    </span>
+                    <span style="font-size:9px;color:#555;display:flex;align-items:center;gap:5px;">Exact / Paraphrase</span>
                     <span style="margin-left:auto;font-size:9px;color:#555;cursor:pointer;" onclick="clearDetectedPanel()">Clear</span>
                 </div>
                 <div id="detected-verses" style="flex:1;overflow-y:auto;font-size:12px;padding:4px;"><div class="empty-state">No verses detected yet<br><span style="font-size:10px;">Exact refs auto-queue · Paraphrases tap to stage</span></div></div>
@@ -1585,7 +1582,7 @@
                         <option value="parchment">Parchment</option>
                         <option value="selah" selected>Selah</option>
                     </select>
-                    <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);color:#6b7280;pointer-events:none;">▾</span>
+                    <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);color:#6b7280;pointer-events:none;"></span>
                 </div>
             </div>
 
@@ -1607,7 +1604,7 @@
                         <a href="/display" id="openDisplayPageLink" target="_blank"
                            style="display:inline-flex;align-items:center;gap:6px;padding:8px 18px;background:rgba(166,124,82,0.15);border:1px solid rgba(166,124,82,0.4);border-radius:7px;color:#a67c52;font-size:12px;font-weight:700;text-decoration:none;cursor:pointer;"
                            title="Open the standalone display page in a new window — use as OBS Browser Source or drag to projector">
-                            🖥 Open Display Page (OBS / NDI / Projector)
+                             Open Display Page (OBS / NDI / Projector)
                         </a>
                     </div>
             </div>
@@ -1625,7 +1622,7 @@
                     <select id="bcast-monitor-sel" style="width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.11);color:#6b7280;border-radius:8px;padding:10px 14px;font-size:12px;outline:none;cursor:pointer;appearance:none;">
                         <option>No external monitors detected</option>
                     </select>
-                    <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);color:#6b7280;pointer-events:none;">▾</span>
+                    <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);color:#6b7280;pointer-events:none;"></span>
                 </div>
             </div>
 
@@ -1660,7 +1657,7 @@
                 <button class="subpage-close" onclick="closeSubpage('profile')">&times;</button>
             </div>
             <div class="subpage-body">
-                <div class="profile-avatar">✝</div>
+                <div class="profile-avatar"></div>
                 <div style="text-align:center;margin-bottom:20px;">
                     <div style="font-size:16px;font-weight:700;color:#e5e7eb;" id="profile-name-display">Church Admin</div>
                     <div style="font-size:12px;color:#6b7280;margin-top:4px;" id="profile-email-display"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="d3b2b7bebabd93b0bba6a1b0bbfdbca1b4">[email&#160;protected]</a></div>
@@ -1703,8 +1700,8 @@
                 <div class="setting-row">
                     <div><div class="setting-label">Interface Theme</div><div class="setting-sub">Toggle between Day (light) and Night (dark) view</div></div>
                     <div class="mode-pill">
-                        <button id="day-btn" onclick="setDayNight('day')">☀️ DAY</button>
-                        <button id="night-btn" class="active" onclick="setDayNight('night')">🌙 NIGHT</button>
+                        <button id="day-btn" onclick="setDayNight('day')"> DAY</button>
+                        <button id="night-btn" class="active" onclick="setDayNight('night')"> NIGHT</button>
                     </div>
                 </div>
 
@@ -1739,7 +1736,7 @@
 
                 <div class="section-label" style="margin-top:18px;">Import Custom Background</div>
                 <div class="upload-zone" id="theme-upload-zone" onclick="document.getElementById('theme-file-input').click()" ondragover="event.preventDefault();this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="handleThemeDrop(event)">
-                    <div style="font-size:28px;margin-bottom:8px;">🖼️</div>
+                    <div style="font-size:28px;margin-bottom:8px;"></div>
                     <div style="font-weight:700;">Click to upload or drag & drop</div>
                     <div style="margin-top:4px;font-size:11px;">JPG, PNG, GIF supported · Max 20MB</div>
                 </div>
@@ -1787,7 +1784,7 @@
                     Bible Navigator
                 </div>
                 <div style="display:flex;align-items:center;gap:10px;">
-                    <span style="font-size:11px;color:#6b7280;">Click any book → chapter → verse to fill navigator</span>
+                    <span style="font-size:11px;color:#6b7280;">Click any book  chapter  verse to fill navigator</span>
                     <button class="subpage-close" onclick="closeSubpage('navigate')">&times;</button>
                 </div>
             </div>
@@ -1881,7 +1878,7 @@
 
                 <!-- Cloud (Deepgram) key panel -->
                 <div id="dg-key-panel" style="background:rgba(59,130,246,0.06);border:1px solid rgba(59,130,246,0.18);border-radius:10px;padding:14px 16px;margin-top:8px;">
-                    <div style="font-size:11px;font-weight:700;color:#60a5fa;margin-bottom:4px;">🔑 Deepgram API Key</div>
+                    <div style="font-size:11px;font-weight:700;color:#60a5fa;margin-bottom:4px;"> Deepgram API Key</div>
                     <div style="font-size:11px;color:#6b7280;margin-bottom:10px;line-height:1.5;">
                         Your key is sent <strong style="color:#d1d5db;">directly from your browser to Deepgram</strong> — it is never stored or logged on this server.
                         Get a free key at <a href="https://console.deepgram.com" target="_blank" style="color:#60a5fa;">console.deepgram.com</a>.
@@ -1909,13 +1906,13 @@
                             <input type="checkbox" onchange="document.getElementById('dg-key-input').type=this.checked?'text':'password'">
                             Show key
                         </label>
-                        <span id="dg-key-saved-indicator" style="display:none;color:#4ade80;font-size:11px;margin-left:auto;">✅ Key saved for this session</span>
+                        <span id="dg-key-saved-indicator" style="display:none;color:#4ade80;font-size:11px;margin-left:auto;"> Key saved for this session</span>
                     </div>
                 </div>
 
                 <!-- Offline notice -->
                 <div id="offline-notice" style="display:none;background:rgba(166,124,82,0.08);border:1px solid rgba(166,124,82,0.2);border-radius:8px;padding:12px;font-size:12px;color:#a67c52;margin-top:8px;line-height:1.6;">
-                    🔒 <strong>Offline Mode</strong> — audio is processed locally using Whisper on the server machine. No internet required. Accuracy is lower than Deepgram but your audio never leaves your network.
+                     <strong>Offline Mode</strong> — audio is processed locally using Whisper on the server machine. No internet required. Accuracy is lower than Deepgram but your audio never leaves your network.
                     <div style="margin-top:8px;color:#6b7280;">Make sure the server has Whisper installed: <code style="background:rgba(255,255,255,0.08);padding:2px 6px;border-radius:4px;">pip install openai-whisper</code></div>
                 </div>
 
@@ -1930,7 +1927,7 @@
                 </div>
                 <div class="setting-row">
                     <div><div class="setting-label">Translation Manager</div><div class="setting-sub">Install or remove Bible translations &amp; set language</div></div>
-                    <button class="sub-btn" onclick="openTranslationManager();closeSubpage('settings')">📖 Manage</button>
+                    <button class="sub-btn" onclick="openTranslationManager();closeSubpage('settings')"> Manage</button>
                 </div>
 
                 <div class="section-label">Display & Output</div>
@@ -1961,11 +1958,11 @@
                 <div style="margin-bottom:10px;">
                     <div style="font-size:12px;color:#9ca3af;margin-bottom:10px;">How would you rate your experience?</div>
                     <div class="star-rating" id="star-rating">
-                        <span class="star" onclick="setStars(1)">★</span>
-                        <span class="star" onclick="setStars(2)">★</span>
-                        <span class="star" onclick="setStars(3)">★</span>
-                        <span class="star" onclick="setStars(4)">★</span>
-                        <span class="star" onclick="setStars(5)">★</span>
+                        <span class="star" onclick="setStars(1)">1</span>
+                        <span class="star" onclick="setStars(2)">2</span>
+                        <span class="star" onclick="setStars(3)">3</span>
+                        <span class="star" onclick="setStars(4)">4</span>
+                        <span class="star" onclick="setStars(5)">5</span>
                     </div>
                 </div>
                 <select class="sub-select" style="width:100%;margin-bottom:10px;">
@@ -1976,8 +1973,8 @@
                 </select>
                 <textarea class="sub-textarea" placeholder="Describe your feedback, bug, or feature request..."></textarea>
                 <div style="display:flex;gap:10px;margin-top:14px;">
-                    <button class="sub-btn" onclick="submitFeedback()">📤 Send Feedback</button>
-                    <button class="sub-btn-ghost" onclick="saveSettings();showToast('✅ Settings saved')">Save Settings</button>
+                    <button class="sub-btn" onclick="submitFeedback()"> Send Feedback</button>
+                    <button class="sub-btn-ghost" onclick="saveSettings();showToast('Settings saved')">Save Settings</button>
                     <button class="sub-btn-ghost" onclick="resetSettings()">Reset to Default</button>
                 </div>
             </div>
@@ -1998,12 +1995,12 @@
 
                 <!-- Sub tabs -->
                 <div class="subpage-tabs">
-                    <button class="sp-tab active" onclick="switchProTab('songs','this')">🎵 Songs</button>
-                    <button class="sp-tab" onclick="switchProTab('slides','this')">📑 Slides</button>
-                    <button class="sp-tab" onclick="switchProTab('media','this')">🖼️ Media</button>
-                    <button class="sp-tab" onclick="switchProTab('scripture','this')">📖 Scripture</button>
-                    <button class="sp-tab" onclick="switchProTab('timer','this')">⏱️ Timer</button>
-                    <button class="sp-tab" onclick="switchProTab('announce','this')">📢 Announcements</button>
+                    <button class="sp-tab active" onclick="switchProTab('songs','this')"> Songs</button>
+                    <button class="sp-tab" onclick="switchProTab('slides','this')"> Slides</button>
+                    <button class="sp-tab" onclick="switchProTab('media','this')"> Media</button>
+                    <button class="sp-tab" onclick="switchProTab('scripture','this')"> Scripture</button>
+                    <button class="sp-tab" onclick="switchProTab('timer','this')"> Timer</button>
+                    <button class="sp-tab" onclick="switchProTab('announce','this')"> Announcements</button>
                 </div>
 
                 <!-- SONGS TAB -->
@@ -2015,10 +2012,10 @@
                         <div style="font-size:14px;font-weight:700;color:#e5e7eb;" id="now-playing-title">— No song loaded —</div>
                         <div style="font-size:11px;color:#6b7280;margin-top:2px;" id="now-playing-sub">Load a song below to display on screen</div>
                         <div style="display:flex;gap:8px;margin-top:10px;" id="song-controls" style="display:none;">
-                            <button class="sub-btn" style="padding:5px 12px;font-size:11px;" onclick="sendSongToProjector()">▶ Display on Screen</button>
+                            <button class="sub-btn" style="padding:5px 12px;font-size:11px;" onclick="sendSongToProjector()"> Display on Screen</button>
                             <button class="sub-btn-ghost" style="padding:5px 12px;font-size:11px;" onclick="prevSongSlide()">‹ Prev</button>
                             <button class="sub-btn-ghost" style="padding:5px 12px;font-size:11px;" onclick="nextSongSlide()">Next ›</button>
-                            <button class="sub-btn-ghost" style="padding:5px 12px;font-size:11px;" onclick="clearSongDisplay()">⬛ Black</button>
+                            <button class="sub-btn-ghost" style="padding:5px 12px;font-size:11px;" onclick="clearSongDisplay()"> Black</button>
                         </div>
                     </div>
 
@@ -2026,7 +2023,7 @@
                         <span style="font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:1px;">Song Library</span>
                         <div style="display:flex;gap:6px;">
                             <button class="sub-btn" style="padding:4px 10px;font-size:11px;" onclick="importSong()">+ Import</button>
-                            <button class="sub-btn-ghost" style="padding:4px 10px;font-size:11px;" onclick="showToast('Opening song editor...')">✏️ Edit</button>
+                            <button class="sub-btn-ghost" style="padding:4px 10px;font-size:11px;" onclick="showToast('Opening song editor...')"> Edit</button>
                         </div>
                     </div>
                     <div class="lyrics-grid" id="song-library">
@@ -2069,9 +2066,9 @@
                 <div id="pro-tab-slides" class="sp-tab-content">
                     <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
                         <button class="sub-btn" onclick="addNewSlide()">+ New Slide</button>
-                        <button class="sub-btn-ghost" onclick="importPresentation()">📂 Import PPT/PDF</button>
-                        <button class="sub-btn-ghost" onclick="showToast('Slide templates opened')">📋 Templates</button>
-                        <button class="sub-btn-ghost" onclick="showToast('Duplicating slide...')">⧉ Duplicate</button>
+                        <button class="sub-btn-ghost" onclick="importPresentation()"> Import PPT/PDF</button>
+                        <button class="sub-btn-ghost" onclick="showToast('Slide templates opened')"> Templates</button>
+                        <button class="sub-btn-ghost" onclick="showToast('Duplicating slide...')">Duplicate</button>
                     </div>
                     <div class="slide-grid" id="slide-grid">
                         <div class="slide-thumb active-slide" onclick="selectSlide(this,0)">
@@ -2092,16 +2089,16 @@
                         </div>
                         <div class="slide-thumb" onclick="selectSlide(this,4)">
                             <div class="slide-bg" style="background:#111;"></div>
-                            <span>📢 Announcement<br>Youth Camp 2025</span>
+                            <span> Announcement<br>Youth Camp 2025</span>
                         </div>
                         <div class="slide-thumb" onclick="addNewSlide()" style="border-style:dashed;opacity:0.5;">
                             <span style="font-size:28px;color:#555;">+</span>
                         </div>
                     </div>
                     <div style="margin-top:14px;display:flex;gap:8px;">
-                        <button class="sub-btn" onclick="presentSlides()">▶ Present All Slides</button>
-                        <button class="sub-btn-ghost" onclick="showToast('Slide exported as PDF')">📤 Export PDF</button>
-                        <button class="sub-btn-ghost" onclick="showToast('Loop mode on')">🔁 Loop</button>
+                        <button class="sub-btn" onclick="presentSlides()"> Present All Slides</button>
+                        <button class="sub-btn-ghost" onclick="showToast('Slide exported as PDF')"> Export PDF</button>
+                        <button class="sub-btn-ghost" onclick="showToast('Loop mode on')"> Loop</button>
                     </div>
                     <!-- Slide editor -->
                     <div style="margin-top:16px;background:rgba(255,255,255,0.03);border-radius:10px;padding:16px;border:1px solid rgba(255,255,255,0.07);">
@@ -2120,28 +2117,24 @@
                 <div id="pro-tab-media" class="sp-tab-content">
                     <div style="display:flex;gap:8px;margin-bottom:14px;">
                         <button class="sub-btn" onclick="document.getElementById('media-file-input').click()">+ Import Media</button>
-                        <button class="sub-btn-ghost" onclick="showToast('Camera feed started')">📷 Camera Feed</button>
-                        <button class="sub-btn-ghost" onclick="showToast('Screen capture started')">🖥️ Screen Capture</button>
+                        <button class="sub-btn-ghost" onclick="showToast('Camera feed started')"> Camera Feed</button>
+                        <button class="sub-btn-ghost" onclick="showToast('Screen capture started')"> Screen Capture</button>
                     </div>
                     <input type="file" id="media-file-input" accept="image/*,video/*" style="display:none" onchange="handleMediaImport(this)">
                     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
                         <div class="media-thumb" onclick="displayMedia('background1')">
                             <div style="position:absolute;inset:0;background:linear-gradient(135deg,#0a0a1a,#3a1a08);opacity:0.8;"></div>
-                            <span style="position:relative;font-size:22px;">🌄</span>
                             <div class="media-label">Sunrise BG</div>
                         </div>
                         <div class="media-thumb" onclick="displayMedia('background2')">
                             <div style="position:absolute;inset:0;background:linear-gradient(135deg,#001a30,#003060);opacity:0.8;"></div>
-                            <span style="position:relative;font-size:22px;">🌊</span>
                             <div class="media-label">Ocean BG</div>
                         </div>
                         <div class="media-thumb" onclick="displayMedia('background3')">
                             <div style="position:absolute;inset:0;background:linear-gradient(135deg,#0a1a0a,#1a3a1a);opacity:0.8;"></div>
-                            <span style="position:relative;font-size:22px;">🌿</span>
                             <div class="media-label">Nature BG</div>
                         </div>
                         <div class="media-thumb" onclick="displayMedia('logo')">
-                            <span style="font-size:22px;">✝️</span>
                             <div class="media-label">Church Logo</div>
                         </div>
                         <div class="media-thumb" style="border-style:dashed;opacity:0.4;" onclick="document.getElementById('media-file-input').click()">
@@ -2150,9 +2143,9 @@
                         </div>
                     </div>
                     <div style="margin-top:14px;display:flex;gap:8px;">
-                        <button class="sub-btn" onclick="showToast('Media displayed on screen')">▶ Display Selected</button>
-                        <button class="sub-btn-ghost" onclick="showToast('Media cleared from screen')">⬛ Clear Screen</button>
-                        <button class="sub-btn-ghost" onclick="showToast('Looping video...')">🔁 Loop Video</button>
+                        <button class="sub-btn" onclick="showToast('Media displayed on screen')"> Display Selected</button>
+                        <button class="sub-btn-ghost" onclick="showToast('Media cleared from screen')"> Clear Screen</button>
+                        <button class="sub-btn-ghost" onclick="showToast('Looping video...')"> Loop Video</button>
                     </div>
                 </div>
 
@@ -2161,7 +2154,7 @@
                     <input type="text" placeholder="John 3:16 — type a reference to add slide" id="pro-scripture-input" style="margin-bottom:12px;">
                     <div style="display:flex;gap:8px;margin-bottom:16px;">
                         <button class="sub-btn" onclick="addScriptureSlide()">Add as Slide</button>
-                        <button class="sub-btn-ghost" onclick="proScriptureDisplayNow()">▶ Display Now</button>
+                        <button class="sub-btn-ghost" onclick="proScriptureDisplayNow()"> Display Now</button>
                         <select class="sub-select">
                             <option>KJV</option><option>NIV</option><option>ESV</option><option>NKJV</option>
                         </select>
@@ -2171,8 +2164,8 @@
                         <div style="color:#6b7280;font-size:12px;">No scripture slides yet. Add some above.</div>
                     </div>
                     <div style="margin-top:14px;display:flex;gap:8px;">
-                        <button class="sub-btn" onclick="showToast('Scripture set exported')">📤 Export Set</button>
-                        <button class="sub-btn-ghost" onclick="clearScriptureSet()">🗑️ Clear Set</button>
+                        <button class="sub-btn" onclick="showToast('Scripture set exported')"> Export Set</button>
+                        <button class="sub-btn-ghost" onclick="clearScriptureSet()"> Clear Set</button>
                     </div>
                 </div>
 
@@ -2183,10 +2176,10 @@
                         <div style="font-size:12px;color:#6b7280;margin-top:6px;" id="timer-label">Countdown / Stopwatch</div>
                     </div>
                     <div style="display:flex;gap:8px;justify-content:center;margin-bottom:20px;">
-                        <button class="sub-btn" onclick="startTimer()">▶ Start</button>
-                        <button class="sub-btn-ghost" onclick="pauseTimer()">⏸ Pause</button>
-                        <button class="sub-btn-ghost" onclick="resetTimer()">↺ Reset</button>
-                        <button class="sub-btn-ghost" onclick="showTimerOnScreen()">🖥️ Show on Screen</button>
+                        <button class="sub-btn" onclick="startTimer()"> Start</button>
+                        <button class="sub-btn-ghost" onclick="pauseTimer()"> Pause</button>
+                        <button class="sub-btn-ghost" onclick="resetTimer()"> Reset</button>
+                        <button class="sub-btn-ghost" onclick="showTimerOnScreen()"> Show on Screen</button>
                     </div>
                     <div class="section-label">Timer Settings</div>
                     <div class="setting-row">
@@ -2213,7 +2206,7 @@
                 <div id="pro-tab-announce" class="sp-tab-content">
                     <div style="display:flex;gap:8px;margin-bottom:14px;">
                         <button class="sub-btn" onclick="addAnnouncement()">+ New Announcement</button>
-                        <button class="sub-btn-ghost" onclick="showToast('Ticker mode on — scrolling text')">📺 Ticker Mode</button>
+                        <button class="sub-btn-ghost" onclick="showToast('Ticker mode on — scrolling text')"> Ticker Mode</button>
                     </div>
                     <div id="announcement-list">
                         <div class="lyric-card" style="margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;" onclick="displayAnnouncement(this,'Youth Camp 2025 — Register by Dec 31')">
@@ -2222,8 +2215,8 @@
                                 <div class="lyric-card-sub">Register by December 31 · All teens welcome</div>
                             </div>
                             <div style="display:flex;gap:6px;">
-                                <button class="sub-btn" style="padding:4px 10px;font-size:11px;" onclick="event.stopPropagation();displayAnnouncement(null,'Youth Camp 2025 — Register by Dec 31')">▶ Show</button>
-                                <button class="sub-btn-ghost" style="padding:4px 10px;font-size:11px;" onclick="event.stopPropagation();this.closest('.lyric-card').remove()">✕</button>
+                                <button class="sub-btn" style="padding:4px 10px;font-size:11px;" onclick="event.stopPropagation();displayAnnouncement(null,'Youth Camp 2025 — Register by Dec 31')">Show</button>
+                                <button class="sub-btn-ghost" style="padding:4px 10px;font-size:11px;" onclick="event.stopPropagation();this.closest('.lyric-card').remove()">Remove</button>
                             </div>
                         </div>
                         <div class="lyric-card" style="margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;" onclick="displayAnnouncement(this,'Sunday Potluck After Service')">
@@ -2232,8 +2225,8 @@
                                 <div class="lyric-card-sub">After service today · Bring a dish to share</div>
                             </div>
                             <div style="display:flex;gap:6px;">
-                                <button class="sub-btn" style="padding:4px 10px;font-size:11px;" onclick="event.stopPropagation();displayAnnouncement(null,'Sunday Potluck After Service')">▶ Show</button>
-                                <button class="sub-btn-ghost" style="padding:4px 10px;font-size:11px;" onclick="event.stopPropagation();this.closest('.lyric-card').remove()">✕</button>
+                                <button class="sub-btn" style="padding:4px 10px;font-size:11px;" onclick="event.stopPropagation();displayAnnouncement(null,'Sunday Potluck After Service')">Show</button>
+                                <button class="sub-btn-ghost" style="padding:4px 10px;font-size:11px;" onclick="event.stopPropagation();this.closest('.lyric-card').remove()">Remove</button>
                             </div>
                         </div>
                     </div>
@@ -2250,7 +2243,7 @@
     <!-- PROJECTOR FULLSCREEN VIEW -->
     <div id="projector-view">
         <div id="projector-bg"></div>
-        <button id="projector-close" onclick="closeProjectorView()">✕ Exit Projector (Esc)</button>
+        <button id="projector-close" onclick="closeProjectorView()"> Exit Projector (Esc)</button>
         <div id="projector-output-badge" style="position:absolute;top:20px;left:24px;display:flex;align-items:center;gap:6px;background:rgba(0,0,0,0.55);border:1px solid rgba(255,255,255,0.18);border-radius:8px;padding:6px 14px;font-size:12px;font-weight:700;color:#4ade80;letter-spacing:1px;z-index:10;">
             <span style="width:8px;height:8px;border-radius:50%;background:#4ade80;display:inline-block;"></span>
             <span id="projector-output-label">HDMI OUTPUT</span>
@@ -2686,7 +2679,7 @@
                     <span style="color:#a67c52;font-weight:800;font-size:11px;flex-shrink:0;min-width:18px;">${vNum}</span>
                     <span style="font-size:12px;color:${isActive ? '#f9cb42' : '#c9cdd4'};line-height:1.6;
                         font-weight:${isActive ? '700' : '400'};">${v.text}</span>
-                    ${isActive ? '<span style="margin-left:auto;color:#a67c52;font-size:12px;flex-shrink:0;">✓</span>' : ''}`;
+                    ${isActive ? '<span style="margin-left:auto;color:#a67c52;font-size:12px;flex-shrink:0;">Active</span>' : ''}`;
                 row.onmouseenter = () => { if (!isActive) row.style.background = 'rgba(255,255,255,0.04)'; };
                 row.onmouseleave = () => { if (!isActive) row.style.background = ''; };
                 row.onclick = () => {
@@ -2852,7 +2845,7 @@
         localParaphraseMatch(normalizedQuery, paraArea);
     }
 
-    // Tap a context search result → open full chapter in Book Search with PREV/NEXT
+    // Tap a context search result  open full chapter in Book Search with PREV/NEXT
     function openChapterFromContextResult(v) {
         const trans = document.getElementById('mainTranslation').value;
         appState.currentVerse = { ref: v.ref, text: v.text, translation: trans };
@@ -2899,7 +2892,7 @@
             appState.dayMode = false;
         }
         saveSettings();
-        showToast(mode === 'day' ? '☀️ Day mode activated' : '🌙 Night mode activated');
+        showToast(mode === 'day' ? ' Day mode activated' : ' Night mode activated');
     }
 
     // ===================== COLOR SWATCH =====================
@@ -2931,7 +2924,7 @@
         document.getElementById('projector-bg').style.background = themeGradients[theme] || '';
         document.getElementById('projector-bg').style.backgroundImage = '';
         saveSettings();
-        showToast('🎨 Theme: ' + el.textContent);
+        showToast('Theme: ' + el.textContent);
     }
 
     function handleThemeUpload(input) {
@@ -2941,10 +2934,10 @@
         reader.onload = e => {
             document.getElementById('projector-bg').style.backgroundImage = `url(${e.target.result})`;
             document.getElementById('projector-bg').style.backgroundSize = 'cover';
-            document.getElementById('theme-upload-zone').innerHTML = `<div style="font-size:28px">✅</div><div style="font-weight:700;margin-top:4px;">${file.name} imported</div>`;
+            document.getElementById('theme-upload-zone').innerHTML = `<div style="font-size:28px"></div><div style="font-weight:700;margin-top:4px;">${file.name} imported</div>`;
             appState.currentTheme = 'custom';
             saveSettings();
-            showToast('🖼️ Background theme imported: ' + file.name);
+            showToast('Background theme imported: ' + file.name);
         };
         reader.readAsDataURL(file);
     }
@@ -2972,14 +2965,14 @@
         document.getElementById('projector-text').style.fontFamily = font;
         document.getElementById('projector-text').style.color = appState.textColor;
         saveSettings();
-        showToast('✅ Appearance applied to projector');
+        showToast('Appearance applied to projector');
     }
 
     function resetAppearance() {
         setDayNight('night');
         document.getElementById('projector-bg').style.background = themeGradients['dark-blue'];
         appState.textColor = '#ffffff';
-        showToast('🔄 Appearance reset to defaults');
+        showToast('Appearance reset to defaults');
         saveSettings();
     }
 
@@ -3305,7 +3298,7 @@
         const ref = navSelectedBook + ' ' + navSelectedChapter + ':' + v;
         document.getElementById('chapterInput').value = ref;
         closeSubpage('navigate');
-        showToast('📖 ' + ref);
+        showToast('' + ref);
         // Fix 7: immediately look up and display
         lookupAndDisplay();
     }
@@ -3363,7 +3356,7 @@
             }
         }
         appState.chapterQueue = queue;
-        // ✅ Async-fill missing verse texts from backend so NEXT shows real scripture
+        //  Async-fill missing verse texts from backend so NEXT shows real scripture
         (async () => {
             for (let i = 0; i < queue.length; i++) {
                 if (queue[i].text !== null) continue;
@@ -3476,7 +3469,7 @@
         if (goLiveToggle && goLiveToggle.checked) {
             sendToLive();
         } else {
-            showToast('📺 Staged in Preview — press DISPLAY or turn on GO LIVE');
+            showToast('Staged in Preview — press DISPLAY or turn on GO LIVE');
         }
     }
 
@@ -3535,7 +3528,7 @@
         updateProjectorText();
         renderVerseContext(verse);
         sendRemoteVerseState(verse);
-        showToast('▶ Forced Live: ' + verse.ref);
+        showToast('Forced Live: ' + verse.ref);
     }
 
     function handleGoLiveToggle(el) {
@@ -3546,10 +3539,10 @@
             if (appState.currentVerse) {
                 sendToLive();
             }
-            showToast('🔴 GO LIVE — display is now active');
+            showToast('GO LIVE — display is now active');
         } else {
             if (badge) badge.style.display = 'none';
-            showToast('⏸ GO LIVE off — verses will stage to Preview only');
+            showToast('GO LIVE off — verses will stage to Preview only');
         }
         saveSettings();
     }
@@ -3576,7 +3569,7 @@
         // Only push to Live Display if GO LIVE toggle is ON
         const goLiveToggle = document.getElementById('autoToggle');
         if (!goLiveToggle || !goLiveToggle.checked) {
-            showToast('⏸ Staged to Preview — toggle GO LIVE to display');
+            showToast('Staged to Preview — toggle GO LIVE to display');
             return;
         }
 
@@ -3588,7 +3581,7 @@
         updateProjectorText();
         renderVerseContext(verse);
         sendRemoteVerseState(verse);
-        showToast('▶ Live: ' + verse.ref);
+        showToast('Live: ' + verse.ref);
     }
 
     // Fix 5: verse context scroll view (verses above and below)
@@ -3650,7 +3643,7 @@
         if (badge) badge.style.display = 'none';
         appState.currentVerse = null;
         sendRemoteVerseState(null);
-        showToast('⬛ Display cleared');
+        showToast('Display cleared');
     }
 
     // Fix 4: PREV/NEXT navigate the active verse queue (chapterQueue) first,
@@ -3681,9 +3674,9 @@
             const v = appState.chapterQueue[appState.chapterQueueIdx];
             if (v) {
                 appState.currentVerse = v;
-                // ✅ If text is still loading from backend, poll briefly then display
+                //  If text is still loading from backend, poll briefly then display
                 if (!v.text) {
-                    showToast('⏳ Loading ' + v.ref + '...');
+                    showToast('Loading ' + v.ref + '...');
                     let attempts = 0;
                     const poll = setInterval(() => {
                         attempts++;
@@ -3694,7 +3687,7 @@
                             addToScriptureFeed(v);
                         } else if (attempts > 10) {
                             clearInterval(poll);
-                            showToast('⚠️ Backend needed — connect to load ' + v.ref);
+                            showToast('Backend needed — connect to load ' + v.ref);
                         }
                     }, 200);
                 } else {
@@ -3725,7 +3718,7 @@
         pt.style.color = appState.textColor;
         pr.style.color = appState.textColor;
         const bg = (typeof themeGradients !== 'undefined' && themeGradients[appState.currentTheme]) || '#000011';
-        // ── Push to popup projector window (HDMI) ──────────────
+        //  Push to popup projector window (HDMI) 
         if (window._projectorWindow && !window._projectorWindow.closed) {
             window._projectorWindow.postMessage({
                 type: 'verse',
@@ -3733,13 +3726,13 @@
                 bg: bg
             }, '*');
         }
-        // ── Auto-push to /ws/display clients (OBS browser source,
+        //  Auto-push to /ws/display clients (OBS browser source,
         //    NDI, or any external display page) without the operator
-        //    needing to visit the Broadcast tab again. ────────────
+        //    needing to visit the Broadcast tab again. 
         _autoPushToDisplayServer(v, trans, bg);
     }
 
-    // ── Auto-push helper ──────────────────────────────────────
+    //  Auto-push helper 
     // Sends the current verse to the server's /display/push endpoint.
     // This propagates to every /ws/display client (projector windows,
     // OBS browser sources, NDI virtual inputs) automatically.
@@ -3793,7 +3786,7 @@
         const toggle = document.getElementById('blackScreenToggle');
         toggle.checked = !toggle.checked;
         toggleBlackScreen(toggle);
-        showToast(toggle.checked ? '⬛ Black screen on' : '▶ Black screen off');
+        showToast(toggle.checked ? ' Black screen on' : ' Black screen off');
     }
 
     // ===================== OUTPUT SELECTION =====================
@@ -3833,7 +3826,7 @@
         if (autoBtn) autoBtn.classList.toggle('active', mode === 'auto');
         if (manualBtn) manualBtn.classList.toggle('active', mode === 'manual');
         saveSettings();
-        if (!silent) showToast(mode === 'auto' ? '⚡ Auto display mode on' : '✋ Manual display mode on');
+        if (!silent) showToast(mode === 'auto' ? ' Auto display mode on' : ' Manual display mode on');
     }
 
     // ===================== TRANSCRIPTION MODE =====================
@@ -3847,7 +3840,7 @@
         if (dgPanel)   dgPanel.style.display   = mode === 'online'  ? 'block' : 'none';
         if (offNotice) offNotice.style.display  = mode === 'offline' ? 'block' : 'none';
         saveSettings();
-        showToast(mode === 'online' ? '⚡ Fast (Cloud) mode — Deepgram' : '🔒 Offline mode — Whisper');
+        showToast(mode === 'online' ? ' Fast (Cloud) mode — Deepgram' : ' Offline mode — Whisper');
     }
 
     // ===================== DEEPGRAM KEY MANAGEMENT =====================
@@ -3857,23 +3850,23 @@
 
     function saveDgKey() {
         const val = document.getElementById('dg-key-input').value.trim();
-        if (!val) { showToast('⚠️ Key is empty'); return; }
+        if (!val) { showToast('Key is empty'); return; }
         sessionStorage.setItem('dg_api_key', val);
         updateDgKeyStatus();
-        showToast('✅ Deepgram key saved for this session (never stored on server)');
+        showToast('Deepgram key saved for this session (never stored on server)');
     }
 
     function clearDgKey() {
         sessionStorage.removeItem('dg_api_key');
         document.getElementById('dg-key-input').value = '';
         updateDgKeyStatus();
-        showToast('🗑️ Deepgram key cleared');
+        showToast('Deepgram key cleared');
     }
 
     function onDgKeyInput(val) {
         const status = document.getElementById('dg-key-status');
         if (!status) return;
-        if (val.length > 10) { status.textContent = '🔑 Key ready — click Save Key to use it.'; status.style.color = '#f9cb42'; }
+        if (val.length > 10) { status.textContent = 'Key ready — click Save Key to use it.'; status.style.color = '#f9cb42'; }
         else { status.textContent = val.length ? 'Key too short…' : 'No key entered.'; status.style.color = '#6b7280'; }
     }
 
@@ -3895,7 +3888,7 @@
     // or Fly serving its own frontend), BACKEND_URL is same-origin — no change
     // needed. When this HTML is hosted separately (e.g. Netlify), location.host
     // is the Netlify domain, NOT the backend — so we point explicitly to Fly.
-    const FLY_BACKEND_HOST = 'inthebeginning.fly.dev'; // ← update if your Fly app name changes
+    const FLY_BACKEND_HOST = 'inthebeginning.fly.dev'; //  update if your Fly app name changes
     const _isSameOriginBackend =
         ['localhost', '127.0.0.1'].includes(location.hostname)
         || location.hostname.endsWith('.fly.dev')
@@ -4006,7 +3999,7 @@
     const WS_MAX_BUFFERED_BYTES = 256 * 1024;
     const PREBUFFER_CHUNK_LIMIT = 120; // About 7.7 s at 1024 samples / 16 kHz.
 
-    // ── UI helpers ──────────────────────────────────────────────────────────
+    //  UI helpers 
     function setConnStatus(state) {
         // states: 'off' | 'connecting' | 'ready' | 'live' | 'error'
         const dot   = document.getElementById('ws-status-dot');
@@ -4014,16 +4007,16 @@
         const mode  = document.getElementById('conn-mode');
         const colors = { off:'#555', connecting:'#f9cb42', ready:'#4ade80', live:'#4ade80', error:'#ef4444' };
         const labels = {
-            off:        '⚫ Not connected',
-            connecting: '🟡 Connecting…',
-            ready:      '🟢 Connected — waiting',
-            live:       '🔴 LIVE',
-            error:      '🔴 Error'
+            off:        ' Not connected',
+            connecting: ' Connecting…',
+            ready:      ' Connected — waiting',
+            live:       ' LIVE',
+            error:      ' Error'
         };
         if (dot)   dot.style.background   = colors[state] || '#555';
         if (label) label.textContent      = labels[state] || state;
         if (mode && backendMode) {
-            const engineLabels = { deepgram:'⚡ Deepgram Cloud', whisper:'🔒 Whisper Offline', text:'⌨️ Text mode' };
+            const engineLabels = { deepgram:' Deepgram Cloud', whisper:' Whisper Offline', text:' Text mode' };
             const engineColors = { deepgram:'#60a5fa', whisper:'#4ade80', text:'#f9cb42' };
             mode.textContent = engineLabels[backendMode] || backendMode;
             mode.style.color = engineColors[backendMode] || '#f9cb42';
@@ -4034,7 +4027,7 @@
         const btn = document.getElementById('transcribeBtn');
         if (!btn) return;
         if (active) {
-            btn.textContent = '⏹ STOP';
+            btn.textContent = 'STOP';
             btn.style.background    = 'rgba(239,68,68,0.15)';
             btn.style.borderColor   = 'rgba(239,68,68,0.4)';
             btn.style.color         = '#ef4444';
@@ -4050,7 +4043,7 @@
         // type: 'final' | 'match' | 'no_match' | 'partial' | 'system'
         const area = document.getElementById('transcription-area');
         const colors = { final:'#d1d5db', match:'#4ade80', no_match:'#9ca3af', partial:'#6b7280', system:'#a67c52' };
-        const icons  = { final:'', match:'✦ ', no_match:'', partial:'', system:'ℹ ' };
+        const icons  = { final:'', match:' ', no_match:'', partial:'', system:' ' };
         const displayText = compactTranscriptText(text);
         transcriptLog.push({ text, type, ts: Date.now() });
         const line = document.createElement('div');
@@ -4064,7 +4057,7 @@
         // Do NOT auto-scroll — let the user scroll freely to see history
     }
 
-    // ── Pewbeam-style split transcript display ─────────────────
+    //  Pewbeam-style split transcript display 
     // Two containers live inside #transcription-area:
     //   #final-text-log  — locked-in sentences (full white, permanent)
     //   #interim-text    — current live words  (dim italic, rapidly replaced)
@@ -4091,9 +4084,9 @@
     }
 
     // Call with (text, isFinal):
-    //   isFinal=false → overwrite interim span instantly (typing effect)
-    //   isFinal=true  → lock text into final log, clear interim span
-    //   isFinal=null  → legacy: just update interim span (no lock-in)
+    //   isFinal=false  overwrite interim span instantly (typing effect)
+    //   isFinal=true   lock text into final log, clear interim span
+    //   isFinal=null   legacy: just update interim span (no lock-in)
     function setInterim(text, isFinal) {
         const { finalEl, interimEl, area } = _ensureTranscriptSpans();
         if (!interimEl) return;
@@ -4114,7 +4107,7 @@
         if (area) area.scrollTop = area.scrollHeight;
     }
 
-    // ── Main toggle ──────────────────────────────────────────────────────────
+    //  Main toggle 
     function renderTranscriptHistory() {
         const area = document.getElementById('transcription-area');
         if (!area) return;
@@ -4171,16 +4164,16 @@
     }
 
     async function startTranscription() {
-        // ── 20-minute trial gate ──────────────────────────────────────────
+        //  20-minute trial gate 
         // Only blocks Deepgram. Whisper/Offline and all other features work.
         const _wantsDeepgram = appState.transcriptionMode !== 'offline';
         if (_wantsDeepgram && !getDgKey() && trialExpired()) {
             _showTrialExpiredBadge();
             openTrialModal();
-            showToast('⏰ Free trial ended — paste your Deepgram key to continue', 6000);
+            showToast('Free trial ended — paste your Deepgram key to continue', 6000);
             return;
         }
-        // ─────────────────────────────────────────────────────────────────
+        // 
         if (!window.isSecureContext && !['localhost', '127.0.0.1'].includes(location.hostname)) {
             showToast('Use localhost for desktop mic; keep 0.0.0.0 for phone remote', 6000);
         }
@@ -4204,9 +4197,9 @@
                 'system'
             );
         } catch (e) {
-            appendTranscriptLine('❌ Cannot reach backend at ' + BACKEND_URL + ' — is uvicorn running?', 'system');
+            appendTranscriptLine('Cannot reach backend at ' + BACKEND_URL + ' — is uvicorn running?', 'system');
             setConnStatus('error');
-            showToast('❌ Backend offline — run: uvicorn main_fixed:app --reload');
+            showToast('Backend offline — run: uvicorn main_fixed:app --reload');
             return;
         }
 
@@ -4218,14 +4211,14 @@
             requestedEngine = 'deepgram';
         }
 
-        // ── 4. Get microphone FIRST — before opening WebSocket ──────────────
+        //  4. Get microphone FIRST — before opening WebSocket 
         // CRITICAL: mic must be ready BEFORE Deepgram connects.
         // If WebSocket opens first, Deepgram starts its 10-second timeout clock
         // immediately. The browser permission dialog takes 2-5 seconds, so
         // Deepgram hits net0001 before a single audio byte is ever sent.
         // Fix: acquire mic stream here, build the audio pipeline with a small
         // pre-buffer, THEN open the WebSocket. Audio flows instantly on connect.
-        // ─────────────────────────────────────────────────────────────────────
+        // 
         const needsMic = (requestedEngine !== 'text');
         const _preBuffer = [];   // holds chunks captured before WS handshake completes
 
@@ -4233,14 +4226,14 @@
             try {
                 const captureSystem = normalizeAudioSource(appState && appState.audioSource) === 'system';
                 if (captureSystem) {
-                    appendTranscriptLine('🖥️ Requesting system audio — enable "Share system audio" or "Share tab audio" in the popup', 'system');
+                    appendTranscriptLine('Requesting system audio — enable "Share system audio" or "Share tab audio" in the popup', 'system');
                     const displayStream = await navigator.mediaDevices.getDisplayMedia({
                         video: true,
                         audio: true
                     });
                     if (!displayStream.getAudioTracks().length) {
                         displayStream.getTracks().forEach(track => track.stop());
-                        appendTranscriptLine('❌ No system audio was shared. Pick a tab or screen with audio and enable audio sharing.', 'system');
+                        appendTranscriptLine('No system audio was shared. Pick a tab or screen with audio and enable audio sharing.', 'system');
                         setConnStatus('error');
                         return;
                     }
@@ -4249,18 +4242,18 @@
                     mediaStream.getTracks().forEach(track => {
                         track.addEventListener('ended', () => {
                             if (!transcribing) return;
-                            appendTranscriptLine('🛑 System audio sharing stopped', 'system');
+                            appendTranscriptLine('System audio sharing stopped', 'system');
                             stopTranscription(true);
-                            showToast('🛑 System audio sharing stopped');
+                            showToast('System audio sharing stopped');
                         }, { once: true });
                     });
-                    appendTranscriptLine('🖥️ System audio ready — audio playing on this laptop will be transcribed', 'system');
+                    appendTranscriptLine('System audio ready — audio playing on this laptop will be transcribed', 'system');
                 } else {
                     const micSession = await openPreferredMicrophone();
                     mediaStream = micSession.stream;
                     startAudioVisualizer(mediaStream);
                     const activeMic = getActiveMicLabel(micSession.selection, mediaStream);
-                    appendTranscriptLine(`🎙️ Microphone ready (${activeMic}) — connecting…`, 'system');
+                    appendTranscriptLine(` Microphone ready (${activeMic}) — connecting…`, 'system');
                 }
 
                 audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
@@ -4335,20 +4328,20 @@
                 const captureLabel = normalizeAudioSource(appState && appState.audioSource) === 'system'
                     ? 'System audio capture failed'
                     : 'Microphone access failed';
-                appendTranscriptLine(`❌ ${captureLabel}: ${e.message}`, 'system');
+                appendTranscriptLine(` ${captureLabel}: ${e.message}`, 'system');
                 setConnStatus('error');
                 return;
             }
         }
 
-        // ── 5. WebSocket — mic already running, audio buffered ────────────────
+        //  5. WebSocket — mic already running, audio buffered 
         await churchIdReady;
         ws = new WebSocket(liveWsUrl());
         ws.binaryType = 'arraybuffer';
 
         ws.onopen = () => {
             setConnStatus('ready');
-            appendTranscriptLine('🔌 WebSocket open — sending handshake…', 'system');
+            appendTranscriptLine('WebSocket open — sending handshake…', 'system');
             ws.send(JSON.stringify({
                 type:         'init',
                 engine:       requestedEngine,
@@ -4381,7 +4374,7 @@
             // Text fallback — show manual input row
             const row = document.getElementById('manual-input-row');
             if (row) row.style.display = 'flex';
-            appendTranscriptLine('⌨️ Whisper not available — type transcript manually below', 'system');
+            appendTranscriptLine('Whisper not available — type transcript manually below', 'system');
         }
 
         transcribing = true;
@@ -4390,8 +4383,8 @@
         sendRemoteTranscriptionState();
         // Start the 20-min trial countdown only when using Deepgram without own key
         if (_wantsDeepgram && !getDgKey()) _startTrialCountdown();
-        startSessionTimer();   // ← timer ticks only while transcription is live
-        showToast('🎙️ Live transcription started');
+        startSessionTimer();   //  timer ticks only while transcription is live
+        showToast('Live transcription started');
     }
 
     function stopTranscription(silent = false) {
@@ -4425,12 +4418,12 @@
         if (row) row.style.display = 'none';
 
         if (!silent) {
-            appendTranscriptLine('⏹ Transcription stopped', 'system');
-            showToast('⏹ Transcription stopped');
+            appendTranscriptLine('Transcription stopped', 'system');
+            showToast('Transcription stopped');
         }
     }
 
-    // ── Handle incoming WebSocket messages ──────────────────────────────────
+    //  Handle incoming WebSocket messages 
     function handleWsMessage(msg) {
         if (
             Date.now() < remotePauseUntil
@@ -4446,9 +4439,9 @@
                 setConnStatus('ready');
                 const modeEl = document.getElementById('conn-mode');
                 const engineLabels = {
-                    deepgram: '⚡ Deepgram Cloud',
-                    whisper:  '🔒 Whisper Offline',
-                    text:     '⌨️ Text mode',
+                    deepgram: ' Deepgram Cloud',
+                    whisper:  ' Whisper Offline',
+                    text:     ' Text mode',
                 };
                 const engineColors = { deepgram: '#60a5fa', whisper: '#4ade80', text: '#f9cb42' };
                 if (modeEl) {
@@ -4465,7 +4458,7 @@
 
             case 'dg_ready':
                 setConnStatus('live');
-                appendTranscriptLine((msg.message || '🎙️ Deepgram ready') + ' — 🎤 speak now', 'system');
+                appendTranscriptLine((msg.message || ' Deepgram ready') + ' —  speak now', 'system');
                 break;
 
             case 'interim':
@@ -4553,21 +4546,21 @@
                 break;
 
             case 'warning':
-                appendTranscriptLine('⚠️ ' + (msg.message || msg.error || ''), 'system');
+                appendTranscriptLine('' + (msg.message || msg.error || ''), 'system');
                 break;
 
             case 'dg_error':
             case 'error':
-                appendTranscriptLine('❌ ' + (msg.error || msg.message || 'Unknown error'), 'system');
+                appendTranscriptLine('' + (msg.error || msg.message || 'Unknown error'), 'system');
                 // Auto-restart Deepgram if it drops mid-sermon
-                // (e.g. after 10 s of silence → net0001 error)
+                // (e.g. after 10 s of silence  net0001 error)
                 if (transcribing && !_dgRestarting) {
                     _dgRestarting = true;
-                    appendTranscriptLine('🔄 Deepgram disconnected — auto-restarting in 2 s…', 'system');
+                    appendTranscriptLine('Deepgram disconnected — auto-restarting in 2 s…', 'system');
                     setTimeout(function () {
                         _dgRestarting = false;
                         if (transcribing) {
-                            appendTranscriptLine('🔄 Reconnecting to Deepgram…', 'system');
+                            appendTranscriptLine('Reconnecting to Deepgram…', 'system');
                             // Re-open WebSocket connection
                             // Trigger restart via the main toggle button
                             const _toggleBtn = document.getElementById('startBtn') ||
@@ -4582,51 +4575,51 @@
                     }, 2000);
                 }
                 setConnStatus('error');
-                showToast('❌ ' + (msg.message || msg.error || 'Engine error — check your API key'));
+                showToast('' + (msg.message || msg.error || 'Engine error — check your API key'));
                 break;
 
-            // ── Remote Control messages ───────────────────────────────
+            //  Remote Control messages 
             case 'remote_joined':
             case 'remote_left': {
                 const count = msg.remotes || 0;
                 updateRemoteCountBadge(count);
                 const action = msg.type === 'remote_joined' ? 'connected' : 'disconnected';
-                showToast(`📱 Remote ${action} — ${count} phone${count !== 1 ? 's' : ''} active`);
+                showToast(` Remote ${action} — ${count} phone${count !== 1 ? 's' : ''} active`);
                 break;
             }
 
             case 'remote_next':
                 pauseTranscriptionForRemote();
-                showToast('📱 Remote → Next Verse');
+                showToast('Remote  Next Verse');
                 navigateNext({ remote: true });
                 break;
 
             case 'remote_prev':
                 pauseTranscriptionForRemote();
-                showToast('📱 Remote → Previous Verse');
+                showToast('Remote  Previous Verse');
                 navigatePrev();
                 break;
 
             case 'remote_clear':
                 pauseTranscriptionForRemote();
-                showToast('📱 Remote → Clear');
+                showToast('Remote  Clear');
                 clearDisplay();
                 break;
 
             case 'remote_start_transcription':
-                showToast('📱 Remote → Start Transcription');
+                showToast('Remote  Start Transcription');
                 if (!transcribing) startTranscription();
                 else sendRemoteTranscriptionState();
                 break;
 
             case 'remote_stop_transcription':
-                showToast('📱 Remote → Stop Transcription');
+                showToast('Remote  Stop Transcription');
                 if (transcribing) stopTranscription();
                 else sendRemoteTranscriptionState();
                 break;
 
             case 'remote_toggle_transcription':
-                showToast('📱 Remote → Toggle Transcription');
+                showToast('Remote  Toggle Transcription');
                 toggleTranscription();
                 break;
 
@@ -4634,7 +4627,7 @@
                 const ref = msg.ref;
                 if (ref) {
                     pauseTranscriptionForRemote();
-                    showToast('📱 Remote → ' + ref);
+                    showToast('Remote  ' + ref);
                     if (msg.verse && msg.verse.ref && msg.verse.text) {
                         const trans = document.getElementById('mainTranslation').value || 'KJV';
                         const verse = { ref: msg.verse.ref, text: msg.verse.text, translation: trans };
@@ -4662,10 +4655,10 @@
                                 addToScriptureFeed(verse);
                                 autoNavToRef(verse.ref);
                             } else {
-                                showToast('⚠️ Remote ref not found: ' + ref);
+                                showToast('Remote ref not found: ' + ref);
                             }
                         })
-                        .catch(() => showToast('⚠️ Could not load remote reference'));
+                        .catch(() => showToast('Could not load remote reference'));
                 }
                 break;
             }
@@ -4772,7 +4765,7 @@
         // Fix 3: ALWAYS preview first
         sendToPreview(appState.currentVerse);
 
-        // ✅ Add to Detected Verses panel — deduplicate + cap at 20
+        //  Add to Detected Verses panel — deduplicate + cap at 20
         const dv = document.getElementById('detected-verses');
         if (dv.querySelector('.empty-state') || dv.classList.contains('empty-state')) {
             dv.innerHTML = '';
@@ -4800,7 +4793,7 @@
         dv.insertBefore(item, dv.firstChild);
 
         buildChapterQueue(top.ref);
-        // ✅ Sync the Book/Chapter navigator dropdowns to the detected verse
+        //  Sync the Book/Chapter navigator dropdowns to the detected verse
         // so the left navigator panel always matches what's on screen
         (() => {
             const m = top.ref.match(/^(.+?)\s+(\d+):(\d+)$/i);
@@ -4823,7 +4816,7 @@
         if (appState.displayMode === 'auto' && document.getElementById('autoToggle').checked) {
             sendToLive();
         } else {
-            showToast(' Detected: ' + top.ref + ' — staged to Preview');
+            showToast('Detected: ' + top.ref + ' — staged to Preview');
         }
     }
 
@@ -4861,7 +4854,7 @@
                     pushVerseFromBackend(data.results[0], data.results);
                 }
             })
-            .catch(() => showToast('❌ Backend not reachable'));
+            .catch(() => showToast('Backend not reachable'));
             if (input) input.value = '';
         }
     }
@@ -4870,8 +4863,8 @@
         // If opened directly as a file, show a visible banner
         if (window.location.protocol === 'file:') {
             setConnStatus('error');
-            appendTranscriptLine('⚠ Opened as file:// — backend unavailable. Run: uvicorn main_fixed:app --port 8000  then open http://localhost:8000', 'system');
-            showToast('⚠ Open via http://localhost:8000 — not as a file', 5000);
+            appendTranscriptLine('Opened as file:// — backend unavailable. Run: uvicorn main_fixed:app --port 8000  then open http://localhost:8000', 'system');
+            showToast('Open via http://localhost:8000 — not as a file', 5000);
             return;
         }
         try {
@@ -4880,7 +4873,7 @@
             setConnStatus('ready');
             const modeEl = document.getElementById('conn-mode');
             if (modeEl) {
-                modeEl.textContent = backendMode === 'whisper' ? '🎙️ Whisper' : '⌨️ Text mode';
+                modeEl.textContent = backendMode === 'whisper' ? ' Whisper' : ' Text mode';
                 modeEl.style.color  = backendMode === 'whisper' ? '#4ade80' : '#f9cb42';
             }
             appendTranscriptLine(`Backend online · ${h.verse_count} verses · ${h.mode}`, 'system');
@@ -4895,7 +4888,7 @@
     function loadSong(card, title, sub) {
         document.querySelectorAll('.lyric-card').forEach(c => c.classList.remove('active-song'));
         card.classList.add('active-song');
-        document.getElementById('now-playing-title').textContent = '♪  ' + title;
+        document.getElementById('now-playing-title').textContent = title;
         document.getElementById('now-playing-sub').textContent = sub || 'Loaded — use Display to send to screen';
         document.getElementById('song-controls').style.display = 'flex';
         appState.currentSong = title;
@@ -4913,16 +4906,16 @@
     function sendSongToProjector() {
         if (!appState.currentSong) { showToast('No song loaded'); return; }
         timerShowingOnScreen = false;
-        document.getElementById('projector-text').textContent = '♪ ' + appState.currentSong;
+        document.getElementById('projector-text').textContent = '' + appState.currentSong;
         document.getElementById('projector-ref').textContent = '';
         openProjectorView(false);
     }
 
-    function prevSongSlide() { showToast('◀ Previous verse'); }
-    function nextSongSlide() { showToast('Next verse ▶'); }
+    function prevSongSlide() { showToast('Previous verse'); }
+    function nextSongSlide() { showToast('Next verse'); }
     function clearSongDisplay() {
         document.getElementById('projector-text').textContent = '';
-        showToast(' Screen cleared');
+        showToast('Screen cleared');
     }
 
     function importSong() {
@@ -4934,7 +4927,7 @@
         card.innerHTML = `<div class="lyric-card-title">${title}</div><div class="lyric-card-sub">Custom · Imported</div>`;
         card.onclick = () => loadSong(card, title, 'Custom · Imported');
         grid.appendChild(card);
-        showToast('✅ Song imported: ' + title);
+        showToast('Song imported: ' + title);
     }
 
     // ===================== SLIDES =====================
@@ -4956,14 +4949,14 @@
         slide.onclick = () => selectSlide(slide, idx);
         grid.insertBefore(slide, addBtn);
         selectSlide(slide, idx);
-        showToast('➕ New slide added');
+        showToast('New slide added');
     }
 
     function updateSlide() {
         const text = document.getElementById('slide-editor').value;
         const slides = document.querySelectorAll('.slide-thumb.active-slide');
         slides.forEach(s => { if (s.querySelector('span')) s.querySelector('span').textContent = text; });
-        showToast('✅ Slide updated');
+        showToast('Slide updated');
     }
 
     function presentSlides() {
@@ -4987,7 +4980,7 @@
     }
 
     function importPresentation() {
-        showToast(' Importing PPT/PDF... (connect to backend for full support)');
+        showToast('Importing PPT/PDF... (connect to backend for full support)');
     }
 
     // ===================== SCRIPTURE SLIDES =====================
@@ -5001,16 +4994,16 @@
             const div = document.createElement('div');
             div.className = 'lyric-card';
             div.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:10px 14px;';
-            div.innerHTML = `<div style="font-size:12px;font-weight:700;color:#d1d5db;"> ${r}</div>
+            div.innerHTML = `<div style="font-size:12px;font-weight:700;color:#d1d5db;">${r}</div>
                 <div style="display:flex;gap:6px;">
-                    <button class="sub-btn" style="padding:3px 10px;font-size:11px;" onclick="displayScriptureSlide('${r}')">▶</button>
-                    <button class="sub-btn-ghost" style="padding:3px 10px;font-size:11px;" onclick="this.closest('.lyric-card').remove()">✕</button>
+                    <button class="sub-btn" style="padding:3px 10px;font-size:11px;" onclick="displayScriptureSlide('${r}')">Display</button>
+                    <button class="sub-btn-ghost" style="padding:3px 10px;font-size:11px;" onclick="this.closest('.lyric-card').remove()">Remove</button>
                 </div>`;
             list.appendChild(div);
         });
         document.getElementById('pro-scripture-input').value = '';
         saveSettings();
-        showToast(' Scripture slide added: ' + ref);
+        showToast('Scripture slide added: ' + ref);
     }
 
     // Fix 10: displaying from ProPresent scripture tab works directly
@@ -5018,7 +5011,7 @@
         document.getElementById('chapterInput').value = ref;
         lookupAndDisplay();
         closeSubpage('propresent');
-        showToast('▶ Displaying: ' + ref);
+        showToast('Displaying: ' + ref);
     }
 
     function proScriptureDisplayNow() {
@@ -5037,11 +5030,11 @@
     function handleMediaImport(input) {
         const file = input.files[0];
         if (!file) return;
-        showToast(' Media imported: ' + file.name);
+        showToast('Media imported: ' + file.name);
     }
 
     function displayMedia(id) {
-        showToast(' Media displayed on screen: ' + id);
+        showToast('Media displayed on screen: ' + id);
         openProjectorView();
     }
 
@@ -5064,11 +5057,11 @@
         div.style.cssText = 'margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;';
         div.innerHTML = `<div><div class="lyric-card-title">${text.substring(0,40)}</div><div class="lyric-card-sub">Custom announcement</div></div>
             <div style="display:flex;gap:6px;">
-                <button class="sub-btn" style="padding:4px 10px;font-size:11px;" onclick="displayAnnouncement(null,'${text.replace(/'/g,"\\'")}')">▶ Show</button>
-                <button class="sub-btn-ghost" style="padding:4px 10px;font-size:11px;" onclick="this.closest('.lyric-card').remove()">✕</button>
+                <button class="sub-btn" style="padding:4px 10px;font-size:11px;" onclick="displayAnnouncement(null,'${text.replace(/'/g,"\\'")}')">Show</button>
+                <button class="sub-btn-ghost" style="padding:4px 10px;font-size:11px;" onclick="this.closest('.lyric-card').remove()">Remove</button>
             </div>`;
         list.appendChild(div);
-        showToast(' Announcement added');
+        showToast('Announcement added');
     }
 
     function displayAnnouncement(el, text) {
@@ -5078,12 +5071,12 @@
 
         // Update Program Preview (Screen 1)
         document.getElementById('preview1-icon').style.display = 'none';
-        document.getElementById('preview1-text').textContent = ' Announcement';
+        document.getElementById('preview1-text').textContent = 'Announcement';
         document.getElementById('preview1-sub').textContent = text;
 
         // Update Live Display (Screen 2) always — announcements bypass GO LIVE toggle
         document.getElementById('live-icon').style.display = 'none';
-        document.getElementById('live-text').textContent = ' Announcement';
+        document.getElementById('live-text').textContent = 'Announcement';
         document.getElementById('live-sub').textContent = text;
         const badge = document.getElementById('live-on-air-badge');
         if (badge) badge.style.display = 'inline';
@@ -5093,7 +5086,7 @@
         document.getElementById('projector-ref').textContent = '— Announcement';
         document.getElementById('projector-text').style.color = appState.textColor || '#ffffff';
 
-        showToast(' Announcement displayed on screen');
+        showToast('Announcement displayed on screen');
     }
 
     // ===================== TIMER =====================
@@ -5124,7 +5117,7 @@
             timerSeconds = getConfiguredTimerSeconds();
         }
         if (timerMode === 'countdown' && timerSeconds <= 0) {
-            showToast('⏱️ Set a countdown duration first');
+            showToast('Set a countdown duration first');
             return;
         }
         updateTimerDisplay();
@@ -5132,7 +5125,7 @@
             if (timerMode === 'countdown') {
                 if (timerSeconds <= 0) {
                     pauseTimer(false);
-                    showToast('⏰ Timer complete!');
+                    showToast('Timer complete!');
                     return;
                 }
                 timerSeconds--;
@@ -5141,20 +5134,20 @@
             }
             updateTimerDisplay();
         }, 1000);
-        showToast('▶ Timer started');
+        showToast('Timer started');
     }
 
     function pauseTimer(showMessage = true) {
         clearInterval(timerInterval);
         timerInterval = null;
-        if (showMessage) showToast('⏸ Timer paused');
+        if (showMessage) showToast('Timer paused');
     }
 
     function resetTimer(showMessage = true) {
         pauseTimer(false);
         timerSeconds = timerMode === 'countdown' ? getConfiguredTimerSeconds() : 0;
         updateTimerDisplay();
-        if (showMessage) showToast('↺ Timer reset');
+        if (showMessage) showToast('Timer reset');
     }
 
     function updateTimerDisplay() {
@@ -5180,12 +5173,12 @@
         appState.profileName = name;
         appState.profileEmail = email;
         saveSettings();
-        showToast(' Profile saved');
+        showToast('Profile saved');
     }
 
     // ===================== SETTINGS =====================
     function resetSettings() {
-        showToast(' Settings reset to defaults');
+        showToast('Settings reset to defaults');
     }
 
     function setStars(n) {
@@ -5196,7 +5189,7 @@
     }
 
     function submitFeedback() {
-        showToast('📤 Feedback sent! Thank you.');
+        showToast('Feedback sent! Thank you.');
     }
 
     // ===================== ALWAYS-ON REMOTE CONTROL CHANNEL =====================
@@ -5349,13 +5342,13 @@
         if (sessionTimerInterval) { clearInterval(sessionTimerInterval); sessionTimerInterval = null; }
     }
 
-    // ═══════════════════════════════════════════════════════════════════
+    // 
     // 20-MINUTE DEEPGRAM TRIAL SYSTEM
     // Tracks cumulative Deepgram transcription seconds in localStorage.
     // Once 1200 seconds (20 min) are used up the user can no longer start
     // Deepgram unless they paste their own API key.
     // Every other feature in the app remains fully functional.
-    // ═══════════════════════════════════════════════════════════════════
+    // 
     const TRIAL_LIMIT_SECONDS = 1200;  // 20 minutes
     const TRIAL_STORAGE_KEY   = 'itb_trial_seconds_used';
 
@@ -5389,7 +5382,7 @@
                 stopTranscription(true);
                 _showTrialExpiredBadge();
                 openTrialModal();
-                showToast('⏰ Your 20-min free trial has ended — enter your Deepgram key to continue', 7000);
+                showToast('Your 20-min free trial has ended — enter your Deepgram key to continue', 7000);
             }
         }, 1000);
     }
@@ -5422,11 +5415,11 @@
     function saveTrialKey() {
         const inp = document.getElementById('trial-key-input');
         const val = (inp ? inp.value : '').trim();
-        if (!val || val.length < 20) { showToast('⚠️ That doesn\'t look like a valid Deepgram key', 4000); return; }
+        if (!val || val.length < 20) { showToast('That doesn\'t look like a valid Deepgram key', 4000); return; }
         saveDgKey(val);
         _hideTrialExpiredBadge();
         closeTrialModal();
-        showToast('✅ Deepgram key saved — you can now start transcription', 4000);
+        showToast('Deepgram key saved — you can now start transcription', 4000);
     }
 
     // Close on backdrop click
@@ -5438,11 +5431,11 @@
     // Show badge on load if trial is already expired and no key
     if (trialExpired()) { _showTrialExpiredBadge(); }
 
-    // ═══════════════════════════════════════════════════════════════════
+    // 
     // PINNED VERSES SYSTEM
     // Users can pin verses from the Detected Verses panel to the top of
     // the Scripture Feed. Pins are stored in appState.pinnedVerses.
-    // ═══════════════════════════════════════════════════════════════════
+    // 
     appState.pinnedVerses = appState.pinnedVerses || [];
 
     function pinVerseToFeed(verse) {
@@ -5492,11 +5485,11 @@
             div.className = isPinned ? 'feed-pinned' : '';
             div.style.cssText = 'padding:8px 6px;border-bottom:1px solid rgba(255,255,255,0.05);cursor:pointer;font-size:11px;flex-shrink:0;user-select:none;' + (isPinned ? 'padding-left:9px;' : '');
             const trans = v.translation || 'KJV';
-            const pinLabel = isPinned ? '<span class="feed-pin-label">▲ QUEUED</span>' : '';
+            const pinLabel = isPinned ? '<span class="feed-pin-label"> QUEUED</span>' : '';
             div.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;">' +
                 '<span style="color:#a67c52;font-weight:700;font-size:10px;">' + v.ref +
                 ' <span style="color:#f9cb42;">[' + trans + ']</span>' + pinLabel + '</span>' +
-                (isPinned ? '<span onclick="event.stopPropagation();unpinVerseFromFeed(\'' + v.ref.replace(/'/g,"\\'") + '\')" style="font-size:9px;color:#6b7280;cursor:pointer;padding:2px 6px;border-radius:4px;border:1px solid rgba(255,255,255,0.08);" title="Unpin">✕</span>' : '') +
+                (isPinned ? '<span onclick="event.stopPropagation();unpinVerseFromFeed(\'' + v.ref.replace(/'/g,"\\'") + '\')" style="font-size:9px;color:#6b7280;cursor:pointer;padding:2px 6px;border-radius:4px;border:1px solid rgba(255,255,255,0.08);" title="Unpin"></span>' : '') +
                 '</div>' +
                 '<div style="color:#d1d5db;margin-top:3px;line-height:1.5;">' + (v.text || '') + '</div>';
             div.onclick = () => {
@@ -5655,7 +5648,7 @@
         const urlEl = document.getElementById('remote-url-display');
         if (!urlEl) return;
         navigator.clipboard.writeText(urlEl.textContent).then(() => {
-            showToast('📋 Remote URL copied to clipboard');
+            showToast('Remote URL copied to clipboard');
         }).catch(() => {
             showToast('URL: ' + urlEl.textContent);
         });
@@ -5669,10 +5662,10 @@
 
     </script>
 
-    <!-- ═══════════════════════════════════════════════════════
+    <!-- 
          FEATURE ADDITIONS: Calm UI · Paraphrase Panel ·
          Fade Transcripts · Audio Visualizer · Translations
-    ═══════════════════════════════════════════════════════ -->
+     -->
     <style>
         /* Feature 3: Fade-up transcript lines */
         .transcript-line-animated {
@@ -5712,9 +5705,9 @@
     </style>
 
     <script>
-    // ── Feature 2: Push to Paraphrase panel (no auto-live) ─────────────────
-    // isInterim=true  → mid-sentence hint, shown dimmed (preacher still speaking)
-    // isInterim=false → confirmed paraphrase match, full brightness
+    //  Feature 2: Push to Paraphrase panel (no auto-live) 
+    // isInterim=true   mid-sentence hint, shown dimmed (preacher still speaking)
+    // isInterim=false  confirmed paraphrase match, full brightness
     // Paraphrase matches — write into detected-verses with green style (no Queue badge)
     function clearInterimDetectedHints(refToKeep) {
         const dv = document.getElementById('detected-verses');
@@ -5885,7 +5878,7 @@
 
     window.appendTranscriptLine = appendTranscriptLine;
 
-    // ── Framework-agnostic auto-display connection ─────────────
+    //  Framework-agnostic auto-display connection 
     // Maintains a persistent /ws/display WebSocket so that whenever
     // updateProjectorText() posts a verse to /display/push, all
     // connected external windows (OBS browser source, /display page,
@@ -5905,7 +5898,7 @@
                     var badge = document.getElementById('display-client-badge');
                     if (!badge) return;
                     var n = d.connected_clients || 0;
-                    badge.textContent = n > 0 ? '🖥 ' + n + ' display' + (n>1?'s':'') + ' connected' : '';
+                    badge.textContent = n > 0 ? ' ' + n + ' display' + (n>1?'s':'') + ' connected' : '';
                     badge.style.display = n > 0 ? 'inline-block' : 'none';
                 }).catch(function(){});
         }
@@ -5915,7 +5908,7 @@
     })();
     renderTranscriptHistory();
 
-    // ── Feature 4: Audio visualizer ────────────────────────────────────────
+    //  Feature 4: Audio visualizer 
     let _vizAnalyser = null, _vizDataArray = null, _vizAnimId = null, _vizContext = null;
 
     function startAudioVisualizer(stream) {
@@ -5941,7 +5934,7 @@
                 const level = Math.min(100, Math.round((avg / 128) * 100));
                 if (bar) bar.style.width = level + '%';
                 if (pct) pct.textContent = level + '%';
-                // Colour shift: green → amber → red
+                // Colour shift: green  amber  red
                 const hue = 120 - Math.round(level * 1.2);
                 if (bar) bar.style.background = `linear-gradient(90deg, hsl(${hue},80%,55%), hsl(${Math.max(0,hue-30)},70%,45%))`;
             }
@@ -5963,7 +5956,7 @@
 
     // Hook into startTranscription — patch mic getUserMedia to also start visualizer
 
-    // ── Feature 5: Translation manager ─────────────────────────────────────
+    //  Feature 5: Translation manager 
     const BUILTIN_TRANSLATIONS = ['KJV'];
     const BUILTIN_LANGUAGES = [
         'English (US)','English (UK)','Español','Français','Deutsch',
@@ -6037,7 +6030,7 @@
         saveInstalledTranslations(list);
         inp.value = '';
         renderTranslationList();
-        showToast('✅ ' + val + ' added');
+        showToast('' + val + ' added');
     }
 
     async function importBibleSource() {
@@ -6102,7 +6095,7 @@
             saveInstalledTranslations(list);
             renderTranslationList();
             if (silent) return;
-            showToast('✅ ' + code + ' installed');
+            showToast('' + code + ' installed');
         }
     }
 
@@ -6151,10 +6144,10 @@
         if (el.checked) {
             if (_broadcastOutputType === 'external') _launchExternalDisplay();
             else _startNDIStream();
-            showToast('🟢 Output: Live');
+            showToast('Output: Live');
         } else {
             _stopAllOutputs();
-            showToast('⚫ Output: Off');
+            showToast('Output: Off');
         }
     }
 
@@ -6186,15 +6179,15 @@
             ndiPanel.id = 'ndi-info-panel';
             ndiPanel.style.cssText = 'margin:0 16px 14px;padding:12px 14px;background:rgba(166,124,82,0.08);border:1px solid rgba(166,124,82,0.3);border-radius:8px;font-size:11px;color:#d1d5db;line-height:1.8;';
             ndiPanel.innerHTML =
-                '<div style="font-weight:700;color:#a67c52;margin-bottom:6px;">📡 NDI / OBS — How to set up</div>' +
+                '<div style="font-weight:700;color:#a67c52;margin-bottom:6px;"> NDI / OBS — How to set up</div>' +
                 '<strong>Quick option (no OBS):</strong> Open <a href="/display?church=' + encodeURIComponent(CHURCH_ID) + '" target="_blank" style="color:#a67c52;">http://localhost:8000/display</a> in a browser on your projector screen or as an OBS Browser Source — it auto-receives verses with no extra steps.<br><br>' +
                 '<strong>OBS + NDI route:</strong><br>' +
                 '1. Download <strong>NDI Tools</strong> at <a href="https://ndi.video/tools" target="_blank" style="color:#a67c52;">ndi.video/tools</a> and install it.<br>' +
                 '2. Download <strong>OBS Studio</strong> + <strong>obs-ndi plugin</strong> and install both.<br>' +
-                '3. In OBS → Add Source → <em>Browser</em> → URL: <code style="color:#f9cb42">http://localhost:8000/display?church=' + encodeURIComponent(CHURCH_ID) + '</code> → W:1920 H:1080.<br>' +
-                '4. In OBS → Tools → <em>NDI Output Settings</em> → enable <em>Main Output</em>.<br>' +
-                '5. On your switcher / vMix → scan NDI sources → select <strong>"OBS"</strong>.<br>' +
-                '<div style="margin-top:6px;color:#9ca3af;font-size:10px;">ℹ The /display page is a transparent overlay — it works alongside ProPresenter, EasyWorship, or any presentation software without covering their output.</div>';
+                '3. In OBS  Add Source  <em>Browser</em>  URL: <code style="color:#f9cb42">http://localhost:8000/display?church=' + encodeURIComponent(CHURCH_ID) + '</code>  W:1920 H:1080.<br>' +
+                '4. In OBS  Tools  <em>NDI Output Settings</em>  enable <em>Main Output</em>.<br>' +
+                '5. On your switcher / vMix  scan NDI sources  select <strong>"OBS"</strong>.<br>' +
+                '<div style="margin-top:6px;color:#9ca3af;font-size:10px;"> The /display page is a transparent overlay — it works alongside ProPresenter, EasyWorship, or any presentation software without covering their output.</div>';
             // Insert before the last child (Add Output Channel footer)
             const modalBody = document.querySelector('#broadcast-modal > div');
             if (modalBody) modalBody.insertBefore(ndiPanel, modalBody.lastElementChild);
@@ -6205,7 +6198,7 @@
         }
     }
 
-    // ── External Display ─────────────────────────────────────────
+    //  External Display 
     function _launchExternalDisplay() {
         if (!CHURCH_ID) {
             showToast('Still setting up — please try again in a moment', 3000);
@@ -6213,7 +6206,7 @@
         }
         if (window._projectorWindow && !window._projectorWindow.closed) {
             updateProjectorText();
-            showToast(' Projector window already open — drag it to your projector screen & press F', 4000);
+            showToast('Projector window already open — drag it to your projector screen & press F', 4000);
             return;
         }
 
@@ -6236,7 +6229,7 @@ body{
   overflow:hidden;
   transition:background 0.55s ease;
 }
-/* ── Bottom-anchored overlay pill ─────────────────────────────
+/*  Bottom-anchored overlay pill 
    The verse sits in the lower third of the screen.
    It does NOT cover the full display so ProPresenter, EasyWorship,
    OBS, or any background content remains visible.
@@ -6291,13 +6284,13 @@ body{
 <div id="badge">In The Beginning · Live</div>
 <script>
 (function(){
-  // ── postMessage from parent window (popup mode) ────────────
+  //  postMessage from parent window (popup mode) 
   window.addEventListener('message', function(e) {
     if (!e.data || e.data.type !== 'verse') return;
     _showVerse(e.data.verse, e.data.bg);
   });
 
-  // ── WebSocket from server (auto-push, no tab-switch needed) ──
+  //  WebSocket from server (auto-push, no tab-switch needed) 
   var proto = location.protocol === 'https:' ? 'wss' : 'ws';
   var wsUrl = proto + '://' + location.host + '/ws/display?church=${encodeURIComponent(CHURCH_ID)}';
   var retryDelay = 1500;
@@ -6346,7 +6339,7 @@ body{
             'menubar=no,toolbar=no,location=no,status=no,scrollbars=no,resizable=yes');
 
         if (!window._projectorWindow) {
-            showToast(' Popup blocked! Allow popups for 127.0.0.1 and try again.', 5000);
+            showToast('Popup blocked! Allow popups for 127.0.0.1 and try again.', 5000);
             // Fallback: open the in-page projector view
             openProjectorView();
             return;
@@ -6362,20 +6355,20 @@ body{
                 window._projectorWindow = null;
                 const toggle = document.getElementById('broadcast-main-toggle');
                 if (toggle) { toggle.checked = false; _syncBcastToggle(); }
-                showToast(' Projector window closed');
+                showToast('Projector window closed');
             }
         }, 1000);
 
-        showToast(' Projector window opened — press F inside it for fullscreen', 4000);
+        showToast('Projector window opened — press F inside it for fullscreen', 4000);
         closeBroadcastModal();
     }
 
-    // ── NDI ───────────────────────────────────────────────────────
+    //  NDI 
     function _startNDIStream() {
         // NDI requires OBS. We open the projector popup for OBS to capture.
         _launchExternalDisplay();
         setTimeout(function() {
-            showToast(' Now open OBS → capture the Projector window → enable NDI output', 6000);
+            showToast('Now open OBS  capture the Projector window  enable NDI output', 6000);
         }, 1200);
     }
 
@@ -6398,7 +6391,7 @@ body{
             window._projectorWindow.postMessage({ type: 'verse', verse: { ref: v.ref, text: v.text, translation: trans }, bg: bg }, '*');
         }
         if (typeof saveSettings === 'function') saveSettings();
-        showToast(' Theme: ' + theme);
+        showToast('Theme: ' + theme);
     }
 
     function refreshBroadcastMonitors() {
@@ -6411,11 +6404,11 @@ body{
                 sd.screens.forEach(function(s, i) {
                     const opt = document.createElement('option');
                     opt.value = i;
-                    opt.textContent = (s.isPrimary ? '⬛ Primary — ' : ' Screen ' + (i + 1) + ' — ') +
+                    opt.textContent = (s.isPrimary ? ' Primary — ' : ' Screen ' + (i + 1) + ' — ') +
                         s.width + '×' + s.height;
                     sel.appendChild(opt);
                 });
-                showToast('↻ Found ' + sd.screens.length + ' screen(s)');
+                showToast('Found ' + sd.screens.length + ' screen(s)');
             }).catch(function() { _detectMonitorFallback(sel); });
         } else {
             _detectMonitorFallback(sel);
@@ -6425,14 +6418,14 @@ body{
     function _detectMonitorFallback(sel) {
         sel.innerHTML = '';
         const primary = document.createElement('option');
-        primary.textContent = '⬛ Primary — ' + screen.width + '×' + screen.height;
+        primary.textContent = 'Primary — ' + screen.width + '×' + screen.height;
         sel.appendChild(primary);
         if (window.screen && screen.availWidth > screen.width + 100) {
             const ext = document.createElement('option');
-            ext.textContent = ' External — ' + (screen.availWidth - screen.width) + '×' + screen.availHeight;
+            ext.textContent = 'External — ' + (screen.availWidth - screen.width) + '×' + screen.availHeight;
             sel.appendChild(ext);
         }
-        showToast('↻ Basic screen detection — Chrome may need Window Management permission');
+        showToast('Basic screen detection — Chrome may need Window Management permission');
     }
 
     // Close broadcast modal on backdrop click
@@ -6448,7 +6441,7 @@ body{
     <div id="translation-manager-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:9999;align-items:center;justify-content:center;">
         <div style="background:#1a1a2e;border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:24px;width:480px;max-width:95vw;max-height:80vh;overflow-y:auto;box-shadow:0 24px 60px rgba(0,0,0,0.6);">
             <div style="display:flex;align-items:center;margin-bottom:18px;">
-                <span style="font-size:14px;font-weight:800;color:#e5e7eb;flex:1;">📖 Translation Manager</span>
+                <span style="font-size:14px;font-weight:800;color:#e5e7eb;flex:1;"> Translation Manager</span>
                 <button onclick="closeTranslationManager()" style="background:none;border:none;color:#6b7280;font-size:20px;cursor:pointer;line-height:1;">&times;</button>
             </div>
 
@@ -6508,13 +6501,13 @@ body{
         </div>
     </div>
 
-    <!-- ═══════════════════════════════════════════
+    <!-- 
          DEEPGRAM TRIAL EXPIRED MODAL
-    ═══════════════════════════════════════════ -->
+     -->
     <div id="trial-modal">
         <div class="trial-card" style="position:relative;">
             <button class="trial-close-btn" onclick="closeTrialModal()">&times;</button>
-            <div class="trial-icon">🔑</div>
+            <div class="trial-icon"></div>
             <div class="trial-title">Your 20-minute free trial has ended</div>
             <div class="trial-body">
                 Thank you for trying <strong>In The Beginning</strong>!<br>
@@ -6529,7 +6522,7 @@ body{
                 <button class="trial-save-btn" onclick="saveTrialKey()">Activate</button>
             </div>
             <a class="trial-link" href="https://console.deepgram.com/signup" target="_blank">
-                ↗ Get your free Deepgram key at console.deepgram.com
+                 Get your free Deepgram key at console.deepgram.com
             </a>
         </div>
     </div>
@@ -6537,7 +6530,7 @@ body{
     <script>
     function saveTranscriptionLanguage(lang) {
         try { localStorage.setItem('itb_lang', lang); } catch(e) {}
-        showToast(' Language set to ' + lang);
+        showToast('Language set to ' + lang);
     }
     </script>
 </body>

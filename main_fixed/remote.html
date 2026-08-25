@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/intro.js/minified/introjs.min.css">
     <script src="https://cdn.jsdelivr.net/npm/intro.js/minified/intro.min.js"></script>
     <style>
-        /* ── Intro.js Dark Theme Override (matches desktop app) ── */
+        /*  Intro.js Dark Theme Override (matches desktop app)  */
         .introjs-tooltip {
             background: #13161c !important;
             border: 1px solid rgba(166,124,82,0.45) !important;
@@ -43,7 +43,7 @@
         .introjs-bullets ul li a.active, .introjs-bullets ul li a:hover { background: #a67c52 !important; }
     </style>
     <style>
-        /* ── Design tokens — identical palette to the desktop app ── */
+        /*  Design tokens — identical palette to the desktop app  */
         :root {
             --bg-deep:    #0b0d11;
             --bg-panel:   #16191f;
@@ -73,7 +73,7 @@
             -webkit-user-select: none;
         }
 
-        /* ── Layout ── */
+        /*  Layout  */
         .app {
             display: flex;
             flex-direction: column;
@@ -83,7 +83,7 @@
             margin: 0 auto;
         }
 
-        /* ── Top bar ── */
+        /*  Top bar  */
         .topbar {
             flex-shrink: 0;
             background: var(--bg-panel);
@@ -173,7 +173,7 @@
             50%       { opacity: 0.3; }
         }
 
-        /* ── Scrollable content area ── */
+        /*  Scrollable content area  */
         .content {
             flex: 1;
             overflow-y: auto;
@@ -185,7 +185,7 @@
             -webkit-overflow-scrolling: touch;
         }
 
-        /* ── Card ── */
+        /*  Card  */
         .card {
             background: var(--bg-panel);
             border: 1px solid var(--border);
@@ -206,7 +206,7 @@
         }
         .card-header svg { flex-shrink: 0; }
 
-        /* ── Live verse display ── */
+        /*  Live verse display  */
         .verse-display {
             padding: 16px;
             min-height: 100px;
@@ -244,7 +244,7 @@
             opacity: 0.6;
         }
 
-        /* ── Navigator ── */
+        /*  Navigator  */
         .nav-grid {
             padding: 14px 16px;
             display: grid;
@@ -351,7 +351,7 @@
         }
         .nav-go-btn:active { transform: scale(0.97); background: rgba(166,124,82,0.32); }
 
-        /* ── Main controls ── */
+        /*  Main controls  */
         .ctrl-pad {
             flex-shrink: 0;
             background: var(--bg-panel);
@@ -432,7 +432,7 @@
             to { transform: scale(4); opacity: 0; }
         }
 
-        /* ── Toast ── */
+        /*  Toast  */
         #toast {
             position: fixed;
             bottom: calc(110px + var(--safe-bottom));
@@ -461,7 +461,7 @@
             transform: translateX(-50%) translateY(0);
         }
 
-        /* ── Verse loading animation ── */
+        /*  Verse loading animation  */
         .skeleton-line {
             height: 12px;
             background: linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.09) 50%, rgba(255,255,255,0.04) 75%);
@@ -475,7 +475,7 @@
             100% { background-position: -200% 0; }
         }
 
-        /* ── Disconnected overlay ── */
+        /*  Disconnected overlay  */
         #disconnected-overlay {
             display: none;
             position: fixed;
@@ -527,7 +527,7 @@
     </div>
     <div class="dc-title">Connection Lost</div>
     <div class="dc-sub">Could not reach the desktop app.<br>Make sure you're on the same Wi-Fi network.</div>
-    <button class="dc-retry" onclick="retryConnection()">↻ Reconnect</button>
+    <button class="dc-retry" onclick="retryConnection()">Reconnect</button>
 </div>
 
 <div class="app">
@@ -572,7 +572,7 @@
                     <rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
                 </svg>
                 Now Displaying
-                <span id="live-badge" style="margin-left:auto;font-size:9px;font-weight:800;color:#4ade80;letter-spacing:1px;display:none;">● LIVE</span>
+                <span id="live-badge" style="margin-left:auto;font-size:9px;font-weight:800;color:#4ade80;letter-spacing:1px;display:none;"> LIVE</span>
             </div>
             <div class="verse-display" id="verse-display">
                 <div class="verse-placeholder">Waiting for desktop to push a verse…</div>
@@ -644,7 +644,7 @@
 
                 <!-- Go button -->
                 <button class="nav-go-btn" onclick="navigateToSelected()">
-                    Go to Reference ↗
+                    Go to Reference
                 </button>
             </div>
         </div>
@@ -685,7 +685,7 @@
 <div id="toast"></div>
 
 <script>
-// ── Bible chapter/verse counts ──────────────────────────────
+//  Bible chapter/verse counts 
 const CHAPTER_COUNTS = {
     Genesis:66,Exodus:40,Leviticus:27,Numbers:36,Deuteronomy:34,
     Joshua:24,Judges:21,Ruth:4,'1 Samuel':31,'2 Samuel':24,
@@ -712,7 +712,7 @@ function getVerseCount(book, chapter) {
     return 40; // safe fallback for most chapters
 }
 
-// ── Navigator helpers ──────────────────────────────────────
+//  Navigator helpers 
 function onBookChange() {
     const book = document.getElementById('bookSelect').value;
     const chSel = document.getElementById('chapterSelect');
@@ -747,12 +747,12 @@ function navigateToSelected() {
     const chapter = document.getElementById('chapterSelect').value;
     const verse   = document.getElementById('verseSelect').value;
     if (!book || !chapter || !verse) {
-        showToast('⚠ Select book, chapter and verse first');
+        showToast('Select book, chapter and verse first');
         return;
     }
     const ref = `${book} ${chapter}:${verse}`;
     send({ type: 'remote_action', action: 'navigate', ref });
-    showToast('↗ Navigating to ' + ref);
+    showToast('Navigating to ' + ref);
 }
 
 function handleRemoteSearch(value) {
@@ -835,7 +835,7 @@ function escapeHtml(value) {
     }[ch]));
 }
 
-// ── WebSocket ──────────────────────────────────────────────
+//  WebSocket 
 let ws = null;
 let wsConnected = false;
 let reconnectTimer = null;
@@ -846,7 +846,7 @@ const MAX_RECONNECT = 8;
 // Same-origin when served by the backend itself (desktop LAN remote, Railway,
 // Fly serving its own frontend). If hosted separately (e.g. Netlify), point
 // explicitly at the Fly backend.
-const FLY_BACKEND_HOST = 'inthebeginning.fly.dev'; // ← update if your Fly app name changes
+const FLY_BACKEND_HOST = 'inthebeginning.fly.dev'; // update if your Fly app name changes
 const _isSameOriginBackend =
     ['localhost', '127.0.0.1'].includes(location.hostname)
     || location.hostname.endsWith('.fly.dev')
@@ -889,7 +889,7 @@ function connect() {
         reconnectAttempts = 0;
         setConnStatus('connected');
         hideDisconnectedOverlay();
-        showToast('📱 Connected to desktop');
+        showToast('Connected to desktop');
     };
 
     ws.onmessage = (e) => {
@@ -928,11 +928,11 @@ function retryConnection() {
     connect();
 }
 
-// ── Message handling ───────────────────────────────────────
+//  Message handling 
 function handleMessage(msg) {
     switch (msg.type) {
         case 'remote_connected':
-            showToast('✅ Remote ready');
+            showToast('Remote ready');
             break;
 
         case 'remote_pong':
@@ -959,10 +959,10 @@ function handleMessage(msg) {
     }
 }
 
-// ── Send action ────────────────────────────────────────────
+//  Send action 
 function send(payload) {
     if (!ws || ws.readyState !== WebSocket.OPEN) {
-        showToast('⚠ Not connected');
+        showToast('Not connected');
         return false;
     }
     ws.send(JSON.stringify(payload));
@@ -979,7 +979,7 @@ function sendAction(action, btn) {
     // Haptic feedback if available
     if (navigator.vibrate) navigator.vibrate(30);
 
-    const labels = { next: '→ Next Verse', prev: '← Previous Verse', clear: '⬛ Clear' };
+    const labels = { next: 'Next Verse', prev: 'Previous Verse', clear: 'Clear' };
     if (action === 'clear') clearVerseDisplay();
     showToast(labels[action] || action);
 }
@@ -999,7 +999,7 @@ function setRemoteTranscriptionState(active) {
     btn.classList.toggle('live', transcriptionActive);
 }
 
-// ── Ripple effect ──────────────────────────────────────────
+//  Ripple effect 
 function addRipple(btn, e) {
     const rect = btn.getBoundingClientRect();
     const x = (e && e.touches ? e.touches[0].clientX : (e ? e.clientX : rect.left + rect.width/2)) - rect.left;
@@ -1012,7 +1012,7 @@ function addRipple(btn, e) {
     setTimeout(() => r.remove(), 500);
 }
 
-// ── Verse display ──────────────────────────────────────────
+//  Verse display 
 function renderVerseDisplay(verse, translation) {
     const el = document.getElementById('verse-display');
     if (!el) return;
@@ -1036,7 +1036,7 @@ function clearVerseDisplay() {
     if (badge) badge.style.display = 'none';
 }
 
-// ── Connection status UI ───────────────────────────────────
+//  Connection status UI 
 function setConnStatus(state) {
     const pill  = document.getElementById('conn-pill');
     const dot   = document.getElementById('conn-dot');
@@ -1069,7 +1069,7 @@ function hideDisconnectedOverlay() {
     if (el) el.classList.remove('visible');
 }
 
-// ── Toast ──────────────────────────────────────────────────
+//  Toast 
 let _toastTimer = null;
 function showToast(msg, duration = 2200) {
     const el = document.getElementById('toast');
@@ -1080,7 +1080,7 @@ function showToast(msg, duration = 2200) {
     _toastTimer = setTimeout(() => el.classList.remove('show'), duration);
 }
 
-// ── Keepalive ping ─────────────────────────────────────────
+//  Keepalive ping 
 setInterval(() => {
     if (ws && ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({ type: 'remote_action', action: 'ping' }));
@@ -1109,7 +1109,7 @@ function startRemoteTour() {
     }).start();
 }
 
-// ── Boot ───────────────────────────────────────────────────
+//  Boot 
 connect();
 </script>
 </body>
