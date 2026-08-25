@@ -38,7 +38,7 @@
       min-height: 100vh;
     }
 
-    /* ── Sidebar ── */
+    /*  Sidebar  */
     .sidebar {
       width: 240px;
       flex-shrink: 0;
@@ -65,7 +65,7 @@
     .sb-link.active { background: var(--accent-glow); color: var(--accent-warm); }
     .sb-bottom { display: flex; flex-direction: column; gap: 4px; }
 
-    /* ── Main ── */
+    /*  Main  */
     .main { flex: 1; padding: 44px 48px; max-width: 900px; }
     .top-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 36px; }
     .welcome { font-family: var(--font-display); font-size: 30px; margin: 0; }
@@ -126,6 +126,34 @@
     }
     .resource-link:hover { background: var(--bg-card-2); border-color: var(--accent-warm); }
 
+    .help-intro { font-size: 14px; color: var(--text-secondary); margin: -4px 0 18px; line-height: 1.6; }
+    .faq-list { display: flex; flex-direction: column; gap: 10px; }
+    .faq-list details {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: rgba(255,255,255,0.02);
+      padding: 0 14px;
+    }
+    .faq-list summary {
+      cursor: pointer;
+      list-style: none;
+      padding: 13px 0;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+    .faq-list summary::-webkit-details-marker { display: none; }
+    .faq-list summary::after {
+      content: '+';
+      float: right;
+      color: var(--accent-warm);
+      font-weight: 600;
+    }
+    .faq-list details[open] summary::after { content: '-'; }
+    .faq-list p { margin: 0 0 14px; font-size: 13px; line-height: 1.6; color: var(--text-secondary); }
+    .help-contact { margin-top: 18px; font-size: 13px; color: var(--text-secondary); }
+    .help-contact a { color: var(--accent-warm); }
+
     #loadingGate, #noSession {
       max-width: 480px; margin: 120px auto; text-align: center; font-size: 15px; color: var(--text-secondary);
     }
@@ -145,7 +173,7 @@
 
   <div id="noSession" style="display:none;">
     <p>You need to sign in to view your dashboard.</p>
-    <p><a href="index.html">← Back to In the Beginning AI</a></p>
+    <p><a href="index.html"> Back to In the Beginning AI</a></p>
   </div>
 
   <nav class="sidebar" id="sidebar" style="display:none;">
@@ -161,7 +189,7 @@
     <div class="sb-nav">
       <a href="dashboard.html" class="sb-link active">Dashboard</a>
       <a href="docs.html" class="sb-link">Documentation</a>
-      <a href="mailto:hello@inthebeginning.ai" class="sb-link">Help Center</a>
+      <a href="#help-center" class="sb-link">Help Center</a>
     </div>
     <div class="sb-bottom">
       <a href="#" id="signOutLink" class="sb-link">Sign Out</a>
@@ -217,9 +245,37 @@
       </table>
     </div>
 
+    <section class="card" id="help-center">
+      <p class="card-label">Help Center</p>
+      <p class="help-intro">Recently asked questions from churches using In the Beginning AI.</p>
+      <div class="faq-list">
+        <details>
+          <summary>Can I use the phone remote while live transcription is running?</summary>
+          <p>Yes. The mobile remote and live transcription run independently, so you can control verse display from your phone while the AI continues detecting scripture in the background.</p>
+        </details>
+        <details>
+          <summary>Does it work offline?</summary>
+          <p>Bible search, verse display, and the mobile remote can work offline. Online transcription needs internet access, while offline Whisper mode processes audio locally on the server machine.</p>
+        </details>
+        <details>
+          <summary>How accurate is verse detection?</summary>
+          <p>Direct references like John 3:16 are detected quickly. For paraphrases or partial quotes, the semantic search engine compares against the Bible text and returns the closest scripture matches.</p>
+        </details>
+        <details>
+          <summary>What happens if the internet connection drops?</summary>
+          <p>Live cloud transcription pauses until the connection returns, but manual Bible search and verse display continue to work. Pre-loading key verses before service is recommended.</p>
+        </details>
+        <details>
+          <summary>Where are sermon transcripts stored?</summary>
+          <p>Transcripts are stored locally on your device. Online transcription streams audio only for processing, and generated notes use transcript text only when that feature is requested.</p>
+        </details>
+      </div>
+      <p class="help-contact">Need direct help? Contact <a href="mailto:hello@inthebeginning.ai">hello@inthebeginning.ai</a>.</p>
+    </section>
+
     <div class="resource-row">
       <a href="docs.html" class="resource-link">Documentation</a>
-      <a href="mailto:hello@inthebeginning.ai" class="resource-link">Help Center</a>
+      <a href="#help-center" class="resource-link">Help Center</a>
     </div>
   </main>
 
