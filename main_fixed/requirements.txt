@@ -8,3 +8,4 @@ numpy
 python-multipart
 httpx
 python-dotenv
+redis
