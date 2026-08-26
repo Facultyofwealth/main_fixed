@@ -267,12 +267,21 @@
             box-shadow: 0 0 0 3px rgba(166,124,82,0.12);
         }
         .search-results {
-            grid-column: 1 / -1;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            z-index: 20;
             display: none;
             flex-direction: column;
             gap: 7px;
             max-height: 260px;
             overflow-y: auto;
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            margin-top: 6px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.4);
         }
         .result-item {
             width: 100%;
@@ -588,7 +597,7 @@
                 Bible Navigator
             </div>
             <div class="nav-grid">
-                <div class="full-row">
+                <div class="full-row" style="position:relative;">
                     <div class="sel-label">Search Scripture</div>
                     <input id="remoteSearch" class="search-input" type="search" placeholder="Romans 1:10" autocomplete="off" oninput="handleRemoteSearch(this.value)" onkeydown="handleRemoteSearchKey(event)">
                 </div>
