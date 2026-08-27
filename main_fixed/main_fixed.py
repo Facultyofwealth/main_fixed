@@ -3052,6 +3052,16 @@ async def live_ws(ws: WebSocket):
 
     key_source = "client" if (session_key and not SERVER_DG_KEY) else ("server" if SERVER_DG_KEY else "none")
 
+    if len(bible.verses) < 1000:
+        # Real KJV data is ~31,000 verses. Anything far below that means the
+        # full Bible file failed to load and we're running on the tiny
+        # built-in sample — scripture matching will barely work. This used
+        # to be a print()-only warning, invisible now that console=False.
+        await safe_send(ws, {
+            "type": "warning",
+            "message": f"Only {len(bible.verses)} Bible verses loaded (using built-in sample, not full KJV). Scripture matching will be very limited — check the app installation.",
+        })
+
     await safe_send(ws, {
         "type": "connected", "message": "In The Beginning is live!",
         "engine": engine, "deepgram": engine == "deepgram",
