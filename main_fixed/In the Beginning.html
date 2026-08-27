@@ -5290,6 +5290,24 @@
         }).start();
     }
 
+    // First-time guided tour — fires once automatically, then never again
+    // unless the person clicks the GUIDE button manually (startIntroTour
+    // itself is unchanged and still works exactly as before for that).
+    function maybeAutoStartTour() {
+        try {
+            if (localStorage.getItem('itb_tour_seen_desktop')) return;
+        } catch (_) { return; }
+        const tryStart = () => {
+            if (window.introJs) {
+                startIntroTour();
+                try { localStorage.setItem('itb_tour_seen_desktop', '1'); } catch (_) {}
+            } else {
+                setTimeout(tryStart, 400);
+            }
+        };
+        setTimeout(tryStart, 600);
+    }
+
     // ===================== INIT =====================
     loadState();
     connectDesktopControl();
@@ -5304,6 +5322,7 @@
     if (appState.displayMode) setDisplayMode(appState.displayMode, true);
     if (appState.outputType) selectOutput(appState.outputType, true);
     if (appState.transcriptionMode) setTranscriptionMode(appState.transcriptionMode);
+    maybeAutoStartTour();
 
     // Build bible book grids (for the navigate subpage)
     buildBookGrid(OT, 'OT-grid');

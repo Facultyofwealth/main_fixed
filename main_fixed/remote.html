@@ -834,6 +834,11 @@ function selectRemoteVerse(verse) {
     renderVerseDisplay(verse, verse.translation || 'KJV');
     const input = document.getElementById('remoteSearch');
     if (input) input.value = verse.ref;
+    const resultsEl = document.getElementById('remoteResults');
+    if (resultsEl) {
+        resultsEl.style.display = 'none';
+        resultsEl.innerHTML = '';
+    }
     send({ type: 'remote_action', action: 'navigate', ref: verse.ref, translation: verse.translation || 'KJV' });
     showToast('Displaying ' + verse.ref);
 }
@@ -1118,8 +1123,37 @@ function startRemoteTour() {
     }).start();
 }
 
+// Close the search dropdown on outside tap, so it never lingers over
+// Book/Chapter/Verse/Go-to-Reference or the PREV/CLEAR/NEXT control pad.
+document.addEventListener('click', (e) => {
+    const resultsEl = document.getElementById('remoteResults');
+    const searchInput = document.getElementById('remoteSearch');
+    if (!resultsEl || resultsEl.style.display === 'none') return;
+    if (resultsEl.contains(e.target) || (searchInput && searchInput.contains(e.target))) return;
+    resultsEl.style.display = 'none';
+    resultsEl.innerHTML = '';
+});
+
+// First-time guided tour — fires once automatically on this phone/browser,
+// then never again unless GUIDE is tapped manually.
+function maybeAutoStartRemoteTour() {
+    try {
+        if (localStorage.getItem('itb_tour_seen_remote')) return;
+    } catch (_) { return; }
+    const tryStart = () => {
+        if (window.introJs) {
+            startRemoteTour();
+            try { localStorage.setItem('itb_tour_seen_remote', '1'); } catch (_) {}
+        } else {
+            setTimeout(tryStart, 400);
+        }
+    };
+    setTimeout(tryStart, 600);
+}
+
 //  Boot 
 connect();
+maybeAutoStartRemoteTour();
 </script>
 </body>
 </html>

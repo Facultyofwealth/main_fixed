@@ -864,10 +864,11 @@ async def _ensure_vector_index():
 
 _whisper_model_loaded = False
 _whisper_model_lock = None  # created lazily inside the event loop
+_whisper_load_error = None  # last load error, so callers can tell the client why it's unavailable
 
 async def _ensure_whisper_model():
     """Load Whisper 'tiny' model once, on first Whisper session start."""
-    global whisper_model, _whisper_model_loaded, _whisper_model_lock
+    global whisper_model, _whisper_model_loaded, _whisper_model_lock, _whisper_load_error
     if _whisper_model_loaded:
         return
     if _whisper_model_lock is None:
@@ -879,8 +880,10 @@ async def _ensure_whisper_model():
         try:
             whisper_model = await asyncio.to_thread(_whisper_lib.load_model, "tiny")
             _whisper_model_loaded = True
+            _whisper_load_error = None
             print("Whisper 'tiny' model ready")
         except Exception as e:
+            _whisper_load_error = str(e)
             print(f"Whisper failed to load: {e}")
 
 #  Redis (optional — enables correct room delivery across MULTIPLE Fly
@@ -3430,6 +3433,19 @@ async def _run_whisper(ws: WebSocket, session: SessionState, prefetched_audio: O
     if WHISPER_AVAILABLE and whisper_model is None:
         await safe_send(ws, {"type": "status", "message": "Loading Whisper model (first use)…"})
         await _ensure_whisper_model()
+
+    if whisper_model is None:
+        # Model load failed (or Whisper isn't installed) — tell the client the
+        # real reason instead of falsely claiming readiness. This used to be
+        # swallowed silently, showing "ready" even though nothing would ever
+        # transcribe.
+        reason = _whisper_load_error or "Whisper model is not available."
+        await safe_send(ws, {
+            "type": "error",
+            "message": f"Whisper failed to start: {reason}",
+        })
+        print(f"Whisper: aborting session, model unavailable ({reason})")
+        return
 
     # Guard: check socket is still alive before sending anything
     if not await safe_send(ws, {"type": "whisper_ready", "message": "Whisper ready — speak now (Offline Mode)"}):
