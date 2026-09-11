@@ -6140,6 +6140,79 @@
     let _broadcastOutputType = 'external';
     window._projectorWindow  = null;   // exposed on window so updateProjectorText can reach it
 
+    // ── Native output window (desktop app) ──────────────────────────────
+    // Inside the pywebview desktop app the backend can open a real, frameless,
+    // fullscreen window on the operator's chosen monitor (e.g. "Screen 2 —
+    // 1280x720"). The selection is saved server-side (output_settings.json)
+    // AND mirrored to localStorage; it is never reset when output is turned off.
+    const OUTPUT_SCREEN_KEY = 'itb_output_screen';
+    let _nativeOutputAvailable = null;   // null = unknown, true/false once /monitors answers
+    let _nativeOutputOpen = false;
+    let _outputBusy = false;
+
+    function _savedOutputScreen() {
+        const v = parseInt(localStorage.getItem(OUTPUT_SCREEN_KEY), 10);
+        return Number.isFinite(v) ? v : -1;
+    }
+
+    function saveOutputScreen(idx, silent = false) {
+        idx = parseInt(idx, 10);
+        if (!Number.isFinite(idx) || idx < 0) return;
+        localStorage.setItem(OUTPUT_SCREEN_KEY, String(idx));
+        fetch(BACKEND_URL + '/output/target', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ screen_index: idx })
+        }).then(r => r.json()).then(d => {
+            if (!silent) showToast('Output target saved: ' + (d.label || ('Screen ' + (idx + 1))));
+        }).catch(() => { if (!silent) showToast('Output target saved locally'); });
+    }
+
+    function handleMonitorSelect(sel) {
+        if (!sel || sel.value === '') return;
+        saveOutputScreen(sel.value);
+        // If output is currently live, move it to the newly chosen screen.
+        if (_nativeOutputOpen) {
+            _nativeOutputOff().then(() => _nativeOutputOn(true));
+        }
+    }
+
+    function _nativeOutputOn(silent = false) {
+        if (!CHURCH_ID) { showToast('Still setting up — please try again in a moment', 3000); return Promise.resolve(false); }
+        if (_outputBusy) return Promise.resolve(false);
+        _outputBusy = true;
+        return fetch(BACKEND_URL + '/output/on', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ church: CHURCH_ID })
+        }).then(r => r.json()).then(d => {
+            _outputBusy = false;
+            if (d && d.ok) {
+                _nativeOutputOpen = true;
+                _nativeOutputAvailable = true;
+                if (!silent && !d.already_open) {
+                    const label = d.screen && d.screen.label ? d.screen.label : 'output screen';
+                    showToast('Output window opened on ' + label, 3500);
+                }
+                // Make sure the new window immediately shows the current verse
+                if (appState.currentVerse && typeof updateProjectorText === 'function') updateProjectorText();
+                return true;
+            }
+            if (d && d.desktop === false) {
+                _nativeOutputAvailable = false;
+                return false;                        // caller falls back to browser popup
+            }
+            showToast((d && d.error) || 'Could not open output window', 4000);
+            return false;
+        }).catch(() => { _outputBusy = false; return false; });
+    }
+
+    function _nativeOutputOff() {
+        _nativeOutputOpen = false;
+        return fetch(BACKEND_URL + '/output/off', { method: 'POST' })
+            .then(r => r.json()).catch(() => ({}));
+    }
+
     function openBroadcastModal() {
         const modal = document.getElementById('broadcast-modal');
         if (!modal) return;
@@ -6156,18 +6229,31 @@
     }
 
     function handleBroadcastToggle(el) {
-        // Mirror to main GO LIVE toggle
+        // Mirror to main GO LIVE toggle (handleGoLiveToggle drives the output window)
         const goLive = document.getElementById('autoToggle');
         if (goLive) { goLive.checked = el.checked; if (typeof handleGoLiveToggle === 'function') handleGoLiveToggle(goLive); }
         _syncBcastToggle();
-        if (el.checked) {
+        showToast(el.checked ? 'Output: Live' : 'Output: Off');
+    }
+
+    // Called by handleGoLiveToggle() — single place that opens/closes output.
+    function startBroadcastOutput() {
+        if (_nativeOutputAvailable === false) {
+            // Plain browser (not the desktop app) — legacy popup path
             if (_broadcastOutputType === 'external') _launchExternalDisplay();
             else _startNDIStream();
-            showToast('Output: Live');
-        } else {
-            _stopAllOutputs();
-            showToast('Output: Off');
+            return;
         }
+        _nativeOutputOn().then(ok => {
+            if (!ok && _nativeOutputAvailable === false) {
+                if (_broadcastOutputType === 'external') _launchExternalDisplay();
+                else _startNDIStream();
+            }
+        });
+    }
+
+    function stopBroadcastOutput() {
+        _stopAllOutputs();
     }
 
     function _syncBcastToggle() {

@@ -4,7 +4,7 @@ import threading
 import time
 
 import uvicorn
-from main_fixed import app
+from main_fixed import app, set_webview_runtime
 
 # pywebview is only available on desktop (local .exe / dev machine).
 # On Railway (headless, no display) this import will fail — that's expected
@@ -131,14 +131,31 @@ if __name__ == "__main__":
 
         # Wait for Uvicorn to be ready before opening the window.
         if wait_for_server():
-            window = webview.create_window(
-                "In The Beginning",
-                DESKTOP_URL,
+            # The control UI always opens on the PRIMARY monitor. The projector
+            # output is a separate frameless fullscreen window that the backend
+            # opens on the operator's saved target screen (POST /output/on).
+            primary_screen = None
+            try:
+                primary_screen = next(
+                    (s for s in webview.screens if int(s.x) == 0 and int(s.y) == 0), None
+                )
+            except Exception:
+                primary_screen = None
+
+            window_kwargs = dict(
                 width=1280,
                 height=800,
                 resizable=True,
                 fullscreen=False,
             )
+            if primary_screen is not None:
+                window_kwargs["screen"] = primary_screen
+
+            window = webview.create_window("In The Beginning", DESKTOP_URL, **window_kwargs)
+
+            # Hand pywebview to the backend so it can create/destroy the output
+            # window from the /output/on and /output/off endpoints.
+            set_webview_runtime(webview, window)
             webview.start()
         else:
             print("ERROR: Server did not start in time.")

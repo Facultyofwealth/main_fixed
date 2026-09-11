@@ -398,33 +398,123 @@ class BibleIndex:
         self._faiss_index = None
         self._vector_ready = False
         self._vector_status = "not built"
+        # Diagnostics: where the Bible came from (or why it did not load).
+        self.source_path: Optional[str] = None
+        self.load_report: List[str] = []
+
+    # The full KJV has 31,102 verses. Anything below this is NOT the full Bible.
+    FULL_BIBLE_MIN_VERSES = 30000
+
+    def is_full_bible(self) -> bool:
+        return len(self.verses) >= self.FULL_BIBLE_MIN_VERSES
+
+    def _candidate_paths(self) -> List[str]:
+        """Every location the Bible JSON may live in, across dev / frozen layouts.
+
+        PyInstaller bundles have shipped with two different prefixes for the
+        kjv.json folder in the past (``kjv.json/kjv-master/...`` via Tree() and
+        a bare ``kjv-master/...``), so we probe both plus a few flat names."""
+        rel_names = [
+            "kjv.json/kjv-master/json/verses-1769.json",
+            "kjv-master/json/verses-1769.json",
+            "json/verses-1769.json",
+            "verses-1769.json",
+            "kjv.json",
+            "bible.json",
+        ]
+        bases: List[str] = []
+        if getattr(sys, "frozen", False):
+            bases.append(getattr(sys, "_MEIPASS", ""))
+            bases.append(os.path.dirname(sys.executable))
+        bases += [_script_dir, os.getcwd(), get_data_dir()]
+        seen, out = set(), []
+        for base in bases:
+            if not base:
+                continue
+            for rel in rel_names:
+                p = os.path.normpath(os.path.join(base, rel))
+                if p not in seen:
+                    seen.add(p)
+                    out.append(p)
+        return out
+
+    def _scan_for_bible_files(self) -> List[str]:
+        """Last resort: walk the bundle / script dir for any verses JSON so a
+        future packaging prefix mistake can never silently drop the Bible."""
+        roots: List[str] = []
+        if getattr(sys, "frozen", False):
+            roots.append(getattr(sys, "_MEIPASS", ""))
+        roots.append(_script_dir)
+        found: List[str] = []
+        for root in roots:
+            if not root or not os.path.isdir(root):
+                continue
+            for dirpath, dirnames, filenames in os.walk(root):
+                # Skip heavy / irrelevant trees
+                dirnames[:] = [d for d in dirnames if d not in (
+                    "venv", ".venv", "node_modules", "__pycache__", "build", "dist",
+                    "torch", "transformers", "sentence_transformers", "numpy", "faiss",
+                    "whisper", "webview", "uvicorn", "fastapi", "installer_output",
+                )]
+                for fn in filenames:
+                    low = fn.lower()
+                    if low == "verses-1769.json" or (low.startswith("kjv") and low.endswith(".json")):
+                        found.append(os.path.join(dirpath, fn))
+        return found
 
     def load(self):
-        candidates = [
-            get_resource_path("kjv.json/kjv-master/json/verses-1769.json"),
-            get_resource_path("kjv.json"),
-            get_resource_path("verses-1769.json"),
-            get_resource_path("bible.json"),
-            "kjv.json/kjv-master/json/verses-1769.json",
-            "kjv.json", "verses-1769.json", "bible.json",
-        ]
-        for path in candidates:
+        self.load_report = []
+        best: List[Dict] = []
+        best_path: Optional[str] = None
+
+        for path in self._candidate_paths():
+            if not os.path.isfile(path):
+                continue
             verses = self._try_load(path)
-            if verses:
-                self.verses = verses
-                self._rebuild_lookup_maps()
-                print(f"Loaded {len(self.verses)} verses from {path}")
-                return
+            if len(verses) > len(best):
+                best, best_path = verses, path
+            if len(best) >= self.FULL_BIBLE_MIN_VERSES:
+                break
+
+        if len(best) < self.FULL_BIBLE_MIN_VERSES:
+            for path in self._scan_for_bible_files():
+                if path == best_path:
+                    continue
+                verses = self._try_load(path)
+                if len(verses) > len(best):
+                    best, best_path = verses, path
+                if len(best) >= self.FULL_BIBLE_MIN_VERSES:
+                    break
+
+        if best:
+            self.verses = best
+            self.source_path = best_path
+            self._rebuild_lookup_maps()
+            print(f"Loaded {len(self.verses)} verses from {best_path}")
+            if not self.is_full_bible():
+                print(f"WARNING: only {len(self.verses)} verses loaded — this is NOT the full KJV (expected ~31,102).")
+            return
+
         self.verses = self._sample()
+        self.source_path = None
         self._rebuild_lookup_maps()
-        print(f"Using {len(self.verses)} built-in sample verses")
+        print("=" * 70)
+        print(f"WARNING: Bible data NOT found — using {len(self.verses)} built-in sample verses.")
+        print("Scripture detection will be severely limited. Paths tried:")
+        for line in self.load_report[-12:]:
+            print("   " + line)
+        print(f"   frozen={getattr(sys, 'frozen', False)}  _MEIPASS={getattr(sys, '_MEIPASS', '-')}")
+        print("=" * 70)
 
     def _try_load(self, filepath: str) -> List[Dict]:
         try:
             with open(filepath, "r", encoding="utf-8") as f:
                 bible = json.load(f)
             if isinstance(bible, dict) and all(":" in k for k in list(bible)[:5]):
-                return [{"ref": r, "text": t.strip()} for r, t in bible.items() if t.strip()]
+                verses = [{"ref": r, "text": t.strip()} for r, t in bible.items()
+                          if isinstance(t, str) and t.strip()]
+                self.load_report.append(f"OK   {filepath} -> {len(verses)} verses (ref-map)")
+                return verses
             verses = []
             for book, data in (bible.items() if isinstance(bible, dict) else []):
                 if not isinstance(data, list): continue
@@ -432,10 +522,16 @@ class BibleIndex:
                     if isinstance(ch, dict):
                         for v in ch.get("verses", []):
                             ref  = f"{book} {ch_idx+1}:{v.get('verse','?')}"
-                            text = v.get("text", "").strip()
+                            text = str(v.get("text", "")).strip()
                             if text: verses.append({"ref": ref, "text": text})
+            self.load_report.append(f"OK   {filepath} -> {len(verses)} verses (nested)")
             return verses
-        except Exception:
+        except FileNotFoundError:
+            self.load_report.append(f"MISS {filepath}")
+            return []
+        except Exception as e:
+            self.load_report.append(f"FAIL {filepath}: {type(e).__name__}: {e}")
+            print(f"Bible load failed for {filepath}: {type(e).__name__}: {e}")
             return []
 
     def _sample(self) -> List[Dict]:
@@ -843,6 +939,8 @@ async def startup():
     wh  = "lib ready" if WHISPER_AVAILABLE else "not installed"
     print(f"Ready | Deepgram: {dg} | Whisper: {wh} | Both Whisper & FAISS load lazily on first use")
     print(f"Frontend: {FRONTEND_FILE or 'NOT FOUND'}")
+    print(f"Bible: {len(bible.verses)} verses ({'FULL KJV' if bible.is_full_bible() else 'INCOMPLETE'}) from {bible.source_path or 'built-in sample'}")
+    print(f"Output settings: {_OUTPUT_SETTINGS_PATH} (saved screen_index={get_output_target()}) | output starts OFF")
 
 _vector_index_loaded = False
 _vector_index_lock = None   # created lazily inside the event loop (asyncio.Lock() at module level crashes Python 3.12+)
@@ -1444,6 +1542,8 @@ def health():
     return {
         "status":      "ok",
         "verse_count": len(bible.verses),
+        "bible_ok":    bible.is_full_bible(),
+        "bible_source": bible.source_path,
         "deepgram":    bool(SERVER_DG_KEY),
         "whisper":     WHISPER_AVAILABLE,
         "openai":      False,
@@ -1565,7 +1665,10 @@ def display_status(church: str = Query(..., description="Church account email"))
 
 
 @app.get("/display")
-def serve_display_page(church: str = Query("", description="Church account email")):
+def serve_display_page(
+    church: str = Query("", description="Church account email"),
+    chrome: int = Query(1, description="1 = show badge/hint (browser use); 0 = clean fullscreen output (native output window)"),
+):
     """
     Standalone projector page — open in a browser window on the projector
     screen, OBS browser source, or NDI Tools virtual input.  It auto-connects
@@ -1648,8 +1751,7 @@ body{
   <div class="ref" id="vref"></div>
   <div class="txt" id="vtxt">Waiting for verse…</div>
 </div>
-<div id="badge">In The Beginning · Live</div>
-<div id="hint">F = fullscreen &nbsp;·&nbsp; Esc = exit</div>
+__CHROME_HTML__
 <script>
 (function(){
   var outer = document.getElementById('outer');
@@ -1657,6 +1759,11 @@ body{
   var vtxt  = document.getElementById('vtxt');
   var proto = location.protocol === 'https:' ? 'wss' : 'ws';
   var wsUrl = proto + '://' + location.host + '/ws/display?church=__CHURCH_ID__';
+  if (__CLEAN_MODE__) {
+    // Native output window: opaque black canvas, no cursor, no chrome.
+    document.body.style.background = '#000';
+    document.body.style.cursor = 'none';
+  }
   var ws, retryDelay = 1500;
 
   function connect(){
@@ -1693,7 +1800,299 @@ body{
 </body>
 </html>"""
     from fastapi.responses import HTMLResponse
-    return HTMLResponse(html.replace("__CHURCH_ID__", church_id))
+    clean = (chrome == 0)
+    chrome_html = "" if clean else (
+        '<div id="badge">In The Beginning · Live</div>\n'
+        '<div id="hint">F = fullscreen &nbsp;·&nbsp; Esc = exit</div>'
+    )
+    html = (html
+            .replace("__CHURCH_ID__", church_id)
+            .replace("__CHROME_HTML__", chrome_html)
+            .replace("__CLEAN_MODE__", "true" if clean else "false"))
+    return HTMLResponse(html)
+
+
+# ============================================================
+#  Native output window (desktop / pywebview only)
+# ============================================================
+# The desktop launcher hands us its pywebview module + the control window via
+# set_webview_runtime(). We then open a SECOND, frameless, fullscreen pywebview
+# window on the monitor the operator picked ("Screen 2 — 1280x720"), pointed at
+# /display?chrome=0 so it renders a clean verse canvas with no badge / hint.
+#
+#   * The chosen screen index is persisted to output_settings.json and is NEVER
+#     reset when the output is turned off — OFF only destroys the output window.
+#   * Output always starts OFF on app launch (operator turns it on for service).
+#   * The control window is untouched; it stays on the primary display.
+
+import threading as _threading
+
+_WEBVIEW_MODULE = None          # the imported `webview` module, set by launcher
+_CONTROL_WINDOW = None          # the operator UI window (kept on primary)
+_OUTPUT_WINDOW = None           # the live projector window (screen 2)
+_OUTPUT_LOCK = _threading.Lock()
+_OUTPUT_SETTINGS_PATH = os.path.join(get_data_dir(), "output_settings.json")
+
+
+def set_webview_runtime(webview_module, control_window=None):
+    """Called by the desktop launcher before webview.start()."""
+    global _WEBVIEW_MODULE, _CONTROL_WINDOW
+    _WEBVIEW_MODULE = webview_module
+    _CONTROL_WINDOW = control_window
+
+
+def _load_output_settings() -> Dict:
+    try:
+        with open(_OUTPUT_SETTINGS_PATH, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        if isinstance(data, dict):
+            return data
+    except Exception:
+        pass
+    return {}
+
+
+def _save_output_settings(data: Dict):
+    try:
+        with open(_OUTPUT_SETTINGS_PATH, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2)
+    except Exception as e:
+        print(f"Could not save output settings: {e}")
+
+
+def get_output_target() -> int:
+    try:
+        return int(_load_output_settings().get("screen_index", -1))
+    except Exception:
+        return -1
+
+
+def _win32_monitors() -> List[Dict]:
+    """Enumerate monitors via the Win32 API (works even before webview starts)."""
+    if os.name != "nt":
+        return []
+    try:
+        import ctypes
+        from ctypes import wintypes
+        user32 = ctypes.windll.user32
+        monitors: List[Dict] = []
+
+        class MONITORINFOEXW(ctypes.Structure):
+            _fields_ = [
+                ("cbSize", wintypes.DWORD),
+                ("rcMonitor", wintypes.RECT),
+                ("rcWork", wintypes.RECT),
+                ("dwFlags", wintypes.DWORD),
+                ("szDevice", wintypes.WCHAR * 32),
+            ]
+
+        MonitorEnumProc = ctypes.WINFUNCTYPE(
+            wintypes.BOOL, wintypes.HMONITOR, wintypes.HDC,
+            ctypes.POINTER(wintypes.RECT), wintypes.LPARAM)
+
+        def _cb(hmon, hdc, lprc, lparam):
+            info = MONITORINFOEXW()
+            info.cbSize = ctypes.sizeof(MONITORINFOEXW)
+            if user32.GetMonitorInfoW(hmon, ctypes.byref(info)):
+                r = info.rcMonitor
+                monitors.append({
+                    "x": r.left, "y": r.top,
+                    "width": r.right - r.left, "height": r.bottom - r.top,
+                    "is_primary": bool(info.dwFlags & 1),
+                    "device": info.szDevice,
+                })
+            return True
+
+        user32.EnumDisplayMonitors(None, None, MonitorEnumProc(_cb), 0)
+        # Primary first, then left-to-right / top-to-bottom for stable indices
+        monitors.sort(key=lambda m: (not m["is_primary"], m["x"], m["y"]))
+        return monitors
+    except Exception as e:
+        print(f"Win32 monitor enumeration failed: {e}")
+        return []
+
+
+def list_monitors() -> List[Dict]:
+    """Return monitors as [{index, label, x, y, width, height, is_primary}]."""
+    mons = _win32_monitors()
+    if not mons and _WEBVIEW_MODULE is not None:
+        try:
+            screens = list(getattr(_WEBVIEW_MODULE, "screens", []) or [])
+            mons = [{
+                "x": int(s.x), "y": int(s.y),
+                "width": int(s.width), "height": int(s.height),
+                "is_primary": (int(s.x) == 0 and int(s.y) == 0),
+            } for s in screens]
+            mons.sort(key=lambda m: (not m["is_primary"], m["x"], m["y"]))
+        except Exception as e:
+            print(f"pywebview screen enumeration failed: {e}")
+    out = []
+    for i, m in enumerate(mons):
+        label = ("Primary" if m["is_primary"] else f"Screen {i + 1}") + f" — {m['width']}x{m['height']}"
+        out.append({"index": i, "label": label,
+                    **{k: m[k] for k in ("x", "y", "width", "height", "is_primary")}})
+    return out
+
+
+def _output_is_open() -> bool:
+    return _OUTPUT_WINDOW is not None
+
+
+def _find_webview_screen(target: Dict):
+    """Match a monitor record to a pywebview Screen object (by origin), if any."""
+    if _WEBVIEW_MODULE is None:
+        return None
+    try:
+        for s in list(getattr(_WEBVIEW_MODULE, "screens", []) or []):
+            if int(s.x) == int(target["x"]) and int(s.y) == int(target["y"]):
+                return s
+    except Exception:
+        pass
+    return None
+
+def _open_output_window_sync(church_id: str) -> Dict:
+    """Create the frameless fullscreen output window on the saved screen."""
+    global _OUTPUT_WINDOW
+    if _WEBVIEW_MODULE is None:
+        return {"ok": False, "desktop": False,
+                "error": "Native output window is only available inside the desktop app."}
+    with _OUTPUT_LOCK:
+        if _OUTPUT_WINDOW is not None:
+            return {"ok": True, "open": True, "already_open": True, "screen_index": get_output_target()}
+
+        monitors = list_monitors()
+        if not monitors:
+            return {"ok": False, "desktop": True, "error": "No monitors detected."}
+        idx = get_output_target()
+        if idx < 0 or idx >= len(monitors):
+            # Nothing saved yet (or monitor unplugged): prefer the first
+            # non-primary monitor. This guess is NOT persisted — only an
+            # explicit operator selection is saved.
+            idx = next((m["index"] for m in monitors if not m["is_primary"]), 0)
+        target = monitors[idx]
+
+        url = f"http://127.0.0.1:{APP_PORT}/display?church={quote(church_id)}&chrome=0"
+        kwargs = dict(
+            title="In The Beginning — Output",
+            url=url,
+            x=target["x"], y=target["y"],
+            width=target["width"], height=target["height"],
+            frameless=True,
+            easy_drag=False,
+            resizable=False,
+            background_color="#000000",
+            focus=False,          # keep keyboard focus on the laptop controls
+        )
+        scr = _find_webview_screen(target)
+        if scr is not None:
+            kwargs["screen"] = scr
+        try:
+            win = _WEBVIEW_MODULE.create_window(**kwargs)
+        except TypeError:
+            # Older pywebview without focus/screen kwargs
+            kwargs.pop("focus", None); kwargs.pop("screen", None)
+            win = _WEBVIEW_MODULE.create_window(**kwargs)
+        except Exception as e:
+            return {"ok": False, "desktop": True, "error": f"Could not create output window: {e}"}
+
+        def _on_closed():
+            # Only clears the handle — the saved screen index is preserved.
+            global _OUTPUT_WINDOW
+            with _OUTPUT_LOCK:
+                if _OUTPUT_WINDOW is win:
+                    _OUTPUT_WINDOW = None
+
+        def _on_shown():
+            # Pin to the target monitor, then go fullscreen. Doing this after
+            # the native window exists guarantees it lands on the right screen
+            # even when the `screen` kwarg is not honoured by the backend.
+            try:
+                win.move(target["x"], target["y"])
+                win.resize(target["width"], target["height"])
+            except Exception:
+                pass
+            try:
+                win.toggle_fullscreen()
+            except Exception:
+                pass
+
+        try:
+            win.events.closed += _on_closed
+            win.events.shown += _on_shown
+        except Exception:
+            pass
+
+        _OUTPUT_WINDOW = win
+        print(f"Output window opened on {target['label']} at ({target['x']},{target['y']})")
+        return {"ok": True, "open": True, "screen_index": idx, "screen": target}
+
+
+def _close_output_window_sync() -> Dict:
+    """Destroy ONLY the output window. The saved target is left untouched."""
+    global _OUTPUT_WINDOW
+    with _OUTPUT_LOCK:
+        win, _OUTPUT_WINDOW = _OUTPUT_WINDOW, None
+    if win is not None:
+        try:
+            win.destroy()
+            print("Output window closed")
+        except Exception as e:
+            print(f"Output window close error: {e}")
+    return {"ok": True, "open": False, "screen_index": get_output_target()}
+
+
+class OutputTargetReq(BaseModel):
+    screen_index: int
+
+
+class OutputToggleReq(BaseModel):
+    church: str
+
+
+@app.get("/monitors")
+def api_monitors():
+    return {
+        "desktop": _WEBVIEW_MODULE is not None,
+        "monitors": list_monitors(),
+        "target": get_output_target(),
+        "open": _output_is_open(),
+    }
+
+
+@app.get("/output/target")
+def api_get_output_target():
+    return {"screen_index": get_output_target()}
+
+
+@app.post("/output/target")
+def api_set_output_target(req: OutputTargetReq):
+    settings = _load_output_settings()
+    settings["screen_index"] = int(req.screen_index)
+    _save_output_settings(settings)
+    mons = list_monitors()
+    label = mons[req.screen_index]["label"] if 0 <= req.screen_index < len(mons) else None
+    return {"ok": True, "screen_index": req.screen_index, "label": label}
+
+
+@app.get("/output/status")
+def api_output_status():
+    return {"desktop": _WEBVIEW_MODULE is not None, "open": _output_is_open(),
+            "screen_index": get_output_target()}
+
+
+@app.post("/output/on")
+async def api_output_on(req: OutputToggleReq):
+    from starlette.concurrency import run_in_threadpool
+    church_id = req.church.strip().lower()
+    if not church_id:
+        return {"ok": False, "error": "Missing church id"}
+    return await run_in_threadpool(_open_output_window_sync, church_id)
+
+
+@app.post("/output/off")
+async def api_output_off():
+    from starlette.concurrency import run_in_threadpool
+    return await run_in_threadpool(_close_output_window_sync)
 
 
 @app.get("/chapter")
@@ -3052,14 +3451,14 @@ async def live_ws(ws: WebSocket):
 
     key_source = "client" if (session_key and not SERVER_DG_KEY) else ("server" if SERVER_DG_KEY else "none")
 
-    if len(bible.verses) < 1000:
-        # Real KJV data is ~31,000 verses. Anything far below that means the
-        # full Bible file failed to load and we're running on the tiny
-        # built-in sample — scripture matching will barely work. This used
-        # to be a print()-only warning, invisible now that console=False.
+    if not bible.is_full_bible():
+        # Real KJV data is 31,102 verses. Anything below that means the
+        # full Bible file failed to load and we're running on a partial set
+        # or the tiny built-in sample — scripture matching will barely work.
+        # This used to be a print()-only warning, invisible now that console=False.
         await safe_send(ws, {
             "type": "warning",
-            "message": f"Only {len(bible.verses)} Bible verses loaded (using built-in sample, not full KJV). Scripture matching will be very limited — check the app installation.",
+            "message": f"Only {len(bible.verses)} Bible verses loaded (expected 31,102). Scripture matching will be very limited — reinstall the app or restore the kjv.json folder.",
         })
 
     await safe_send(ws, {
@@ -3642,11 +4041,18 @@ if __name__ == "__main__":
         time.sleep(1.5)
 
         print(f"Launching desktop window: http://127.0.0.1:{port}")
-        webview.create_window(
-            title="In The Beginning",
-            url=f"http://127.0.0.1:{port}",
-            fullscreen=True,
-        )
+        # Control UI always lives on the PRIMARY display; the projector output
+        # is a separate window opened on demand via POST /output/on.
+        _primary = None
+        try:
+            _primary = next((s for s in webview.screens if int(s.x) == 0 and int(s.y) == 0), None)
+        except Exception:
+            _primary = None
+        _ctrl_kwargs = dict(title="In The Beginning", url=f"http://127.0.0.1:{port}", fullscreen=True)
+        if _primary is not None:
+            _ctrl_kwargs["screen"] = _primary
+        _ctrl = webview.create_window(**_ctrl_kwargs)
+        set_webview_runtime(webview, _ctrl)
         webview.start()
 
     else:
