@@ -5624,14 +5624,32 @@
 
         // Determine the remote URL. The backend detects the LAN IP so the
         // desktop can stay on localhost while phones connect over Wi-Fi.
-        const host    = window.location.hostname || 'localhost';
-        const port    = window.location.port || '8000';
-        let remoteUrl = `http://${host}:${port}/remote`;
+        const host    = (window.location.hostname || 'localhost').trim();
+        const port    = (window.location.port || '8000').trim();
+        let remoteUrlBase = `http://${host}:${port}/remote`;
         try {
             const info = await fetch(BACKEND_URL + '/remote-info').then(r => r.json());
-            if (info && info.remote_url) remoteUrl = info.remote_url;
+            if (info && info.remote_url) remoteUrlBase = String(info.remote_url).trim();
         } catch (_) {}
-        remoteUrl += (remoteUrl.includes('?') ? '&' : '?') + 'church=' + encodeURIComponent(CHURCH_ID);
+
+        // Build the query string via the URL API rather than manual string
+        // concatenation. Manual concatenation previously let a stray
+        // character slip in front of the "church" key (e.g. the phone would
+        // receive "?%20church=..." instead of "?church=..."), which meant
+        // remote.html could never read CHURCH_ID and phones stayed stuck on
+        // "Disconnected" forever. URLSearchParams.set() builds the key/value
+        // pair structurally, so that can't happen.
+        let remoteUrl;
+        try {
+            const u = new URL(remoteUrlBase);
+            u.searchParams.set('church', CHURCH_ID);
+            remoteUrl = u.toString();
+        } catch (_) {
+            // Fallback if remoteUrlBase was somehow not a valid absolute URL.
+            const u = new URL(`http://${host}:${port}/remote`);
+            u.searchParams.set('church', CHURCH_ID);
+            remoteUrl = u.toString();
+        }
 
         // Update URL display
         const urlEl = document.getElementById('remote-url-display');
