@@ -2844,6 +2844,15 @@ async def _send_command_execution(
     }
     await safe_send(ws, payload)
 
+    if verse:
+        church_id = _current_church_ctx.get()
+        if church_id:
+            await remote_manager.broadcast_to_remotes(church_id, {
+                "type": "verse_state",
+                "verse": verse,
+                "translation": session.active_translation,
+            })
+
 async def execute_voice_intent(
     ws: WebSocket,
     query: str,

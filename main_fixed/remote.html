@@ -77,8 +77,8 @@
         .app {
             display: flex;
             flex-direction: column;
-            height: 100dvh;
             height: 100vh; /* fallback */
+            height: 100dvh;
             max-width: 480px;
             margin: 0 auto;
         }
@@ -267,11 +267,6 @@
             box-shadow: 0 0 0 3px rgba(166,124,82,0.12);
         }
         .search-results {
-            position: absolute;
-            top: 100%;
-            left: 0;
-            right: 0;
-            z-index: 20;
             display: none;
             flex-direction: column;
             gap: 7px;
@@ -280,7 +275,6 @@
             background: var(--bg-panel);
             border: 1px solid var(--border);
             border-radius: 10px;
-            margin-top: 6px;
             box-shadow: 0 8px 24px rgba(0,0,0,0.4);
         }
         .result-item {
@@ -365,7 +359,7 @@
             flex-shrink: 0;
             background: var(--bg-panel);
             border-top: 1px solid var(--border);
-            padding: 10px 14px calc(10px + var(--safe-bottom));
+            padding: 16px 14px calc(10px + var(--safe-bottom));
         }
         .ctrl-row {
             display: grid;
@@ -597,11 +591,11 @@
                 Bible Navigator
             </div>
             <div class="nav-grid">
-                <div class="full-row" style="position:relative;">
+                <div class="full-row">
                     <div class="sel-label">Search Scripture</div>
                     <input id="remoteSearch" class="search-input" type="search" placeholder="Romans 1:10" autocomplete="off" oninput="handleRemoteSearch(this.value)" onkeydown="handleRemoteSearchKey(event)">
                 </div>
-                <div id="remoteResults" class="search-results"></div>
+                <div id="remoteResults" class="search-results full-row"></div>
 
                 <!-- Book -->
                 <div class="full-row">
@@ -659,7 +653,7 @@
         </div>
 
         <!-- Spacer so last card clears the control pad -->
-        <div style="height:8px;flex-shrink:0;"></div>
+        <div style="height:28px;flex-shrink:0;"></div>
 
     </div><!-- /content -->
 
@@ -755,37 +749,44 @@ function navigateToSelected() {
     const book    = document.getElementById('bookSelect').value;
     const chapter = document.getElementById('chapterSelect').value;
     const verse   = document.getElementById('verseSelect').value;
-    if (!book || !chapter || !verse) {
-        showToast('Select book, chapter and verse first');
+    if (book && chapter && verse) {
+        const ref = `${book} ${chapter}:${verse}`;
+        send({ type: 'remote_action', action: 'navigate', ref });
+        showToast('Navigating to ' + ref);
         return;
     }
-    const ref = `${book} ${chapter}:${verse}`;
-    send({ type: 'remote_action', action: 'navigate', ref });
-    showToast('Navigating to ' + ref);
+    if (pendingVerse && pendingVerse.ref) {
+        send({ type: 'remote_action', action: 'navigate', ref: pendingVerse.ref, translation: pendingVerse.translation || 'KJV' });
+        showToast('Navigating to ' + pendingVerse.ref);
+        return;
+    }
+    showToast('Select book, chapter and verse, or search a reference first');
 }
 
 function handleRemoteSearch(value) {
     clearTimeout(searchTimer);
     const q = (value || '').trim();
     const resultsEl = document.getElementById('remoteResults');
-    if (!q) {
+    pendingVerse = null;
+    const wordCount = q.split(/\s+/).filter(Boolean).length;
+    if (!q || wordCount < 3) {
         if (resultsEl) {
             resultsEl.style.display = 'none';
             resultsEl.innerHTML = '';
         }
         return;
     }
-    searchTimer = setTimeout(() => runRemoteSearch(q), 120);
+    searchTimer = setTimeout(() => runRemoteSearch(q), 350);
 }
 
 function handleRemoteSearchKey(event) {
     if (event.key !== 'Enter') return;
     event.preventDefault();
     const q = event.currentTarget.value.trim();
-    if (q) runRemoteSearch(q, true);
+    if (q) runRemoteSearch(q);
 }
 
-async function runRemoteSearch(query, chooseFirst = false) {
+async function runRemoteSearch(query) {
     const resultsEl = document.getElementById('remoteResults');
     if (!resultsEl) return;
     resultsEl.style.display = 'flex';
@@ -805,7 +806,7 @@ async function runRemoteSearch(query, chooseFirst = false) {
             results = data.results || [];
         }
         renderRemoteResults(results);
-        if (chooseFirst && results[0]) selectRemoteVerse(results[0]);
+        pendingVerse = results[0] || null;
     } catch (_) {
         resultsEl.innerHTML = '<div class="result-item"><div class="result-text">Search failed. Check desktop server.</div></div>';
     }
@@ -831,7 +832,7 @@ function renderRemoteResults(results) {
 
 function selectRemoteVerse(verse) {
     if (!verse || !verse.ref) return;
-    renderVerseDisplay(verse, verse.translation || 'KJV');
+    pendingVerse = verse;
     const input = document.getElementById('remoteSearch');
     if (input) input.value = verse.ref;
     const resultsEl = document.getElementById('remoteResults');
@@ -839,8 +840,7 @@ function selectRemoteVerse(verse) {
         resultsEl.style.display = 'none';
         resultsEl.innerHTML = '';
     }
-    send({ type: 'remote_action', action: 'navigate', ref: verse.ref, translation: verse.translation || 'KJV' });
-    showToast('Displaying ' + verse.ref);
+    showToast(verse.ref + ' ready — tap Go to Reference to display');
 }
 
 function escapeHtml(value) {
@@ -856,6 +856,7 @@ let reconnectTimer = null;
 let reconnectAttempts = 0;
 let transcriptionActive = false;
 let searchTimer = null;
+let pendingVerse = null;
 const MAX_RECONNECT = 8;
 // Same-origin when served by the backend itself (desktop LAN remote, Railway,
 // Fly serving its own frontend). If hosted separately (e.g. Netlify), point
