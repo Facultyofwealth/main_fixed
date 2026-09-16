@@ -1619,8 +1619,8 @@
                     </button>
                 </div>
                 <div style="position:relative;">
-                    <select id="bcast-monitor-sel" style="width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.11);color:#6b7280;border-radius:8px;padding:10px 14px;font-size:12px;outline:none;cursor:pointer;appearance:none;">
-                        <option>No external monitors detected</option>
+                    <select id="bcast-monitor-sel" onchange="handleMonitorSelect(this)" style="width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.11);color:#e5e7eb;border-radius:8px;padding:10px 14px;font-size:12px;outline:none;cursor:pointer;appearance:none;">
+                        <option value="">Detecting monitors…</option>
                     </select>
                     <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);color:#6b7280;pointer-events:none;"></span>
                 </div>
@@ -6188,12 +6188,35 @@
 
     function handleMonitorSelect(sel) {
         if (!sel || sel.value === '') return;
-        saveOutputScreen(sel.value);
+        const idx = parseInt(sel.value, 10);
+        if (!Number.isFinite(idx) || idx < 0) return;
+        saveOutputScreen(idx);
         // If output is currently live, move it to the newly chosen screen.
         if (_nativeOutputOpen) {
             _nativeOutputOff().then(() => _nativeOutputOn(true));
         }
     }
+
+    // Seed the target from the backend once at startup so the very first
+    // "Main Output = ON" lands on the saved screen even if the operator has
+    // not opened the Broadcast modal yet in this session.
+    document.addEventListener('DOMContentLoaded', function () {
+        fetch(BACKEND_URL + '/monitors')
+            .then(r => r.json())
+            .then(d => {
+                if (!d || !Array.isArray(d.monitors) || !d.monitors.length) return;
+                _nativeOutputAvailable = !!d.desktop;
+                if (typeof d.open === 'boolean') _nativeOutputOpen = d.open;
+                let target = (typeof d.target === 'number') ? d.target : -1;
+                if (target >= 0 && target < d.monitors.length) {
+                    localStorage.setItem(OUTPUT_SCREEN_KEY, String(target));
+                    return;
+                }
+                const ext = d.monitors.find(m => !m.is_primary);
+                if (ext) saveOutputScreen(ext.index, true);
+            })
+            .catch(() => {});
+    });
 
     function _nativeOutputOn(silent = false) {
         if (!CHURCH_ID) { showToast('Still setting up — please try again in a moment', 3000); return Promise.resolve(false); }
@@ -6517,38 +6540,94 @@ body{
         showToast('Theme: ' + theme);
     }
 
-    function refreshBroadcastMonitors() {
+    // The desktop backend (/monitors) is the AUTHORITATIVE source of monitor
+    // indices, because those exact indices are what _open_output_window_sync()
+    // uses to position the output window. The browser's getScreenDetails() may
+    // order screens differently, so it is only ever used as a last-resort
+    // fallback when running outside the desktop app.
+    function refreshBroadcastMonitors(silent = false) {
         const sel = document.getElementById('bcast-monitor-sel');
-        if (!sel) return;
-        // Use Chrome's Window Management API if available
+        if (!sel) return Promise.resolve();
+        return fetch(BACKEND_URL + '/monitors')
+            .then(r => r.json())
+            .then(d => {
+                if (!d || !Array.isArray(d.monitors) || d.monitors.length === 0) {
+                    throw new Error('no monitors from backend');
+                }
+                _nativeOutputAvailable = !!d.desktop;
+                if (typeof d.open === 'boolean') _nativeOutputOpen = d.open;
+
+                sel.innerHTML = '';
+                d.monitors.forEach(function(m) {
+                    const opt = document.createElement('option');
+                    opt.value = m.index;
+                    opt.textContent = m.label;
+                    sel.appendChild(opt);
+                });
+
+                // Restore the saved target. Server value wins; localStorage is
+                // only a mirror for when the backend has nothing saved yet.
+                let target = (typeof d.target === 'number') ? d.target : -1;
+                if (target < 0 || target >= d.monitors.length) target = _savedOutputScreen();
+
+                if (target < 0 || target >= d.monitors.length) {
+                    // Nothing valid saved - default to the first NON-primary
+                    // screen (the projector/TV) rather than the operator's own
+                    // laptop display, and persist it so it sticks from now on.
+                    const ext = d.monitors.find(m => !m.is_primary);
+                    target = ext ? ext.index : 0;
+                    if (ext) saveOutputScreen(target, true);
+                }
+
+                sel.value = String(target);
+                localStorage.setItem(OUTPUT_SCREEN_KEY, String(target));
+
+                if (!silent) {
+                    const chosen = d.monitors.find(m => m.index === target);
+                    showToast('Found ' + d.monitors.length + ' screen(s) — output: ' +
+                              (chosen ? chosen.label : 'Screen ' + (target + 1)), 3000);
+                }
+            })
+            .catch(function() { _detectMonitorFallback(sel, silent); });
+    }
+
+    function _detectMonitorFallback(sel, silent = false) {
+        // Browser-only path (not the desktop app). Options still carry real
+        // numeric values so the saved index can never come back as NaN.
         if (window.getScreenDetails) {
             window.getScreenDetails().then(function(sd) {
                 sel.innerHTML = '';
                 sd.screens.forEach(function(s, i) {
                     const opt = document.createElement('option');
                     opt.value = i;
-                    opt.textContent = (s.isPrimary ? ' Primary — ' : ' Screen ' + (i + 1) + ' — ') +
+                    opt.textContent = (s.isPrimary ? 'Primary — ' : 'Screen ' + (i + 1) + ' — ') +
                         s.width + '×' + s.height;
                     sel.appendChild(opt);
                 });
-                showToast('Found ' + sd.screens.length + ' screen(s)');
-            }).catch(function() { _detectMonitorFallback(sel); });
+                const saved = _savedOutputScreen();
+                if (saved >= 0 && saved < sd.screens.length) sel.value = String(saved);
+                if (!silent) showToast('Found ' + sd.screens.length + ' screen(s)');
+            }).catch(function() { _basicScreenFallback(sel, silent); });
         } else {
-            _detectMonitorFallback(sel);
+            _basicScreenFallback(sel, silent);
         }
     }
 
-    function _detectMonitorFallback(sel) {
+    function _basicScreenFallback(sel, silent = false) {
         sel.innerHTML = '';
         const primary = document.createElement('option');
+        primary.value = 0;
         primary.textContent = 'Primary — ' + screen.width + '×' + screen.height;
         sel.appendChild(primary);
         if (window.screen && screen.availWidth > screen.width + 100) {
             const ext = document.createElement('option');
+            ext.value = 1;
             ext.textContent = 'External — ' + (screen.availWidth - screen.width) + '×' + screen.availHeight;
             sel.appendChild(ext);
         }
-        showToast('Basic screen detection — Chrome may need Window Management permission');
+        const saved = _savedOutputScreen();
+        if (saved >= 0 && saved < sel.options.length) sel.value = String(saved);
+        if (!silent) showToast('Basic screen detection — Chrome may need Window Management permission');
     }
 
     // Close broadcast modal on backdrop click
