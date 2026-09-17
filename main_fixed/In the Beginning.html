@@ -2512,6 +2512,9 @@
     }
 
     async function openPreferredMicrophone() {
+        // Under Electron, confirm the OS has not blocked the mic before we
+        // ask for a stream - otherwise getUserMedia fails with an opaque error.
+        if (typeof ensureMicPermission === 'function') await ensureMicPermission();
         await refreshMicDeviceOptions();
 
         let selection = resolvePreferredMicSelection();
@@ -3539,9 +3542,16 @@
             if (appState.currentVerse) {
                 sendToLive();
             }
+            // ACTUALLY open the output window (native on Electron, browser
+            // popup otherwise). This call was missing entirely, so GO LIVE /
+            // Main Output updated the in-app preview panels and pushed to
+            // /display/push, but never created or targeted a real output
+            // window — nothing ever reached Screen 2.
+            if (typeof startBroadcastOutput === 'function') startBroadcastOutput();
             showToast('GO LIVE — display is now active');
         } else {
             if (badge) badge.style.display = 'none';
+            if (typeof stopBroadcastOutput === 'function') stopBroadcastOutput();
             showToast('GO LIVE off — verses will stage to Preview only');
         }
         saveSettings();
@@ -6173,10 +6183,24 @@
         return Number.isFinite(v) ? v : -1;
     }
 
+    // True when running inside the Electron desktop shell, which owns the
+    // native windows and talks to the OS directly (no browser prompts).
+    const IS_ELECTRON = !!(window.itbDesktop && window.itbDesktop.isElectron);
+
     function saveOutputScreen(idx, silent = false) {
         idx = parseInt(idx, 10);
         if (!Number.isFinite(idx) || idx < 0) return;
         localStorage.setItem(OUTPUT_SCREEN_KEY, String(idx));
+
+        if (IS_ELECTRON) {
+            // Electron persists to the same output_settings.json the Python
+            // backend reads, so both sides stay in agreement.
+            window.itbDesktop.setTarget(idx).then(d => {
+                if (!silent) showToast('Output target saved: ' + ((d && d.label) || ('Screen ' + (idx + 1))));
+            }).catch(() => { if (!silent) showToast('Output target saved locally'); });
+            return;
+        }
+
         fetch(BACKEND_URL + '/output/target', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -6185,6 +6209,23 @@
             if (!silent) showToast('Output target saved: ' + (d.label || ('Screen ' + (idx + 1))));
         }).catch(() => { if (!silent) showToast('Output target saved locally'); });
     }
+
+    // Under Electron the microphone is granted by the app itself; Windows
+    // still gates it at the OS level, so surface that plainly instead of
+    // letting getUserMedia fail with an opaque browser error.
+    async function ensureMicPermission() {
+        if (!IS_ELECTRON) return true;
+        try {
+            const r = await window.itbDesktop.micStatus();
+            if (r && r.status === 'denied') {
+                showToast('Microphone is blocked in Windows privacy settings — opening them now', 5000);
+                window.itbDesktop.openMicSettings();
+                return false;
+            }
+        } catch (_) {}
+        return true;
+    }
+    window.ensureMicPermission = ensureMicPermission;
 
     function handleMonitorSelect(sel) {
         if (!sel || sel.value === '') return;
@@ -6201,8 +6242,8 @@
     // "Main Output = ON" lands on the saved screen even if the operator has
     // not opened the Broadcast modal yet in this session.
     document.addEventListener('DOMContentLoaded', function () {
-        fetch(BACKEND_URL + '/monitors')
-            .then(r => r.json())
+        (IS_ELECTRON ? window.itbDesktop.listDisplays()
+                     : fetch(BACKEND_URL + '/monitors').then(r => r.json()))
             .then(d => {
                 if (!d || !Array.isArray(d.monitors) || !d.monitors.length) return;
                 _nativeOutputAvailable = !!d.desktop;
@@ -6222,11 +6263,17 @@
         if (!CHURCH_ID) { showToast('Still setting up — please try again in a moment', 3000); return Promise.resolve(false); }
         if (_outputBusy) return Promise.resolve(false);
         _outputBusy = true;
-        return fetch(BACKEND_URL + '/output/on', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ church: CHURCH_ID })
-        }).then(r => r.json()).then(d => {
+
+        // Electron creates the window natively, pinned to the saved display.
+        const req = IS_ELECTRON
+            ? window.itbDesktop.outputOn(CHURCH_ID)
+            : fetch(BACKEND_URL + '/output/on', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ church: CHURCH_ID })
+              }).then(r => r.json());
+
+        return req.then(d => {
             _outputBusy = false;
             if (d && d.ok) {
                 _nativeOutputOpen = true;
@@ -6250,6 +6297,9 @@
 
     function _nativeOutputOff() {
         _nativeOutputOpen = false;
+        if (IS_ELECTRON) {
+            return window.itbDesktop.outputOff().catch(() => ({}));
+        }
         return fetch(BACKEND_URL + '/output/off', { method: 'POST' })
             .then(r => r.json()).catch(() => ({}));
     }
@@ -6548,11 +6598,16 @@ body{
     function refreshBroadcastMonitors(silent = false) {
         const sel = document.getElementById('bcast-monitor-sel');
         if (!sel) return Promise.resolve();
-        return fetch(BACKEND_URL + '/monitors')
-            .then(r => r.json())
+        // Electron's screen module is authoritative when available - it is the
+        // same source used to position the output window.
+        const src = IS_ELECTRON
+            ? window.itbDesktop.listDisplays()
+            : fetch(BACKEND_URL + '/monitors').then(r => r.json());
+
+        return src
             .then(d => {
                 if (!d || !Array.isArray(d.monitors) || d.monitors.length === 0) {
-                    throw new Error('no monitors from backend');
+                    throw new Error('no monitors available');
                 }
                 _nativeOutputAvailable = !!d.desktop;
                 if (typeof d.open === 'boolean') _nativeOutputOpen = d.open;

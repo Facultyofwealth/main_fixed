@@ -1051,6 +1051,11 @@ class ChurchRoom:
         self.session: "SessionState" = None   # populated after SessionState is defined below
         self.feed: deque = deque(maxlen=200)
         self.display_clients: List[WebSocket] = []   # projector / OBS / NDI output windows
+        # Last verse payload pushed to this church's projector windows. A
+        # display client that connects AFTER a verse was chosen replays this
+        # immediately, so opening Main Output mid-service shows the verse that
+        # is already live instead of a blank screen.
+        self.last_display_payload: Optional[dict] = None
 
 church_rooms: Dict[str, "ChurchRoom"] = {}
 
@@ -1603,6 +1608,14 @@ async def display_ws(ws: WebSocket):
         return
     room = get_room(church_id)
     room.display_clients.append(ws)
+
+    # Bring this projector window up to date straight away. Without this the
+    # output window opens blank and stays blank until the operator happens to
+    # push a NEW verse - which is why toggling Main Output on mid-service
+    # appeared to do nothing on the second screen.
+    if room.last_display_payload:
+        await safe_send(ws, room.last_display_payload)
+
     try:
         while True:
             # Keep alive; projector only receives, never sends
@@ -1620,8 +1633,14 @@ async def display_ws(ws: WebSocket):
 
 
 async def _broadcast_to_display(church_id: str, payload: dict):
-    """Push a verse to this church's connected projector/NDI clients only."""
+    """Push a verse to this church's connected projector/NDI clients only.
+
+    The payload is also cached on the room so that a projector window opened
+    later can be brought up to date the moment it connects.
+    """
     room = get_room(church_id)
+    if payload.get("type") == "verse":
+        room.last_display_payload = payload
     dead = []
     for client in list(room.display_clients):
         ok = await safe_send(client, payload)
@@ -2003,16 +2022,35 @@ def _open_output_window_sync(church_id: str) -> Dict:
                     _OUTPUT_WINDOW = None
 
         def _on_shown():
-            # Pin to the target monitor, then go fullscreen. Doing this after
-            # the native window exists guarantees it lands on the right screen
-            # even when the `screen` kwarg is not honoured by the backend.
+            # Pin to the target monitor. move()/resize() are queued onto the
+            # GUI thread, so calling toggle_fullscreen() immediately afterwards
+            # made WebView2 fullscreen on whichever monitor Windows still
+            # considered the owner (the primary) and discard the pending move.
+            # We therefore settle the geometry first, re-assert it, and only
+            # then go fullscreen - verifying it actually stayed on target.
+            def _place():
+                try:
+                    win.move(target["x"], target["y"])
+                    win.resize(target["width"], target["height"])
+                except Exception:
+                    pass
+
+            _place()
+            time.sleep(0.35)      # let the window manager commit the move
+            _place()              # re-assert in case the first was swallowed
+
             try:
-                win.move(target["x"], target["y"])
-                win.resize(target["width"], target["height"])
-            except Exception:
-                pass
-            try:
+                # A frameless window already covering the monitor is visually
+                # fullscreen, so fullscreen is a bonus - never a requirement.
+                # If it relocates the window, roll straight back to bounds.
                 win.toggle_fullscreen()
+                time.sleep(0.2)
+                on_target = (abs(int(win.x) - int(target["x"])) < 50 and
+                             abs(int(win.y) - int(target["y"])) < 50)
+                if not on_target:
+                    print("Fullscreen moved output off target - reverting to exact bounds")
+                    win.toggle_fullscreen()
+                    _place()
             except Exception:
                 pass
 
@@ -4028,8 +4066,12 @@ if __name__ == "__main__":
     # library is explicitly present, a display is available, AND we're not in a
     # cloud environment (Fly/Railway set these env vars automatically).
     _is_cloud = bool(os.environ.get("FLY_APP_NAME") or os.environ.get("RAILWAY_ENVIRONMENT"))
+    # ITB_ELECTRON is set by the Electron shell, which owns the control and
+    # output windows itself. Starting pywebview here too would open a second,
+    # competing window, so we stay headless and just serve the API.
+    _is_electron = bool(os.environ.get("ITB_ELECTRON"))
     _use_webview = False
-    if not _is_cloud:
+    if not _is_cloud and not _is_electron:
         try:
             import webview
             _use_webview = True
@@ -4063,6 +4105,13 @@ if __name__ == "__main__":
         _ctrl = webview.create_window(**_ctrl_kwargs)
         set_webview_runtime(webview, _ctrl)
         webview.start()
+
+    elif _is_electron:
+        # Electron shell mode — serve the API only; Electron creates the
+        # control window (primary display) and the fullscreen output window
+        # (operator's chosen display) natively.
+        print(f"Electron shell mode — serving API on 127.0.0.1:{port} (no pywebview window)")
+        uvicorn.run("main_fixed:app", host="127.0.0.1", port=port, reload=False)
 
     else:
         # Headless / Railway / Fly mode — plain uvicorn, no window

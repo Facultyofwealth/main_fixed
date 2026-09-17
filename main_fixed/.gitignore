@@ -14,3 +14,7 @@ dist/
 build/
 *.spec
 *.exe
+
+# Node
+node_modules/
+package -lock.json
