@@ -1744,13 +1744,13 @@
                 </div>
                 <div class="brightness-row">
                     <span class="brightness-label">Vertical (Y)</span>
-                    <input type="number" id="display-pos-y" placeholder="auto" min="0" max="100" step="1"
+                    <input type="number" id="display-pos-y" value="50" placeholder="50" min="0" max="100" step="1"
                            style="width:70px;padding:5px;font-size:13px;text-align:center;"
                            oninput="updateDisplayPosition()">
                     <span style="font-size:11px;color:#a67c52;font-weight:700;width:35px;text-align:right;">%</span>
                 </div>
                 <div style="font-size:11px;color:#6b7280;margin-top:-4px;margin-bottom:10px;">
-                    X: -50 (left) to 50 (right), 0 = centered. Leave Vertical (Y) blank to keep the default bottom placement.
+                    X: -50 (left) to 50 (right), 0 = centered. Y: 0 = top, 50 = middle (default), 100 = bottom. Leave Y blank to return to the middle.
                 </div>
                 <button type="button" onclick="resetDisplayPosition()" style="font-size:11px;color:#a67c52;background:none;border:1px solid #a67c52;border-radius:4px;padding:4px 10px;cursor:pointer;margin-bottom:12px;">Reset position</button>
 
@@ -1759,23 +1759,25 @@
                     <div style="font-size:28px;margin-bottom:8px;"></div>
                     <div style="font-weight:700;">Click to upload or drag & drop</div>
                     <div style="margin-top:4px;font-size:11px;">JPG, PNG, GIF supported · Max 20MB</div>
+                    <div style="margin-top:4px;font-size:10px;opacity:0.7;">Kept only while the app is open — add it again next session</div>
                 </div>
+                <button type="button" id="bg-image-remove" onclick="removeBackgroundImage()" style="display:none;margin-top:8px;font-size:11px;color:#a67c52;background:none;border:1px solid #a67c52;border-radius:4px;padding:4px 10px;cursor:pointer;">Remove image</button>
                 <input type="file" id="theme-file-input" accept="image/*" style="display:none" onchange="handleThemeUpload(this)">
 
                 <div class="section-label">Customize Background</div>
                 <div class="setting-row">
                     <div><div class="setting-label">Background Color</div></div>
-                    <input type="color" value="#0a0a1a" id="bgColorPicker" style="width:50px;height:30px;border:none;border-radius:6px;cursor:pointer;background:none;" onchange="applyCustomBg()">
+                    <input type="color" value="#0a0a1a" id="bgColorPicker" style="width:50px;height:30px;border:none;border-radius:6px;cursor:pointer;background:none;" oninput="applyCustomBg()" onchange="applyCustomBg()">
                 </div>
                 <div class="setting-row">
                     <div><div class="setting-label">Background Blur</div></div>
-                    <input type="range" class="sub-range" min="0" max="20" value="0" oninput="document.getElementById('bgBlurVal').textContent=this.value+'px';saveSettings()"> <span id="bgBlurVal" style="font-size:11px;color:#a67c52;margin-left:6px;">0px</span>
+                    <input type="range" class="sub-range" id="bgBlurRange" min="0" max="20" value="0" oninput="setBgBlur(this.value)"> <span id="bgBlurVal" style="font-size:11px;color:#a67c52;margin-left:6px;">0px</span>
                 </div>
 
                 <div class="section-label">Verse Text Style</div>
                 <div class="setting-row">
                     <div><div class="setting-label">Font Family</div></div>
-                    <select class="sub-select" id="fontSelect" onchange="saveSettings()"><option>Georgia</option><option>Inter</option><option>Playfair Display</option><option>Lora</option><option>Times New Roman</option></select>
+                    <select class="sub-select" id="fontSelect" onchange="applyAppearance()"><option value="Calibri">Calibri (Default)</option><option>Georgia</option><option>Inter</option><option>Playfair Display</option><option>Lora</option><option>Times New Roman</option></select>
                 </div>
                 <div class="setting-row">
                     <div><div class="setting-label">Text Color on Screen</div></div>
@@ -2308,7 +2310,10 @@
         verseHistory: [],
         scriptureSlides: [],
         displayPosX: 0,      // % offset from horizontal center on /display; 0 = today's default (centered)
-        displayPosY: null    // % from top on /display; null = today's default (bottom-anchored, unset)
+        displayPosY: 50,     // % from top on /display; 50 = vertically centred (default)
+        customBgColor: '#0a0a1a',  // colour chosen with the Background Color picker
+        bgBlur: 0,           // px blur applied to an uploaded background image
+        verseFont: 'Calibri' // default verse font (matches the church display style)
     };
 
     function loadState() {
@@ -2316,6 +2321,12 @@
             const saved = localStorage.getItem(APP_KEY);
             if (saved) appState = { ...appState, ...JSON.parse(saved) };
         } catch(e) {}
+        // Appearance migrations: older saves had no centred default / font.
+        if (typeof appState.displayPosY !== 'number') appState.displayPosY = 50;
+        if (typeof appState.displayPosX !== 'number') appState.displayPosX = 0;
+        if (!appState.verseFont) appState.verseFont = 'Calibri';
+        if (!appState.customBgColor) appState.customBgColor = '#0a0a1a';
+        if (appState.currentTheme === 'custom') appState.currentTheme = 'dark-blue'; // image themes are never persisted
         if (typeof appState.captureSystemAudio === 'boolean' && !appState.audioSource) {
             appState.audioSource = appState.captureSystemAudio ? 'system' : 'microphone';
         }
@@ -2926,7 +2937,9 @@
         el.classList.add('selected');
         appState.textColor = color || '#ffffff';
         saveSettings();
-        updateProjectorText();
+        syncInAppProjectorStyle();
+        pushDisplayStyle();
+        showToast('Text color applied');
     }
 
     // ===================== THEME =====================
@@ -2939,15 +2952,125 @@
         'purple': 'linear-gradient(135deg,#080820,#201040)',
         'parchment': 'linear-gradient(135deg,#fff8e7,#f0e8d0)',
         'ocean': 'linear-gradient(135deg,#001a30,#003060)',
+        'dark': '#000000',
+        'selah': 'linear-gradient(135deg,#0b1a24,#132a36)',
         'custom': null
     };
+
+    // Verse fonts. Calibri (the default) falls back to Carlito/Segoe UI/Arial on machines without it.
+    const FONT_STACKS = {
+        'Calibri': 'Calibri, Carlito, "Segoe UI", Arial, sans-serif',
+        'Georgia': 'Georgia, "Times New Roman", serif',
+        'Inter': 'Inter, "Segoe UI", Arial, sans-serif',
+        'Playfair Display': '"Playfair Display", Georgia, serif',
+        'Lora': 'Lora, Georgia, serif',
+        'Times New Roman': '"Times New Roman", Times, serif'
+    };
+
+    // Background IMAGE lives in memory only. It is deliberately NOT part of
+    // appState, so it is never written to localStorage or to the server's disk:
+    // it exists only while the app is open, and users add it again next session.
+    let sessionBgImage = null;
+    let sessionBgName = '';
+
+    // The colour/gradient behind the verses (used when no image is set, and as
+    // the base under one). Custom colours are stored as the theme 'custom-color'.
+    function getCurrentBgCss() {
+        if (appState.currentTheme === 'custom-color' && appState.customBgColor) return appState.customBgColor;
+        return themeGradients[appState.currentTheme] || themeGradients['dark-blue'];
+    }
+
+    function getVerseFontStack() {
+        return FONT_STACKS[appState.verseFont] || FONT_STACKS['Calibri'];
+    }
+
+    function buildDisplayStyle() {
+        return {
+            bg: getCurrentBgCss(),
+            bg_image: sessionBgImage,
+            blur: Number(appState.bgBlur) || 0,
+            font: getVerseFontStack(),
+            color: appState.textColor || '#ffffff',
+            pos_x: (typeof appState.displayPosX === 'number') ? appState.displayPosX : 0,
+            pos_y: (typeof appState.displayPosY === 'number') ? appState.displayPosY : 50
+        };
+    }
+
+    // Sends the look (background, image, font, colour, position) to the output
+    // screen(s). Debounced so dragging a slider/colour picker stays smooth.
+    let _stylePushTimer = null;
+    function pushDisplayStyle() {
+        clearTimeout(_stylePushTimer);
+        _stylePushTimer = setTimeout(async function () {
+            if (!CHURCH_ID) return;
+            try {
+                await fetch(BACKEND_URL + '/display/style', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ church: CHURCH_ID, ...buildDisplayStyle() })
+                });
+            } catch (_) { /* backend offline — silent */ }
+        }, 120);
+    }
+
+    // Keeps the in-app fullscreen projector overlay looking like the real output.
+    function syncInAppProjectorStyle() {
+        const bgEl = document.getElementById('projector-bg');
+        const pt = document.getElementById('projector-text');
+        const pr = document.getElementById('projector-ref');
+        if (bgEl) {
+            bgEl.style.background = getCurrentBgCss();
+            if (sessionBgImage) {
+                bgEl.style.backgroundImage = `url("${sessionBgImage}")`;
+                bgEl.style.backgroundSize = 'cover';
+                bgEl.style.backgroundPosition = 'center';
+                bgEl.style.filter = (appState.bgBlur > 0) ? `blur(${appState.bgBlur}px)` : '';
+            } else {
+                bgEl.style.filter = '';
+            }
+        }
+        if (pt) { pt.style.fontFamily = getVerseFontStack(); pt.style.color = appState.textColor || '#ffffff'; pt.style.fontWeight = '700'; }
+        if (pr) { pr.style.fontFamily = getVerseFontStack(); pr.style.color = appState.textColor || '#ffffff'; }
+    }
+
+    function _deselectThemeSwatches() {
+        document.querySelectorAll('.theme-swatch').forEach(s => s.classList.remove('selected'));
+    }
+
+    let _uploadZoneDefaultHtml = null;
+    function renderUploadZone() {
+        const zone = document.getElementById('theme-upload-zone');
+        const rm = document.getElementById('bg-image-remove');
+        if (!zone) return;
+        if (_uploadZoneDefaultHtml === null) _uploadZoneDefaultHtml = zone.innerHTML;
+        if (sessionBgImage) {
+            zone.innerHTML = '<div style="font-weight:700;" id="bg-upload-name"></div>' +
+                '<div style="margin-top:4px;font-size:11px;">Applied to the output screen · click to replace</div>';
+            const nameEl = document.getElementById('bg-upload-name');
+            if (nameEl) nameEl.textContent = sessionBgName + ' — applied';
+            if (rm) rm.style.display = 'inline-block';
+        } else {
+            zone.innerHTML = _uploadZoneDefaultHtml;
+            if (rm) rm.style.display = 'none';
+        }
+    }
+
+    function removeBackgroundImage(silent) {
+        sessionBgImage = null;
+        sessionBgName = '';
+        renderUploadZone();
+        syncInAppProjectorStyle();
+        pushDisplayStyle();
+        if (silent !== true) showToast('Background image removed');
+    }
 
     function selectTheme(el, theme) {
         document.querySelectorAll('.theme-swatch').forEach(s => s.classList.remove('selected'));
         el.classList.add('selected');
         appState.currentTheme = theme;
-        document.getElementById('projector-bg').style.background = themeGradients[theme] || '';
-        document.getElementById('projector-bg').style.backgroundImage = '';
+        if (sessionBgImage) removeBackgroundImage(true);   // picking a theme replaces an uploaded image
+        syncInAppProjectorStyle();
+        pushDisplayStyle();
         saveSettings();
         showToast('Theme: ' + el.textContent);
     }
@@ -2958,32 +3081,62 @@
         const x = parseFloat(xEl.value);
         appState.displayPosX = isNaN(x) ? 0 : Math.max(-50, Math.min(50, x));
         const y = parseFloat(yEl.value);
-        appState.displayPosY = (yEl.value.trim() === '' || isNaN(y)) ? null : Math.max(0, Math.min(100, y));
+        // A blank / invalid Y means "use the default": vertically centred (50).
+        appState.displayPosY = (yEl.value.trim() === '' || isNaN(y)) ? 50 : Math.max(0, Math.min(100, y));
         saveSettings();
+        pushDisplayStyle();                       // moves the verse on screen straight away
+        if (appState.currentVerse) updateProjectorText();
     }
 
     function resetDisplayPosition() {
         document.getElementById('display-pos-x').value = 0;
-        document.getElementById('display-pos-y').value = '';
+        document.getElementById('display-pos-y').value = 50;
         appState.displayPosX = 0;
-        appState.displayPosY = null;
+        appState.displayPosY = 50;
         saveSettings();
-        showToast('Verse position reset to default');
+        pushDisplayStyle();
+        showToast('Verse position reset to centre (X 0, Y 50)');
     }
 
     function handleThemeUpload(input) {
-        const file = input.files[0];
+        const file = input.files && input.files[0];
         if (!file) return;
+        if (!file.type || !file.type.startsWith('image/')) {
+            showToast('Please choose an image (JPG, PNG or GIF)');
+            return;
+        }
+        if (file.size > 20 * 1024 * 1024) {
+            showToast('That image is over 20MB — please choose a smaller one');
+            return;
+        }
         const reader = new FileReader();
+        reader.onerror = () => showToast('Could not read that image');
         reader.onload = e => {
-            document.getElementById('projector-bg').style.backgroundImage = `url(${e.target.result})`;
-            document.getElementById('projector-bg').style.backgroundSize = 'cover';
-            document.getElementById('theme-upload-zone').innerHTML = `<div style="font-size:28px"></div><div style="font-weight:700;margin-top:4px;">${file.name} imported</div>`;
-            appState.currentTheme = 'custom';
-            saveSettings();
-            showToast('Background theme imported: ' + file.name);
+            const img = new Image();
+            img.onerror = () => showToast('That image could not be opened');
+            img.onload = () => {
+                // Downscale to at most 1920x1080 so it uploads fast and stays light.
+                const scale = Math.min(1, 1920 / img.width, 1080 / img.height);
+                const w = Math.max(1, Math.round(img.width * scale));
+                const h = Math.max(1, Math.round(img.height * scale));
+                const canvas = document.createElement('canvas');
+                canvas.width = w; canvas.height = h;
+                canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+                let dataUrl;
+                try { dataUrl = canvas.toDataURL('image/jpeg', 0.88); }
+                catch (_) { dataUrl = e.target.result; }
+                sessionBgImage = dataUrl;
+                sessionBgName = file.name;
+                _deselectThemeSwatches();
+                renderUploadZone();
+                syncInAppProjectorStyle();
+                pushDisplayStyle();
+                showToast('Background applied: ' + file.name + ' (kept until you close the app)', 4000);
+            };
+            img.src = e.target.result;
         };
         reader.readAsDataURL(file);
+        try { input.value = ''; } catch (_) {}   // lets the same file be picked again
     }
 
     function handleThemeDrop(e) {
@@ -2991,31 +3144,79 @@
         document.getElementById('theme-upload-zone').classList.remove('drag-over');
         const file = e.dataTransfer.files[0];
         if (file && file.type.startsWith('image/')) {
-            const input = { files: [file] };
-            handleThemeUpload(input);
+            handleThemeUpload({ files: [file] });
+        } else {
+            showToast('Please drop an image file');
         }
     }
 
     function applyCustomBg() {
         const color = document.getElementById('bgColorPicker').value;
-        document.getElementById('projector-bg').style.background = color;
-        document.getElementById('projector-bg').style.backgroundImage = '';
+        appState.customBgColor = color;
         appState.currentTheme = 'custom-color';
+        if (sessionBgImage) removeBackgroundImage(true);   // a colour replaces an uploaded image
+        _deselectThemeSwatches();
+        syncInAppProjectorStyle();
+        pushDisplayStyle();
+        saveSettings();
+    }
+
+    function setBgBlur(value) {
+        appState.bgBlur = Math.max(0, Math.min(20, Number(value) || 0));
+        const lbl = document.getElementById('bgBlurVal');
+        if (lbl) lbl.textContent = appState.bgBlur + 'px';
+        syncInAppProjectorStyle();
+        pushDisplayStyle();
         saveSettings();
     }
 
     function applyAppearance() {
-        const font = document.getElementById('fontSelect').value;
-        document.getElementById('projector-text').style.fontFamily = font;
-        document.getElementById('projector-text').style.color = appState.textColor;
+        const sel = document.getElementById('fontSelect');
+        if (sel && FONT_STACKS[sel.value]) appState.verseFont = sel.value;
         saveSettings();
-        showToast('Appearance applied to projector');
+        syncInAppProjectorStyle();
+        pushDisplayStyle();
+        showToast('Font applied: ' + appState.verseFont);
+    }
+
+    // Puts every control on the Appearance page back in sync with saved state.
+    function restoreAppearanceControls() {
+        const sel = document.getElementById('fontSelect');
+        if (sel) sel.value = FONT_STACKS[appState.verseFont] ? appState.verseFont : 'Calibri';
+        document.querySelectorAll('.color-swatch').forEach(sw => {
+            const on = (sw.getAttribute('onclick') || '').indexOf("'" + (appState.textColor || '#ffffff') + "'") !== -1;
+            sw.classList.toggle('selected', on);
+        });
+        document.querySelectorAll('.theme-swatch').forEach(s => {
+            s.classList.toggle('selected', s.dataset.theme === appState.currentTheme);
+        });
+        const picker = document.getElementById('bgColorPicker');
+        if (picker) picker.value = appState.customBgColor || '#0a0a1a';
+        const blur = document.getElementById('bgBlurRange');
+        if (blur) blur.value = appState.bgBlur || 0;
+        const blurLbl = document.getElementById('bgBlurVal');
+        if (blurLbl) blurLbl.textContent = (appState.bgBlur || 0) + 'px';
+        const px = document.getElementById('display-pos-x');
+        const py = document.getElementById('display-pos-y');
+        if (px) px.value = (typeof appState.displayPosX === 'number') ? appState.displayPosX : 0;
+        if (py) py.value = (typeof appState.displayPosY === 'number') ? appState.displayPosY : 50;
+        renderUploadZone();
+        syncInAppProjectorStyle();
     }
 
     function resetAppearance() {
         setDayNight('night');
-        document.getElementById('projector-bg').style.background = themeGradients['dark-blue'];
+        appState.currentTheme = 'dark-blue';
+        appState.customBgColor = '#0a0a1a';
+        appState.bgBlur = 0;
+        appState.verseFont = 'Calibri';
         appState.textColor = '#ffffff';
+        appState.displayPosX = 0;
+        appState.displayPosY = 50;
+        sessionBgImage = null;
+        sessionBgName = '';
+        restoreAppearanceControls();
+        pushDisplayStyle();
         showToast('Appearance reset to defaults');
         saveSettings();
     }
@@ -3768,7 +3969,8 @@
         pr.innerHTML = '— ' + v.ref + ' &nbsp;<span style="color:#f9cb42;font-size:.75em;">[' + trans + ']</span>';
         pt.style.color = appState.textColor;
         pr.style.color = appState.textColor;
-        const bg = (typeof themeGradients !== 'undefined' && themeGradients[appState.currentTheme]) || '#000011';
+        syncInAppProjectorStyle();
+        const bg = getCurrentBgCss();
         //  Push to popup projector window (HDMI) 
         if (window._projectorWindow && !window._projectorWindow.closed) {
             window._projectorWindow.postMessage({
@@ -3799,7 +4001,7 @@
                 theme: appState.currentTheme || 'dark-blue',
                 bg: bg || '#000011',
                 pos_x: (typeof appState.displayPosX === 'number') ? appState.displayPosX : 0,
-                pos_y: (typeof appState.displayPosY === 'number') ? appState.displayPosY : null
+                pos_y: (typeof appState.displayPosY === 'number') ? appState.displayPosY : 50
             };
             if (!CHURCH_ID) return; // identity not resolved yet — skip this push rather than send it unscoped
             fetch(BACKEND_URL + '/display/push', {
@@ -3814,9 +4016,7 @@
     function openProjectorView(syncCurrentVerse = true) {
         document.getElementById('projector-view').classList.add('active');
         document.querySelectorAll('.subpage-overlay.active').forEach(el => el.classList.remove('active'));
-        if (appState.currentTheme && themeGradients[appState.currentTheme]) {
-            document.getElementById('projector-bg').style.background = themeGradients[appState.currentTheme];
-        }
+        syncInAppProjectorStyle();
         // Sync output badge
         const labels = { hdmi: 'HDMI OUTPUT', ndi: 'NDI STREAM', vmix: 'vMix INPUT', wireless: 'WIRELESS' };
         const badge = document.getElementById('projector-output-label');
@@ -5377,6 +5577,12 @@
     if (appState.transcriptionMode) setTranscriptionMode(appState.transcriptionMode);
     maybeAutoStartTour();
 
+    // Appearance: restore saved choices, then tell the output screen how to look.
+    // This also clears any background image left on the server from an earlier
+    // session, because the image is never carried over between sessions.
+    restoreAppearanceControls();
+    churchIdReady.then(() => pushDisplayStyle());
+
     // Build bible book grids (for the navigate subpage)
     buildBookGrid(OT, 'OT-grid');
     buildBookGrid(NT, 'NT-grid');
@@ -6326,6 +6532,7 @@
                     showToast('Output window opened on ' + label, 3500);
                 }
                 // Make sure the new window immediately shows the current verse
+                pushDisplayStyle();
                 if (appState.currentVerse && typeof updateProjectorText === 'function') updateProjectorText();
                 return true;
             }
@@ -6449,131 +6656,13 @@
             return;
         }
 
-        const theme = appState.currentTheme || 'dark-blue';
-        const bg    = (typeof themeGradients !== 'undefined' && themeGradients[theme]) || '#000011';
-        const v     = appState.currentVerse;
-        const bodyHtml = v
-            ? `<div class="ref">${v.ref} <span style="color:#f9cb42">[${v.translation || 'KJV'}]</span></div><div class="txt">${v.text}</div>`
-            : `<div class="txt" style="opacity:0.25;font-size:28px;">Waiting for verse…</div>`;
-
-        const projHTML = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
-<title>In The Beginning — Display</title>
-<style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{
-  background:${bg};
-  min-height:100vh;
-  font-family:'Georgia',serif;
-  color:#fff;
-  overflow:hidden;
-  transition:background 0.55s ease;
-}
-/*  Bottom-anchored overlay pill 
-   The verse sits in the lower third of the screen.
-   It does NOT cover the full display so ProPresenter, EasyWorship,
-   OBS, or any background content remains visible.
-   Press F to go fullscreen (background fills); Esc to exit. */
-#outer{
-  position:fixed;
-  left:50%;
-  bottom:5vh;
-  transform:translateX(-50%);
-  max-width:1200px;
-  width:88%;
-  padding:22px 32px 22px 36px;
-  text-align:center;
-  background:rgba(0,0,0,0.72);
-  border-left:5px solid #a67c52;
-  border-radius:10px;
-  box-shadow:0 16px 56px rgba(0,0,0,0.45);
-  transition:opacity 0.35s ease, transform 0.35s ease;
-}
-#outer.empty{opacity:0;transform:translateX(-50%) translateY(14px);}
-.ref{
-  font-size:17px;color:#a67c52;font-weight:700;
-  margin-bottom:10px;letter-spacing:1.2px;text-transform:uppercase;
-}
-.trans{color:#f9cb42;font-size:.78em;}
-.txt{
-  font-size:clamp(20px,2.8vw,40px);
-  line-height:1.3;
-  font-weight:400;
-  display:-webkit-box;
-  -webkit-line-clamp:4;
-  -webkit-box-orient:vertical;
-  overflow:hidden;
-}
-#hint{
-  position:fixed;bottom:10px;left:0;right:0;
-  text-align:center;font-family:sans-serif;
-  font-size:10px;opacity:0.2;color:#fff;
-}
-#badge{
-  position:fixed;top:12px;right:16px;
-  font-family:sans-serif;font-size:10px;font-weight:700;
-  letter-spacing:2px;color:rgba(255,255,255,0.18);text-transform:uppercase;
-}
-</style></head>
-<body>
-<div id="outer" class="empty">
-  <div class="ref" id="vref"></div>
-  <div class="txt" id="vtxt" style="opacity:0.3;font-size:22px;">Waiting for verse…</div>
-</div>
-<div id="hint">F = fullscreen &nbsp;·&nbsp; Esc = exit fullscreen</div>
-<div id="badge">In The Beginning · Live</div>
-<script>
-(function(){
-  //  postMessage from parent window (popup mode) 
-  window.addEventListener('message', function(e) {
-    if (!e.data || e.data.type !== 'verse') return;
-    _showVerse(e.data.verse, e.data.bg);
-  });
-
-  //  WebSocket from server (auto-push, no tab-switch needed) 
-  var proto = location.protocol === 'https:' ? 'wss' : 'ws';
-  var wsUrl = proto + '://' + location.host + '/ws/display?church=${encodeURIComponent(CHURCH_ID)}';
-  var retryDelay = 1500;
-  var ws;
-  function connectWS() {
-    ws = new WebSocket(wsUrl);
-    ws.onmessage = function(e) {
-      try {
-        var d = JSON.parse(e.data);
-        if (d.type === 'verse' && d.verse) _showVerse(d.verse, d.bg);
-      } catch(ex) {}
-    };
-    ws.onclose = function() { setTimeout(connectWS, retryDelay); retryDelay = Math.min(retryDelay*1.5,10000); };
-    ws.onopen  = function() { retryDelay = 1500; };
-  }
-  connectWS();
-
-  function _showVerse(v, bg) {
-    var outer = document.getElementById('outer');
-    var vref  = document.getElementById('vref');
-    var vtxt  = document.getElementById('vtxt');
-    if (!v) return;
-    vref.innerHTML = (v.ref||'') + ' <span class="trans">[' + (v.translation||'KJV') + ']</span>';
-    vtxt.textContent = v.text || '';
-    if (bg) document.body.style.background = bg;
-    if (outer) outer.classList.remove('empty');
-  }
-
-  document.addEventListener('keydown', function(e) {
-    if (e.key === 'F' || e.key === 'f') {
-      if (!document.fullscreenElement) document.documentElement.requestFullscreen();
-      else document.exitFullscreen();
-    }
-  });
-})();
-<\/script></body></html>`;
-
         // Detect best window size — aim for a secondary screen
         let wx = 0, wy = 0, ww = 1280, wh = 720;
         if (screen.availWidth > 1920) {
             // Likely a second monitor to the right
             wx = 1920; wy = 0; ww = screen.availWidth - 1920; wh = screen.availHeight;
         }
-        window._projectorWindow = window.open('', 'ITB_Projector',
+        window._projectorWindow = window.open(BACKEND_URL + '/display?church=' + encodeURIComponent(CHURCH_ID) + '&chrome=1', 'ITB_Projector',
             `width=${ww},height=${wh},left=${wx},top=${wy},` +
             'menubar=no,toolbar=no,location=no,status=no,scrollbars=no,resizable=yes');
 
@@ -6583,9 +6672,7 @@ body{
             openProjectorView();
             return;
         }
-        window._projectorWindow.document.open();
-        window._projectorWindow.document.write(projHTML);
-        window._projectorWindow.document.close();
+        pushDisplayStyle();
 
         // Cleanup when user closes the popup
         const _checkInterval = setInterval(function() {
@@ -6620,9 +6707,10 @@ body{
 
     function applyBroadcastTheme(theme) {
         const bg = (typeof themeGradients !== 'undefined' && themeGradients[theme]) || '#000';
-        const bgEl = document.getElementById('projector-bg');
-        if (bgEl) { bgEl.style.background = bg; bgEl.style.backgroundImage = ''; }
         appState.currentTheme = theme;
+        if (sessionBgImage) removeBackgroundImage(true);
+        syncInAppProjectorStyle();
+        pushDisplayStyle();
         // Push theme update to open projector window
         if (window._projectorWindow && !window._projectorWindow.closed && appState.currentVerse) {
             const v = appState.currentVerse;
