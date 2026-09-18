@@ -1056,6 +1056,12 @@ class ChurchRoom:
         # immediately, so opening Main Output mid-service shows the verse that
         # is already live instead of a blank screen.
         self.last_display_payload: Optional[dict] = None
+        # Look of the projector output (background colour/gradient, optional
+        # background image, font, text colour, position). Held in MEMORY ONLY -
+        # never written to disk - so an uploaded background image lives only as
+        # long as the app session and is replayed to any projector window that
+        # connects mid-service.
+        self.display_style: Optional[dict] = None
 
 church_rooms: Dict[str, "ChurchRoom"] = {}
 
@@ -1613,6 +1619,8 @@ async def display_ws(ws: WebSocket):
     # output window opens blank and stays blank until the operator happens to
     # push a NEW verse - which is why toggling Main Output on mid-service
     # appeared to do nothing on the second screen.
+    if room.display_style:
+        await safe_send(ws, {"type": "style", "style": room.display_style})
     if room.last_display_payload:
         await safe_send(ws, room.last_display_payload)
 
@@ -1682,6 +1690,64 @@ async def display_push(req: DisplayPushReq):
     return {"pushed": True, "clients": len(get_room(church_id).display_clients)}
 
 
+class DisplayStyleReq(BaseModel):
+    church: str
+    bg: Optional[str] = None            # CSS colour or gradient
+    bg_image: Optional[str] = None      # data:image/...;base64,...  (session only, never persisted)
+    blur: Optional[float] = 0
+    font: Optional[str] = None          # CSS font-family stack
+    color: Optional[str] = None         # verse text colour
+    pos_x: Optional[float] = 0          # % offset from horizontal centre
+    pos_y: Optional[float] = 50         # % from top (50 = vertically centred)
+
+
+_DATA_IMAGE_RE = re.compile(r"^data:image/(?:jpeg|jpg|png|webp|gif);base64,[A-Za-z0-9+/=]+$")
+MAX_BG_IMAGE_CHARS = 14 * 1024 * 1024   # ~10 MB of image data once base64-decoded
+
+
+@app.post("/display/style")
+async def display_style_push(req: DisplayStyleReq):
+    """
+    Sets how this church's projector output looks. Broadcast to the church's
+    connected /ws/display clients and cached in memory on the room. The
+    background image is intentionally NOT written to disk: when the app session
+    ends the image is gone, and the desktop app clears it on every launch.
+    """
+    church_id = req.church.strip().lower()
+    if not church_id:
+        raise HTTPException(status_code=400, detail="Missing church id.")
+
+    image = req.bg_image or None
+    if image:
+        if len(image) > MAX_BG_IMAGE_CHARS:
+            raise HTTPException(status_code=413, detail="Background image is too large.")
+        if not _DATA_IMAGE_RE.match(image):
+            raise HTTPException(status_code=400, detail="Background must be a JPG, PNG, WEBP or GIF image.")
+
+    def _clip(value: Optional[str], limit: int = 400) -> Optional[str]:
+        return value[:limit] if isinstance(value, str) and value.strip() else None
+
+    def _num(value: Optional[float], lo: float, hi: float, default: float) -> float:
+        try:
+            return max(lo, min(hi, float(value)))
+        except (TypeError, ValueError):
+            return default
+
+    style = {
+        "bg":       _clip(req.bg),
+        "bg_image": image,
+        "blur":     _num(req.blur, 0, 40, 0),
+        "font":     _clip(req.font),
+        "color":    _clip(req.color, 64),
+        "pos_x":    _num(req.pos_x, -50, 50, 0),
+        "pos_y":    _num(req.pos_y, 0, 100, 50),
+    }
+    room = get_room(church_id)
+    room.display_style = style
+    await _broadcast_to_display(church_id, {"type": "style", "style": style})
+    return {"ok": True, "clients": len(room.display_clients), "has_image": bool(image)}
+
+
 @app.get("/display/status")
 def display_status(church: str = Query(..., description="Church account email")):
     return {"connected_clients": len(get_room(church.strip().lower()).display_clients)}
@@ -1696,8 +1762,8 @@ def serve_display_page(
     Standalone projector page — open in a browser window on the projector
     screen, OBS browser source, or NDI Tools virtual input.  It auto-connects
     to /ws/display and updates whenever a verse is pushed.  The overlay is
-    anchored to the BOTTOM of the screen with a translucent pill so it never
-    covers the full screen.
+    centred on screen by default (X=0, Y=50). Its background, font,
+    text colour and position come from POST /display/style.
     Requires ?church=<id> (the desktop app's "Open Display Page" link already
     includes this) so the projector only ever shows this church's verses.
     """
@@ -1716,102 +1782,160 @@ def serve_display_page(
 <head>
 <meta charset="utf-8">
 <title>In The Beginning · Display</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@700&family=Lora:wght@700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden}
 body{
-  background:transparent;
-  min-height:100vh;
-  font-family:'Georgia',serif;
-  overflow:hidden;
-  transition:background 0.5s ease;
+  background:#000;
+  font-family:Calibri,Carlito,"Segoe UI",Arial,sans-serif;
 }
+/* Background layer: colour / gradient / uploaded image (+ optional blur).
+   Oversized so a blurred image never shows soft edges. */
+#bg{
+  position:fixed;
+  inset:-40px;
+  z-index:0;
+  background:linear-gradient(135deg,#0a0a1a,#1a1a3e);
+  transition:background 0.4s ease;
+}
+/* Verse block: centred on the screen by default (X=0, Y=50). The point
+   (left,top) is the CENTRE of the block, so X/Y numbers are intuitive. */
 #outer{
   position:fixed;
+  z-index:1;
   left:50%;
-  bottom:5vh;
-  transform:translateX(-50%);
-  max-width:1200px;
-  width:88%;
-  padding:22px 32px;
+  top:50%;
+  transform:translate(-50%,-50%);
+  width:88vw;
   text-align:center;
-  border-radius:10px;
-  transition:opacity 0.4s ease,transform 0.4s ease;
+  font-weight:700;
+  line-height:1.25;
+  transition:opacity 0.35s ease;
 }
-#outer.empty{opacity:0;transform:translateX(-50%) translateY(20px);}
+#outer.empty{opacity:0;}
 .ref{
-  font-size:16px;color:#a67c52;font-weight:700;
-  margin-bottom:10px;letter-spacing:1px;text-transform:uppercase;
+  color:#f5a21b;
+  font-weight:700;
+  margin-bottom:0.12em;
 }
-.trans{color:#f9cb42;font-size:.78em;}
 .txt{
-  font-size:clamp(22px,2.8vw,40px);
-  line-height:1.3;
-  font-weight:400;
-  color:#fff;
-  display:-webkit-box;
-  -webkit-line-clamp:4;
-  -webkit-box-orient:vertical;
-  overflow:hidden;
+  color:#ffffff;
+  font-weight:700;
+}
+.ref,.txt{
+  text-shadow:0 0 3px #000,0 2px 6px rgba(0,0,0,0.9),0 0 16px rgba(0,0,0,0.65);
 }
 #badge{
-  position:fixed;top:12px;right:16px;
+  position:fixed;top:12px;right:16px;z-index:2;
   font-family:sans-serif;font-size:10px;font-weight:700;
   letter-spacing:2px;color:rgba(255,255,255,0.18);
   text-transform:uppercase;
 }
 #hint{
-  position:fixed;bottom:10px;left:0;right:0;
+  position:fixed;bottom:10px;left:0;right:0;z-index:2;
   text-align:center;font-family:sans-serif;
   font-size:10px;opacity:0.2;color:#fff;
 }
 </style>
 </head>
 <body>
+<div id="bg"></div>
 <div id="outer" class="empty">
   <div class="ref" id="vref"></div>
-  <div class="txt" id="vtxt">Waiting for verse…</div>
+  <div class="txt" id="vtxt"></div>
 </div>
 __CHROME_HTML__
 <script>
 (function(){
+  var bgEl  = document.getElementById('bg');
   var outer = document.getElementById('outer');
   var vref  = document.getElementById('vref');
   var vtxt  = document.getElementById('vtxt');
   var proto = location.protocol === 'https:' ? 'wss' : 'ws';
   var wsUrl = proto + '://' + location.host + '/ws/display?church=__CHURCH_ID__';
   if (__CLEAN_MODE__) {
-    // Native output window: opaque black canvas, no cursor, no chrome.
-    document.body.style.background = '#000';
+    // Native output window: no cursor, no chrome.
     document.body.style.cursor = 'none';
   }
-  var ws, retryDelay = 1500;
 
+  var style = { pos_x: 0, pos_y: 50 };
+  var styleReceived = false;
+
+  function num(v, d){ return (typeof v === 'number' && isFinite(v)) ? v : d; }
+
+  // Shrinks the font until the whole verse fits the space that is actually
+  // available around the chosen X/Y point, so nothing is ever cut off.
+  function fit(){
+    var x = num(style.pos_x, 0), y = num(style.pos_y, 50);
+    var wVW = Math.max(20, Math.min(90, 2 * (50 - Math.abs(x)) - 4));
+    outer.style.width = wVW + 'vw';
+    var availH = Math.max(60, 2 * Math.min(y, 100 - y) / 100 * window.innerHeight - 16);
+    var size = Math.min(window.innerWidth * 0.045, 96);
+    outer.style.fontSize = size + 'px';
+    var guard = 0;
+    while (outer.getBoundingClientRect().height > availH && size > 14 && guard++ < 80) {
+      size -= 2;
+      outer.style.fontSize = size + 'px';
+    }
+  }
+
+  function place(){
+    outer.style.left = (50 + num(style.pos_x, 0)) + '%';
+    outer.style.top  = num(style.pos_y, 50) + '%';
+  }
+
+  function applyBackground(){
+    if (style.bg) bgEl.style.background = style.bg;          // colour or gradient
+    if (style.bg_image) {
+      bgEl.style.backgroundImage    = 'url("' + style.bg_image + '")';
+      bgEl.style.backgroundSize     = 'cover';
+      bgEl.style.backgroundPosition = 'center';
+      bgEl.style.backgroundRepeat   = 'no-repeat';
+      bgEl.style.filter = num(style.blur, 0) > 0 ? 'blur(' + style.blur + 'px)' : '';
+    } else {
+      bgEl.style.filter = '';
+    }
+  }
+
+  function applyStyle(s){
+    if (!s) return;
+    styleReceived = true;
+    for (var k in s) { if (Object.prototype.hasOwnProperty.call(s, k)) style[k] = s[k]; }
+    if (!s.bg_image) style.bg_image = null;
+    applyBackground();
+    if (style.font)  outer.style.fontFamily = style.font;
+    vtxt.style.color = style.color || '#ffffff';
+    place();
+    fit();
+  }
+
+  function showVerse(d){
+    var v = d.verse;
+    if (!v) return;
+    var trans = (v.translation || d.translation || 'KJV').toString().toUpperCase();
+    vref.textContent = (v.ref || '') + ' (' + trans + ')';
+    vtxt.textContent = v.text || '';
+    // Fallbacks only when no style has arrived yet (e.g. older desktop build).
+    if (!styleReceived) {
+      if (d.bg) bgEl.style.background = d.bg;
+      if (typeof d.pos_x === 'number') style.pos_x = d.pos_x;
+      if (typeof d.pos_y === 'number') style.pos_y = d.pos_y;
+      place();
+    }
+    outer.classList.remove('empty');
+    fit();
+  }
+
+  var ws, retryDelay = 1500;
   function connect(){
     ws = new WebSocket(wsUrl);
     ws.onmessage = function(e){
       try{
         var d = JSON.parse(e.data);
-        if(d.type === 'verse' && d.verse){
-          var v = d.verse;
-          vref.innerHTML = (v.ref||'') +
-            ' <span class="trans">[' + (v.translation||d.translation||'KJV') + ']</span>';
-          vtxt.textContent = v.text || '';
-          if(d.bg) document.body.style.background = d.bg;
-          if(typeof d.pos_x === 'number' || typeof d.pos_y === 'number'){
-            // Custom position: recenter around the given point. Only overrides
-            // the axis actually supplied — omitted axis keeps its own default.
-            var left = (typeof d.pos_x === 'number') ? (50 + d.pos_x) : 50;
-            outer.style.left = left + '%';
-            if(typeof d.pos_y === 'number'){
-              outer.style.bottom = 'auto';
-              outer.style.top = d.pos_y + '%';
-              outer.style.transform = 'translate(-50%,-50%)';
-            } else {
-              outer.style.transform = 'translateX(-50%)';
-            }
-          }
-          outer.classList.remove('empty');
-        }
+        if (d.type === 'style') applyStyle(d.style);
+        else if (d.type === 'verse') showVerse(d);
       }catch(ex){}
     };
     ws.onclose = function(){
@@ -1821,6 +1945,7 @@ __CHROME_HTML__
     ws.onopen = function(){ retryDelay = 1500; };
   }
   connect();
+  window.addEventListener('resize', fit);
 
   document.addEventListener('keydown',function(e){
     if(e.key==='F'||e.key==='f'){
