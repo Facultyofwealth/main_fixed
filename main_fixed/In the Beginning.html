@@ -1734,6 +1734,26 @@
                     <div class="theme-swatch" style="background:linear-gradient(135deg,#001a30,#003060);" onclick="selectTheme(this,'ocean')" data-theme="ocean">Ocean</div>
                 </div>
 
+                <div class="section-label" style="margin-top:18px;">Verse Position on Projector</div>
+                <div class="brightness-row">
+                    <span class="brightness-label">Horizontal (X)</span>
+                    <input type="number" id="display-pos-x" value="0" min="-50" max="50" step="1"
+                           style="width:70px;padding:5px;font-size:13px;text-align:center;"
+                           oninput="updateDisplayPosition()">
+                    <span style="font-size:11px;color:#a67c52;font-weight:700;width:35px;text-align:right;">%</span>
+                </div>
+                <div class="brightness-row">
+                    <span class="brightness-label">Vertical (Y)</span>
+                    <input type="number" id="display-pos-y" placeholder="auto" min="0" max="100" step="1"
+                           style="width:70px;padding:5px;font-size:13px;text-align:center;"
+                           oninput="updateDisplayPosition()">
+                    <span style="font-size:11px;color:#a67c52;font-weight:700;width:35px;text-align:right;">%</span>
+                </div>
+                <div style="font-size:11px;color:#6b7280;margin-top:-4px;margin-bottom:10px;">
+                    X: -50 (left) to 50 (right), 0 = centered. Leave Vertical (Y) blank to keep the default bottom placement.
+                </div>
+                <button type="button" onclick="resetDisplayPosition()" style="font-size:11px;color:#a67c52;background:none;border:1px solid #a67c52;border-radius:4px;padding:4px 10px;cursor:pointer;margin-bottom:12px;">Reset position</button>
+
                 <div class="section-label" style="margin-top:18px;">Import Custom Background</div>
                 <div class="upload-zone" id="theme-upload-zone" onclick="document.getElementById('theme-file-input').click()" ondragover="event.preventDefault();this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="handleThemeDrop(event)">
                     <div style="font-size:28px;margin-bottom:8px;"></div>
@@ -2286,7 +2306,9 @@
         chapterQueue: [],        // Fix 4: verse navigation queue
         chapterQueueIdx: 0,      // Fix 4: current position in queue
         verseHistory: [],
-        scriptureSlides: []
+        scriptureSlides: [],
+        displayPosX: 0,      // % offset from horizontal center on /display; 0 = today's default (centered)
+        displayPosY: null    // % from top on /display; null = today's default (bottom-anchored, unset)
     };
 
     function loadState() {
@@ -2928,6 +2950,25 @@
         document.getElementById('projector-bg').style.backgroundImage = '';
         saveSettings();
         showToast('Theme: ' + el.textContent);
+    }
+
+    function updateDisplayPosition() {
+        const xEl = document.getElementById('display-pos-x');
+        const yEl = document.getElementById('display-pos-y');
+        const x = parseFloat(xEl.value);
+        appState.displayPosX = isNaN(x) ? 0 : Math.max(-50, Math.min(50, x));
+        const y = parseFloat(yEl.value);
+        appState.displayPosY = (yEl.value.trim() === '' || isNaN(y)) ? null : Math.max(0, Math.min(100, y));
+        saveSettings();
+    }
+
+    function resetDisplayPosition() {
+        document.getElementById('display-pos-x').value = 0;
+        document.getElementById('display-pos-y').value = '';
+        appState.displayPosX = 0;
+        appState.displayPosY = null;
+        saveSettings();
+        showToast('Verse position reset to default');
     }
 
     function handleThemeUpload(input) {
@@ -3756,7 +3797,9 @@
                 verse: { ref: verse.ref, text: verse.text },
                 translation: translation || 'KJV',
                 theme: appState.currentTheme || 'dark-blue',
-                bg: bg || '#000011'
+                bg: bg || '#000011',
+                pos_x: (typeof appState.displayPosX === 'number') ? appState.displayPosX : 0,
+                pos_y: (typeof appState.displayPosY === 'number') ? appState.displayPosY : null
             };
             if (!CHURCH_ID) return; // identity not resolved yet — skip this push rather than send it unscoped
             fetch(BACKEND_URL + '/display/push', {

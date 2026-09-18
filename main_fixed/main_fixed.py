@@ -1657,6 +1657,8 @@ class DisplayPushReq(BaseModel):
     translation: Optional[str] = "KJV"
     theme: Optional[str] = "dark-blue"
     bg: Optional[str] = "#000011"
+    pos_x: Optional[float] = None   # horizontal offset in % from center; None = default centered position
+    pos_y: Optional[float] = None   # vertical position in % from top; None = default bottom-anchored position
 
 
 @app.post("/display/push")
@@ -1673,6 +1675,8 @@ async def display_push(req: DisplayPushReq):
         "translation": req.translation,
         "theme":       req.theme,
         "bg":          req.bg,
+        "pos_x":       req.pos_x,
+        "pos_y":       req.pos_y,
     }
     await _broadcast_to_display(church_id, payload)
     return {"pushed": True, "clients": len(get_room(church_id).display_clients)}
@@ -1728,12 +1732,9 @@ body{
   transform:translateX(-50%);
   max-width:1200px;
   width:88%;
-  padding:22px 32px 22px 36px;
+  padding:22px 32px;
   text-align:center;
-  background:rgba(0,0,0,0.72);
-  border-left:5px solid #a67c52;
   border-radius:10px;
-  box-shadow:0 16px 56px rgba(0,0,0,0.45);
   transition:opacity 0.4s ease,transform 0.4s ease;
 }
 #outer.empty{opacity:0;transform:translateX(-50%) translateY(20px);}
@@ -1796,6 +1797,19 @@ __CHROME_HTML__
             ' <span class="trans">[' + (v.translation||d.translation||'KJV') + ']</span>';
           vtxt.textContent = v.text || '';
           if(d.bg) document.body.style.background = d.bg;
+          if(typeof d.pos_x === 'number' || typeof d.pos_y === 'number'){
+            // Custom position: recenter around the given point. Only overrides
+            // the axis actually supplied — omitted axis keeps its own default.
+            var left = (typeof d.pos_x === 'number') ? (50 + d.pos_x) : 50;
+            outer.style.left = left + '%';
+            if(typeof d.pos_y === 'number'){
+              outer.style.bottom = 'auto';
+              outer.style.top = d.pos_y + '%';
+              outer.style.transform = 'translate(-50%,-50%)';
+            } else {
+              outer.style.transform = 'translateX(-50%)';
+            }
+          }
           outer.classList.remove('empty');
         }
       }catch(ex){}
