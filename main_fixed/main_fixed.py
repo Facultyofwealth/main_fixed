@@ -43,9 +43,20 @@ def get_data_dir() -> str:
         return base
     return _script_dir
 
-_env_path   = os.path.join(_script_dir, ".env")
-if not os.path.exists(_env_path):
-    _env_path = os.path.join(os.getcwd(), ".env")
+def _exe_dir() -> str:
+    """Directory the real .exe lives in when frozen. NOT sys._MEIPASS —
+    that's a temp extraction folder that never contains a user-provided
+    .env file. Falls back to the script directory in dev mode."""
+    if getattr(sys, "frozen", False):
+        return os.path.dirname(sys.executable)
+    return _script_dir
+
+_env_candidates = [
+    os.path.join(_exe_dir(), ".env"),
+    os.path.join(_script_dir, ".env"),
+    os.path.join(os.getcwd(), ".env"),
+]
+_env_path = next((p for p in _env_candidates if os.path.exists(p)), _env_candidates[0])
 
 from dotenv import load_dotenv
 load_dotenv(dotenv_path=_env_path, override=True)
@@ -4221,7 +4232,7 @@ if __name__ == "__main__":
         # Desktop .exe mode — pywebview wraps the FastAPI server
         def _run_server():
             """Boot uvicorn in a background thread so pywebview can start."""
-            uvicorn.run("main_fixed:app", host="127.0.0.1", port=port, reload=False)
+            uvicorn.run(app, host="127.0.0.1", port=port, reload=False)
 
         server_thread = threading.Thread(target=_run_server, daemon=True)
         server_thread.start()
@@ -4250,9 +4261,9 @@ if __name__ == "__main__":
         # control window (primary display) and the fullscreen output window
         # (operator's chosen display) natively.
         print(f"Electron shell mode — serving API on 127.0.0.1:{port} (no pywebview window)")
-        uvicorn.run("main_fixed:app", host="127.0.0.1", port=port, reload=False)
+        uvicorn.run(app, host="127.0.0.1", port=port, reload=False)
 
     else:
         # Headless / Railway / Fly mode — plain uvicorn, no window
         print("pywebview not available or cloud environment detected — running headless")
-        uvicorn.run("main_fixed:app", host="0.0.0.0", port=port, reload=False)
+        uvicorn.run(app, host="0.0.0.0", port=port, reload=False)

@@ -373,8 +373,10 @@ async function startBackend() {
     }
   });
 
-  // Poll until uvicorn binds the port (up to ~30s).
-  for (let i = 0; i < 60; i++) {
+  // Poll until uvicorn binds the port (up to ~90s — this backend loads a
+  // 31k-verse Bible JSON plus FastAPI/uvicorn's own cold-start cost, which
+  // can exceed 30s; start_in_the_beginning.py already gives it 90s).
+  for (let i = 0; i < 180; i++) {
     await new Promise((r) => setTimeout(r, 500));
     if (await backendIsUp()) {
       console.log('[itb] backend is up');
