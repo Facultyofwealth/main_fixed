@@ -9,12 +9,27 @@ venv/
 __pycache__/
 *.py[cod]
 
-# PyInstaller & Build Files
-dist/
+# PyInstaller / Python Build Files
 build/
+dist/
+*.pkg
+*.pyz
+warn-*.txt
+xref-*.html
 *.spec
+*.toc
+base_library.zip
 *.exe
+
+# Electron / Electron Builder Build Files
+out/
+release/
+electron-dist/
+*.asar
+*.asar.unpacked/
+*.blockmap
+latest*.yml
 
 # Node
 node_modules/
-package -lock.json
+package-lock.json

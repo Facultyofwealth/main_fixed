@@ -1928,7 +1928,7 @@
                             <input type="checkbox" onchange="document.getElementById('dg-key-input').type=this.checked?'text':'password'">
                             Show key
                         </label>
-                        <span id="dg-key-saved-indicator" style="display:none;color:#4ade80;font-size:11px;margin-left:auto;"> Key saved for this session</span>
+                        <span id="dg-key-saved-indicator" style="display:none;color:#4ade80;font-size:11px;margin-left:auto;"> Key saved on this device</span>
                     </div>
                 </div>
 
@@ -4097,21 +4097,39 @@
     }
 
     // ===================== DEEPGRAM KEY MANAGEMENT =====================
-    // Keys are stored ONLY in sessionStorage (cleared when the tab closes).
-    // They are NEVER sent to or stored on the server.
-    function getDgKey() { return sessionStorage.getItem('dg_api_key') || ''; }
+    // Keys are stored in localStorage — remembered permanently on this
+    // device (survives closing the app / restarting) until the user clears
+    // it. They are NEVER sent to or stored on the server; Deepgram auth
+    // happens directly from this browser tab.
+    const DG_KEY_STORAGE = 'dg_api_key';
+    function getDgKey() { return (localStorage.getItem(DG_KEY_STORAGE) || '').trim(); }
 
-    function saveDgKey() {
-        const val = document.getElementById('dg-key-input').value.trim();
-        if (!val) { showToast('Key is empty'); return; }
-        sessionStorage.setItem('dg_api_key', val);
+    // Accepts an optional explicit value so callers (like the trial popup)
+    // can pass the key straight from their own input field instead of this
+    // function silently re-reading a different, possibly-empty field.
+    function saveDgKey(explicitVal) {
+        const val = (explicitVal !== undefined && explicitVal !== null)
+            ? String(explicitVal).trim()
+            : (document.getElementById('dg-key-input')?.value || '').trim();
+        if (!val) { showToast('Key is empty'); return false; }
+        localStorage.setItem(DG_KEY_STORAGE, val);
+        // Keep both the Settings field and the trial-popup field in sync
+        const settingsInput = document.getElementById('dg-key-input');
+        if (settingsInput) settingsInput.value = val;
+        const trialInput = document.getElementById('trial-key-input');
+        if (trialInput) trialInput.value = val;
         updateDgKeyStatus();
-        showToast('Deepgram key saved for this session (never stored on server)');
+        _hideTrialExpiredBadge();
+        showToast('Deepgram key saved — remembered on this device');
+        return true;
     }
 
     function clearDgKey() {
-        sessionStorage.removeItem('dg_api_key');
-        document.getElementById('dg-key-input').value = '';
+        localStorage.removeItem(DG_KEY_STORAGE);
+        const settingsInput = document.getElementById('dg-key-input');
+        if (settingsInput) settingsInput.value = '';
+        const trialInput = document.getElementById('trial-key-input');
+        if (trialInput) trialInput.value = '';
         updateDgKeyStatus();
         showToast('Deepgram key cleared');
     }
@@ -4128,7 +4146,7 @@
         const status = document.getElementById('dg-key-status');
         const indicator = document.getElementById('dg-key-saved-indicator');
         if (key) {
-            if (status) { status.textContent = `Key on file: ${key.slice(0,6)}… (${key.length} chars) — valid for this tab only.`; status.style.color = '#4ade80'; }
+            if (status) { status.textContent = `Key on file: ${key.slice(0,6)}… (${key.length} chars) — remembered on this device.`; status.style.color = '#4ade80'; }
             if (indicator) indicator.style.display = 'inline';
         } else {
             if (status) { status.textContent = 'No client key — will use server key (if set) or offline fallback.'; status.style.color = '#6b7280'; }
@@ -5694,8 +5712,8 @@
         const inp = document.getElementById('trial-key-input');
         const val = (inp ? inp.value : '').trim();
         if (!val || val.length < 20) { showToast('That doesn\'t look like a valid Deepgram key', 4000); return; }
-        saveDgKey(val);
-        _hideTrialExpiredBadge();
+        const ok = saveDgKey(val);   // saves to localStorage — remembered from now on
+        if (!ok) return;
         closeTrialModal();
         showToast('Deepgram key saved — you can now start transcription', 4000);
     }
