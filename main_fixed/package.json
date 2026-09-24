@@ -1,12 +1,16 @@
 {
   "name": "in-the-beginning-desktop",
   "version": "1.0.0",
-  "description": "In The Beginning — desktop shell (multi-monitor Bible output + native microphone access)",
+  "description": "In The Beginning AI — desktop shell (multi-monitor Bible output + native microphone access)",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
     "dev": "electron . --enable-logging",
-    "dist": "electron-builder --win --x64"
+    "dist": "electron-builder --win --x64",
+    "release": "electron-builder --win --x64 --publish always"
+  },
+  "dependencies": {
+    "electron-updater": "^6.3.0"
   },
   "devDependencies": {
     "electron": "^31.0.0",
@@ -14,7 +18,7 @@
   },
   "build": {
     "appId": "com.inthebeginning.desktop",
-    "productName": "In The Beginning",
+    "productName": "In The Beginning AI",
     "files": [
       "main.js",
       "preload.js",
@@ -27,6 +31,13 @@
         "filter": ["**/*"]
       }
     ],
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "Facultyofwealth",
+        "repo": "main_fixed"
+      }
+    ],
     "win": {
       "target": [
         {
@@ -37,7 +48,8 @@
     },
     "nsis": {
       "oneClick": false,
-      "allowToChangeInstallationDirectory": true
+      "allowToChangeInstallationDirectory": true,
+      "artifactName": "In-The-Beginning-Setup.exe"
     }
   }
 }

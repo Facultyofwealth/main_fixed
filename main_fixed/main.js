@@ -23,6 +23,7 @@ const path = require('path');
 const fs = require('fs');
 const http = require('http');
 const { spawn } = require('child_process');
+const { autoUpdater } = require('electron-updater');
 
 // ─────────────────────────── configuration ───────────────────────────
 const BACKEND_PORT = parseInt(process.env.ITB_PORT || '8000', 10);
@@ -400,8 +401,126 @@ function stopBackend() {
   }
 }
 
+// ─────────────────────────── auto-update ─────────────────────────────
+/**
+ * Checks the GitHub Releases page named in package.json ("build.publish")
+ * for a newer version. The popup itself is drawn INSIDE the app page (see
+ * In_the_Beginning.html) so it can use the app's own colours — a native
+ * dialog.showMessageBox cannot be styled.
+ *
+ * Flow:  idle -> available -> downloading -> ready -> (restart & install)
+ * Nothing is downloaded or installed until the operator clicks a button.
+ *
+ * Dev testing without publishing anything:
+ *   set ITB_FAKE_UPDATE=1   (PowerShell:  $env:ITB_FAKE_UPDATE="1")
+ *   npm start
+ */
+const FAKE_UPDATE = !app.isPackaged && process.env.ITB_FAKE_UPDATE === '1';
+const UPDATE_CHECK_DELAY_MS = 8 * 1000;               // let the UI settle first
+const UPDATE_CHECK_EVERY_MS = 4 * 60 * 60 * 1000;     // long services stay covered
+
+let updateState = { status: 'idle', version: null, percent: 0, current: app.getVersion() };
+let fakeTimer = null;
+
+function pushUpdateState(patch) {
+  updateState = { ...updateState, ...patch };
+  if (controlWin && !controlWin.isDestroyed()) {
+    controlWin.webContents.send('itb:update', updateState);
+  }
+}
+
+function checkForUpdate() {
+  // Never disturb a download / a downloaded update that is waiting.
+  if (updateState.status === 'downloading' || updateState.status === 'ready') return;
+  autoUpdater.checkForUpdates().catch((err) => {
+    console.error('[itb] update check failed:', err && err.message);
+  });
+}
+
+function startUpdateDownload() {
+  if (FAKE_UPDATE) {
+    let pct = 0;
+    pushUpdateState({ status: 'downloading', percent: 0 });
+    clearInterval(fakeTimer);
+    fakeTimer = setInterval(() => {
+      pct += 10;
+      if (pct >= 100) {
+        clearInterval(fakeTimer);
+        pushUpdateState({ status: 'ready', percent: 100 });
+      } else {
+        pushUpdateState({ status: 'downloading', percent: pct });
+      }
+    }, 400);
+    return;
+  }
+  pushUpdateState({ status: 'downloading', percent: 0 });
+  autoUpdater.downloadUpdate().catch((err) => {
+    console.error('[itb] update download failed:', err && err.message);
+    pushUpdateState({ status: 'error', message: 'The download did not finish. Check your internet connection and try again.' });
+  });
+}
+
+function installUpdateNow() {
+  if (FAKE_UPDATE) {
+    console.log('[itb] (fake update) would restart and install now');
+    pushUpdateState({ status: 'idle', version: null, percent: 0 });
+    return;
+  }
+  // Stop the Python backend first: the installer cannot replace
+  // main_fixed.exe while it is still running. isQuitting = true keeps the
+  // "backend stopped unexpectedly" error box from appearing.
+  isQuitting = true;
+  stopBackend();
+  setTimeout(() => autoUpdater.quitAndInstall(true, true), 800);
+}
+
+function setupAutoUpdater() {
+  if (FAKE_UPDATE) {
+    console.log('[itb] FAKE update mode — popup will appear in ~6s');
+    setTimeout(() => {
+      const [a, b, c] = app.getVersion().split('.').map((n) => parseInt(n, 10) || 0);
+      pushUpdateState({ status: 'available', version: `${a}.${b}.${c + 1}`, percent: 0 });
+    }, 6000);
+    return;
+  }
+  if (!app.isPackaged) {
+    console.log('[itb] auto-update skipped (development build)');
+    return;
+  }
+
+  autoUpdater.autoDownload = false;          // ask first, then download
+  autoUpdater.autoInstallOnAppQuit = false;  // "Later" means later
+
+  autoUpdater.on('update-available', (info) => {
+    console.log(`[itb] update available: ${info.version}`);
+    pushUpdateState({ status: 'available', version: info.version, percent: 0 });
+  });
+  autoUpdater.on('update-not-available', () => console.log('[itb] app is up to date'));
+  autoUpdater.on('download-progress', (p) => {
+    pushUpdateState({ status: 'downloading', percent: Math.round(p.percent || 0) });
+  });
+  autoUpdater.on('update-downloaded', (info) => {
+    console.log(`[itb] update downloaded: ${info.version}`);
+    pushUpdateState({ status: 'ready', version: info.version, percent: 100 });
+  });
+  autoUpdater.on('error', (err) => {
+    // Offline / no release yet is normal — only surface it mid-download.
+    console.error('[itb] updater error:', err && err.message);
+    if (updateState.status === 'downloading') {
+      pushUpdateState({ status: 'error', message: 'The download did not finish. Check your internet connection and try again.' });
+    }
+  });
+
+  setTimeout(checkForUpdate, UPDATE_CHECK_DELAY_MS);
+  setInterval(checkForUpdate, UPDATE_CHECK_EVERY_MS);
+}
+
 // ─────────────────────────── IPC surface ─────────────────────────────
 function registerIpc() {
+  ipcMain.handle('itb:update-state', () => updateState);
+  ipcMain.handle('itb:update-download', () => { startUpdateDownload(); return { ok: true }; });
+  ipcMain.handle('itb:update-install', () => { installUpdateNow(); return { ok: true }; });
+
   ipcMain.handle('itb:list-displays', () => ({
     desktop: true,
     electron: true,
@@ -489,6 +608,7 @@ if (!app.requestSingleInstanceLock()) {
 
     createControlWindow();
     watchDisplays();
+    setupAutoUpdater();
 
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) createControlWindow();

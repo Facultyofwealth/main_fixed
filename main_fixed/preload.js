@@ -23,4 +23,14 @@ contextBridge.exposeInMainWorld('itbDesktop', {
   // Microphone (OS-level, not a browser prompt)
   micStatus: () => ipcRenderer.invoke('itb:mic-status'),
   openMicSettings: () => ipcRenderer.invoke('itb:open-mic-settings'),
+
+  // Auto-update (popup is drawn by the page; main process does the work)
+  getUpdateState: () => ipcRenderer.invoke('itb:update-state'),
+  downloadUpdate: () => ipcRenderer.invoke('itb:update-download'),
+  installUpdate: () => ipcRenderer.invoke('itb:update-install'),
+  onUpdate: (callback) => {
+    const handler = (_event, state) => callback(state);
+    ipcRenderer.on('itb:update', handler);
+    return () => ipcRenderer.removeListener('itb:update', handler);
+  },
 });

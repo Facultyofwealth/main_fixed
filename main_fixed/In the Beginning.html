@@ -1240,6 +1240,7 @@
             <div style="position:absolute;left:50%;transform:translateX(-50%);font-size:13px;color:var(--text-dim);display:flex;align-items:center;gap:6px;font-weight:600;letter-spacing:0.5px;">
               SESSION <span id="sessionTimer" style="color:#a67c52;font-weight:700;font-family:monospace;font-size:14px;">00:00:00</span>
               <span id="trial-badge" onclick="openTrialModal()" title="Deepgram trial expired — click to enter your key">GET YOUR KEY</span>
+              <span id="update-badge" title="A new version of the app is available"></span>
             </div>
             <div style="display:flex;align-items:center;gap:14px;margin-left:18px;padding-left:18px;border-left:1px solid rgba(255,255,255,0.1);">
 
@@ -1536,6 +1537,10 @@
                         <span style="color:#e5e7eb;font-weight:600;">3.</span> Use the phone controls to navigate verses in real time.
                     </div>
                 </div>
+            </div>
+            <!-- Shown only on the very first launch: leads on to the guided tour -->
+            <div id="remote-firstrun-row" style="display:none;padding:0 24px 24px;">
+                <button onclick="closeRemoteModal()" style="width:100%;padding:12px;background:#a67c52;border:none;border-radius:10px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;">Continue to the guided tour</button>
             </div>
         </div>
     </div>
@@ -5579,6 +5584,28 @@
         setTimeout(tryStart, 600);
     }
 
+    // First launch on a new computer, strictly in this order:
+    //   1) email prompt  ->  2) remote-control QR code  ->  3) guided tour
+    // Once the tour has been shown this never runs again on that computer.
+    async function runFirstRunFlow() {
+        try {
+            if (localStorage.getItem('itb_tour_seen_desktop')) return;
+        } catch (_) { return; }
+
+        await churchIdReady;   // waits here until the email has been entered
+        try {
+            await openRemoteModal();   // builds the QR code from that email
+            const row = document.getElementById('remote-firstrun-row');
+            if (row) row.style.display = 'block';
+            window._afterRemoteClose = () => {
+                if (row) row.style.display = 'none';
+                maybeAutoStartTour();
+            };
+        } catch (_) {
+            maybeAutoStartTour();  // never let a QR problem block the tour
+        }
+    }
+
     // ===================== INIT =====================
     loadState();
     connectDesktopControl();
@@ -5593,7 +5620,7 @@
     if (appState.displayMode) setDisplayMode(appState.displayMode, true);
     if (appState.outputType) selectOutput(appState.outputType, true);
     if (appState.transcriptionMode) setTranscriptionMode(appState.transcriptionMode);
-    maybeAutoStartTour();
+    runFirstRunFlow();
 
     // Appearance: restore saved choices, then tell the output screen how to look.
     // This also clears any background image left on the server from an earlier
@@ -5956,6 +5983,13 @@
     function closeRemoteModal() {
         const modal = document.getElementById('remote-modal');
         if (modal) modal.style.display = 'none';
+        // One-shot hook: set only by the first-run flow so the guided tour
+        // starts right after the QR code is dismissed. Normal use is unaffected.
+        if (typeof window._afterRemoteClose === 'function') {
+            const next = window._afterRemoteClose;
+            window._afterRemoteClose = null;
+            next();
+        }
     }
 
     function copyRemoteUrl() {
@@ -6938,6 +6972,250 @@
         try { localStorage.setItem('itb_lang', lang); } catch(e) {}
         showToast('Language set to ' + lang);
     }
+    </script>
+
+    <!-- ============================================================
+         APP UPDATE POPUP  (driven by Electron auto-updater; hidden in a
+         normal browser because window.itbDesktop.onUpdate does not exist)
+    ============================================================ -->
+    <style>
+        #update-badge {
+            display: none;
+            background: rgba(166,124,82,0.15);
+            border: 1px solid rgba(166,124,82,0.55);
+            color: #a67c52;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        #update-badge:hover { background: rgba(166,124,82,0.3); color: #fff; }
+
+        #update-modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.78);
+            z-index: 100000;
+            align-items: center;
+            justify-content: center;
+        }
+        #update-modal.active { display: flex; }
+        .upd-card {
+            position: relative;
+            background: #13161c;
+            border: 1px solid rgba(166,124,82,0.45);
+            border-radius: 16px;
+            width: 420px;
+            max-width: 94vw;
+            padding: 30px 28px 26px;
+            box-shadow: 0 30px 80px rgba(0,0,0,0.75);
+            text-align: center;
+            font-family: 'Inter', -apple-system, sans-serif;
+            animation: itbUpdIn 0.22s ease-out;
+        }
+        @keyframes itbUpdIn {
+            from { opacity: 0; transform: translateY(-14px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        @media (prefers-reduced-motion: reduce) { .upd-card { animation: none; } }
+        .upd-close {
+            position: absolute; top: 12px; right: 14px;
+            background: none; border: none; color: #6b7280;
+            font-size: 20px; line-height: 1; cursor: pointer; padding: 4px 8px;
+        }
+        .upd-close:hover { color: #e5e7eb; }
+        .upd-icon {
+            width: 54px; height: 54px; margin: 0 auto 16px;
+            border-radius: 50%;
+            background: rgba(166,124,82,0.14);
+            border: 1px solid rgba(166,124,82,0.4);
+            display: flex; align-items: center; justify-content: center;
+            color: #a67c52;
+        }
+        .upd-title { font-size: 18px; font-weight: 800; color: #e5e7eb; margin-bottom: 8px; line-height: 1.3; }
+        .upd-body  { font-size: 13px; color: #9ca3af; line-height: 1.7; margin-bottom: 20px; }
+        .upd-progress {
+            display: none;
+            height: 8px; margin: 0 0 8px;
+            background: rgba(255,255,255,0.08);
+            border-radius: 4px; overflow: hidden;
+        }
+        .upd-progress-fill { height: 100%; width: 0%; background: #a67c52; border-radius: 4px; transition: width 0.25s ease; }
+        .upd-percent { display: none; font-size: 12px; font-weight: 700; color: #a67c52; margin-bottom: 18px; }
+        .upd-actions { display: flex; gap: 10px; justify-content: center; }
+        .upd-btn {
+            border-radius: 8px; padding: 10px 20px;
+            font-size: 13px; font-weight: 700; cursor: pointer;
+            font-family: inherit; transition: background 0.15s, color 0.15s;
+        }
+        .upd-btn:focus-visible, .upd-close:focus-visible { outline: 2px solid #c09060; outline-offset: 2px; }
+        .upd-btn-primary { background: #a67c52; border: 1px solid #a67c52; color: #fff; }
+        .upd-btn-primary:hover { background: #c09060; border-color: #c09060; }
+        .upd-btn-primary:disabled { opacity: 0.6; cursor: default; }
+        .upd-btn-ghost { background: transparent; border: 1px solid rgba(255,255,255,0.14); color: #9ca3af; }
+        .upd-btn-ghost:hover { background: rgba(255,255,255,0.06); color: #e5e7eb; }
+    </style>
+
+    <div id="update-modal" role="dialog" aria-modal="true" aria-labelledby="upd-title">
+        <div class="upd-card">
+            <button class="upd-close" id="upd-close" aria-label="Close">&times;</button>
+            <div class="upd-icon">
+                <svg width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 3v12"/><polyline points="7 11 12 16 17 11"/><path d="M5 21h14"/></svg>
+            </div>
+            <div class="upd-title" id="upd-title"></div>
+            <div class="upd-body" id="upd-body"></div>
+            <div class="upd-progress" id="upd-progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div class="upd-progress-fill" id="upd-fill"></div></div>
+            <div class="upd-percent" id="upd-percent"></div>
+            <div class="upd-actions">
+                <button class="upd-btn upd-btn-primary" id="upd-primary"></button>
+                <button class="upd-btn upd-btn-ghost" id="upd-secondary"></button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    (function () {
+        var api = window.itbDesktop;
+        if (!api || typeof api.onUpdate !== 'function') return;   // browser or older shell: do nothing
+
+        var modal   = document.getElementById('update-modal');
+        var badge   = document.getElementById('update-badge');
+        var elTitle = document.getElementById('upd-title');
+        var elBody  = document.getElementById('upd-body');
+        var elProg  = document.getElementById('upd-progress');
+        var elFill  = document.getElementById('upd-fill');
+        var elPct   = document.getElementById('upd-percent');
+        var btnP    = document.getElementById('upd-primary');
+        var btnS    = document.getElementById('upd-secondary');
+        var btnX    = document.getElementById('upd-close');
+
+        var state = { status: 'idle' };
+        var dismissedKey = '';     // "status:version" the operator chose Later on
+        var pendingOpen = false;   // waiting for transcription to stop before interrupting
+        var toldAboutWait = false;
+
+        function isTranscribing() { try { return !!transcribing; } catch (e) { return false; } }
+        function keyOf(s) { return s.status + ':' + s.version; }
+        function isOpen() { return modal.classList.contains('active'); }
+
+        function render() {
+            var s = state, v = s.version ? 'version ' + s.version : 'the new version';
+            elProg.style.display = 'none';
+            elPct.style.display = 'none';
+            btnP.disabled = false;
+            btnP.style.display = '';
+            btnS.style.display = '';
+
+            if (s.status === 'available') {
+                elTitle.textContent = 'Download the latest version of this app';
+                elBody.textContent = 'Version ' + s.version + ' is available. You are using version ' + (s.current || 'an older version') + '.';
+                btnP.textContent = 'Download';
+                btnS.textContent = 'Later';
+            } else if (s.status === 'downloading') {
+                var pct = Math.max(0, Math.min(100, s.percent || 0));
+                elTitle.textContent = 'Downloading ' + v;
+                elBody.textContent = 'You can keep using the app while this downloads.';
+                elProg.style.display = 'block';
+                elPct.style.display = 'block';
+                elFill.style.width = pct + '%';
+                elProg.setAttribute('aria-valuenow', String(pct));
+                elPct.textContent = pct + '%';
+                btnP.style.display = 'none';
+                btnS.textContent = 'Hide';
+            } else if (s.status === 'ready') {
+                elTitle.textContent = 'Version ' + s.version + ' is ready to install';
+                elBody.textContent = 'The app will close and reopen to finish installing.' +
+                    (isTranscribing() ? ' Live transcription is running and will stop.' : '');
+                btnP.textContent = 'Restart and install';
+                btnS.textContent = 'Later';
+            } else if (s.status === 'error') {
+                elTitle.textContent = 'The update did not download';
+                elBody.textContent = s.message || 'Check your internet connection and try again.';
+                btnP.textContent = 'Try again';
+                btnS.textContent = 'Close';
+            }
+        }
+
+        function updateBadge() {
+            var s = state, label = '';
+            if (s.status === 'available') label = 'UPDATE AVAILABLE';
+            else if (s.status === 'downloading') label = 'UPDATING ' + (s.percent || 0) + '%';
+            else if (s.status === 'ready') label = 'RESTART TO UPDATE';
+            else if (s.status === 'error') label = 'UPDATE FAILED';
+            badge.textContent = label;
+            badge.style.display = label ? 'inline-flex' : 'none';
+        }
+
+        function show() {
+            if (state.status === 'idle') return;
+            render();
+            modal.classList.add('active');
+            var focusTarget = btnP.style.display === 'none' ? btnS : btnP;
+            setTimeout(function () { try { focusTarget.focus(); } catch (e) {} }, 30);
+        }
+        function hide() { modal.classList.remove('active'); }
+
+        // "Later" / Close: hide it and don't re-open for this same update.
+        function dismiss() {
+            if (state.status !== 'downloading') dismissedKey = keyOf(state);
+            pendingOpen = false;
+            hide();
+        }
+
+        function requestOpen() {
+            if (isTranscribing()) {
+                // Never cover the screen in the middle of a live service.
+                pendingOpen = true;
+                if (!toldAboutWait && typeof showToast === 'function') {
+                    toldAboutWait = true;
+                    showToast('Update available — it will show when transcription stops', 5000);
+                }
+                return;
+            }
+            show();
+        }
+
+        function apply(s) {
+            state = s || { status: 'idle' };
+            updateBadge();
+            if (state.status === 'idle') { hide(); pendingOpen = false; return; }
+            if (isOpen()) render();
+            if (state.status === 'downloading') return;
+            if (keyOf(state) !== dismissedKey) requestOpen();
+        }
+
+        btnP.addEventListener('click', function () {
+            if (state.status === 'available' || state.status === 'error') {
+                api.downloadUpdate();
+            } else if (state.status === 'ready') {
+                btnP.disabled = true;
+                btnP.textContent = 'Restarting…';
+                api.installUpdate();
+            }
+        });
+        btnS.addEventListener('click', dismiss);
+        btnX.addEventListener('click', dismiss);
+        modal.addEventListener('click', function (e) { if (e.target === modal) dismiss(); });
+        badge.addEventListener('click', function () { dismissedKey = ''; show(); });
+        document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && isOpen()) dismiss(); });
+
+        // Show a waiting popup as soon as transcription stops.
+        setInterval(function () {
+            if (pendingOpen && !isTranscribing() && state.status !== 'idle' && state.status !== 'downloading') {
+                pendingOpen = false;
+                show();
+            }
+        }, 3000);
+
+        api.onUpdate(apply);
+        if (typeof api.getUpdateState === 'function') {
+            api.getUpdateState().then(apply).catch(function () {});
+        }
+    })();
     </script>
 </body>
 </html>
