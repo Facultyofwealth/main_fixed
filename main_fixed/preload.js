@@ -33,4 +33,14 @@ contextBridge.exposeInMainWorld('itbDesktop', {
     ipcRenderer.on('itb:update', handler);
     return () => ipcRenderer.removeListener('itb:update', handler);
   },
+
+  // Splash window only (main process ignores these from any other window)
+  cancelStartup: () => ipcRenderer.invoke('itb:cancel-startup'),
+  minimizeSplash: () => ipcRenderer.invoke('itb:minimize-splash'),
+
+  onStartupStatus: (callback) => {
+    const handler = (_event, state) => callback(state);
+    ipcRenderer.on('itb:startup-status', handler);
+    return () => ipcRenderer.removeListener('itb:startup-status', handler);
+  },
 });

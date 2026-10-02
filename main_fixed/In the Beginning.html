@@ -1061,6 +1061,55 @@
             50%       { opacity: 0.65; }
         }
 
+        /* Transient search-status notice (shown under the Detected Verses header, then fades away) */
+        #search-status-notice {
+            display: none;
+            flex-shrink: 0;
+            margin: 6px 8px 0;
+            padding: 7px 10px;
+            border-radius: 8px;
+            border: 1px solid rgba(249,203,66,0.35);
+            border-left: 3px solid #f9cb42;
+            background: rgba(249,203,66,0.07);
+            opacity: 0;
+            transform: translateY(-4px);
+            transition: opacity 0.35s ease, transform 0.35s ease;
+            pointer-events: none;
+        }
+        #search-status-notice.show { opacity: 1; transform: translateY(0); }
+        #search-status-notice.ready {
+            border-color: rgba(74,222,128,0.35);
+            border-left-color: #4ade80;
+            background: rgba(74,222,128,0.07);
+        }
+        #search-status-notice .sn-title { font-size: 11px; font-weight: 800; color: #e5e7eb; }
+        #search-status-notice .sn-body  { font-size: 10px; color: #9ca3af; margin-top: 2px; line-height: 1.5; }
+
+        /* Prepare-for-service popup */
+        #prepare-modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.82);
+            z-index: 99998;
+            align-items: center;
+            justify-content: center;
+        }
+        #prepare-modal.active { display: flex; }
+        .prep-card {
+            background: #13161c;
+            border: 1px solid rgba(166,124,82,0.45);
+            border-radius: 16px;
+            width: 420px;
+            max-width: 94vw;
+            padding: 28px 26px 24px;
+            box-shadow: 0 30px 80px rgba(0,0,0,0.75);
+            text-align: center;
+            animation: slideIn 0.25s cubic-bezier(0.34,1.56,0.64,1);
+        }
+        .prep-title { font-size: 18px; font-weight: 800; color: #e5e7eb; margin-bottom: 10px; }
+        .prep-body  { font-size: 13px; color: #9ca3af; line-height: 1.7; margin-bottom: 20px; }
+
         /* Trial-expired overlay modal */
         #trial-modal {
             display: none;
@@ -1476,6 +1525,8 @@
                     <span style="font-size:9px;color:#555;display:flex;align-items:center;gap:5px;">Exact / Paraphrase</span>
                     <span style="margin-left:auto;font-size:9px;color:#555;cursor:pointer;" onclick="clearDetectedPanel()">Clear</span>
                 </div>
+                <!-- Transient search-status notice: appears, then fades (driven by the script near the end of the page) -->
+                <div id="search-status-notice" role="status" aria-live="polite"><div class="sn-title"></div><div class="sn-body"></div></div>
                 <div id="detected-verses" style="flex:1;overflow-y:auto;font-size:12px;padding:4px;"><div class="empty-state">No verses detected yet<br><span style="font-size:10px;">Exact refs auto-queue · Paraphrases tap to stage</span></div></div>
                 <!-- Hidden compat element — JS still references paraphrase-matches -->
                 <div id="paraphrase-matches" style="display:none;"></div>
@@ -4257,12 +4308,17 @@
     let mediaStream  = null;
     let audioContext = null;
     let processor    = null;
+    let audioWorkletNode = null;
+    let captureSinkNode = null;
     let micSourceNode = null;
     let micHighPassNode = null;
     let micLowPassNode = null;
     let micCompressorNode = null;
     let micGainNode = null;
     let transcribing = false;
+    let startInFlight = false;
+    let transcriptionSessionId = 0;
+    let dgRestartTimer = null;
     let _dgRestarting = false;  // prevents double-restart loops on dg_error
     let backendMode  = null;   // 'deepgram' | 'text'
     let controlWs    = null;
@@ -4439,13 +4495,66 @@
         }
     }
 
+    async function createPcmCaptureWorklet(context, onChunk) {
+        const source = `
+            class ItbPcmCaptureProcessor extends AudioWorkletProcessor {
+                constructor() {
+                    super();
+                    this.targetRate = 16000;
+                    this.ratio = sampleRate / this.targetRate;
+                    this.phase = 0;
+                    this.pcm = [];
+                }
+                process(inputs, outputs) {
+                    const input = inputs[0];
+                    const output = outputs[0];
+                    if (!input || !input[0]) return true;
+                    const samples = input[0];
+                    let pos = this.phase;
+                    for (; pos < samples.length; pos += this.ratio) {
+                        const left = Math.floor(pos);
+                        const right = Math.min(left + 1, samples.length - 1);
+                        const blend = pos - left;
+                        const value = Math.max(-1, Math.min(1, samples[left] + (samples[right] - samples[left]) * blend));
+                        this.pcm.push(value < 0 ? value * 0x8000 : value * 0x7fff);
+                    }
+                    this.phase = pos - samples.length;
+                    while (this.pcm.length >= 960) {
+                        const pcm = new Int16Array(this.pcm.splice(0, 960));
+                        this.port.postMessage(pcm.buffer, [pcm.buffer]);
+                    }
+                    if (output && output[0]) output[0].set(samples);
+                    return true;
+                }
+            }
+            registerProcessor('itb-pcm-capture', ItbPcmCaptureProcessor);
+        `;
+        const url = URL.createObjectURL(new Blob([source], { type: 'application/javascript' }));
+        try {
+            await context.audioWorklet.addModule(url);
+        } finally {
+            URL.revokeObjectURL(url);
+        }
+        const node = new AudioWorkletNode(context, 'itb-pcm-capture', {
+            numberOfInputs: 1,
+            numberOfOutputs: 1,
+            outputChannelCount: [1],
+        });
+        node.port.onmessage = (event) => onChunk(event.data);
+        return node;
+    }
+
     async function startTranscription() {
+        if (transcribing || startInFlight) return;
+        startInFlight = true;
+        const sessionId = ++transcriptionSessionId;
         //  20-minute trial gate 
         // Only blocks Deepgram. Whisper/Offline and all other features work.
         const _wantsDeepgram = appState.transcriptionMode !== 'offline';
         if (_wantsDeepgram && !getDgKey() && trialExpired()) {
             _showTrialExpiredBadge();
             openTrialModal();
+            startInFlight = false;
             showToast('Free trial ended — paste your Deepgram key to continue', 6000);
             return;
         }
@@ -4475,6 +4584,7 @@
         } catch (e) {
             appendTranscriptLine('Cannot reach backend at ' + BACKEND_URL + ' — is uvicorn running?', 'system');
             setConnStatus('error');
+            startInFlight = false;
             showToast('Backend offline — run: uvicorn main_fixed:app --reload');
             return;
         }
@@ -4511,6 +4621,7 @@
                         displayStream.getTracks().forEach(track => track.stop());
                         appendTranscriptLine('No system audio was shared. Pick a tab or screen with audio and enable audio sharing.', 'system');
                         setConnStatus('error');
+                        startInFlight = false;
                         return;
                     }
                     mediaStream = displayStream;
@@ -4533,14 +4644,13 @@
                 }
 
                 audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+                await audioContext.resume();
                 micSourceNode = audioContext.createMediaStreamSource(mediaStream);
                 // Deepgram recommends sending 20–100 ms chunks for low latency.
                 // 1024 samples @ 16 kHz is ~64 ms, which helps the first words
                 // appear much faster than the old ~256 ms buffer.
-                processor    = audioContext.createScriptProcessor(1024, 1, 1);
-
                 if (captureSystem) {
-                    micSourceNode.connect(processor);
+                    // The AudioWorklet is attached below after this source is ready.
                 } else {
                     micHighPassNode = audioContext.createBiquadFilter();
                     micHighPassNode.type = 'highpass';
@@ -4566,39 +4676,28 @@
                     micHighPassNode.connect(micLowPassNode);
                     micLowPassNode.connect(micCompressorNode);
                     micCompressorNode.connect(micGainNode);
-                    micGainNode.connect(processor);
                 }
-
-                processor.onaudioprocess = (e) => {
-                    if (Date.now() < remotePauseUntil) {
-                        return;
-                    }
-                    const float32 = e.inputBuffer.getChannelData(0);
-                    const int16   = new Int16Array(float32.length);
-                    for (let i = 0; i < float32.length; i++) {
-                        const s = Math.max(-1, Math.min(1, float32[i]));
-                        int16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
-                    }
+                const audioInput = captureSystem ? micSourceNode : micGainNode;
+                audioWorkletNode = await createPcmCaptureWorklet(audioContext, (chunk) => {
+                    if (sessionId !== transcriptionSessionId || Date.now() < remotePauseUntil) return;
                     if (ws && ws.readyState === WebSocket.OPEN) {
-                        if (ws.bufferedAmount > WS_MAX_BUFFERED_BYTES) {
-                            return; // Drop stale chunks rather than fall behind live speech.
-                        }
-                        // Flush any pre-buffered chunks first, then send current
+                        if (ws.bufferedAmount > WS_MAX_BUFFERED_BYTES) return;
                         while (_preBuffer.length && ws.bufferedAmount <= WS_MAX_BUFFERED_BYTES) {
                             ws.send(_preBuffer.shift());
                         }
-                        if (ws.bufferedAmount > WS_MAX_BUFFERED_BYTES) {
-                            return;
-                        }
-                        ws.send(int16.buffer);
+                        if (ws.bufferedAmount <= WS_MAX_BUFFERED_BYTES) ws.send(chunk);
                     } else {
-                        // WS not open yet - keep enough startup audio to avoid losing first words.
-                        _preBuffer.push(int16.buffer);
+                        _preBuffer.push(chunk);
                         if (_preBuffer.length > PREBUFFER_CHUNK_LIMIT) _preBuffer.shift();
                     }
-                };
-
-                processor.connect(audioContext.destination);
+                });
+                // Keep the worklet alive without routing microphone audio to speakers.
+                captureSinkNode = audioContext.createGain();
+                captureSinkNode.gain.value = 0;
+                audioInput.connect(audioWorkletNode);
+                audioWorkletNode.connect(captureSinkNode);
+                captureSinkNode.connect(audioContext.destination);
+                await audioContext.resume();
 
             } catch (e) {
                 const captureLabel = normalizeAudioSource(appState && appState.audioSource) === 'system'
@@ -4606,6 +4705,7 @@
                     : 'Microphone access failed';
                 appendTranscriptLine(` ${captureLabel}: ${e.message}`, 'system');
                 setConnStatus('error');
+                startInFlight = false;
                 return;
             }
         }
@@ -4616,6 +4716,7 @@
         ws.binaryType = 'arraybuffer';
 
         ws.onopen = () => {
+            if (sessionId !== transcriptionSessionId) { ws.close(); return; }
             setConnStatus('ready');
             appendTranscriptLine('WebSocket open — sending handshake…', 'system');
             ws.send(JSON.stringify({
@@ -4627,6 +4728,7 @@
 
         window.ws = ws;
         ws.onmessage = (e) => {
+            if (sessionId !== transcriptionSessionId) return;
             try {
                 const msg = JSON.parse(e.data);
                 handleWsMessage(msg);
@@ -4634,11 +4736,13 @@
         };
 
         ws.onerror = (e) => {
+            if (sessionId !== transcriptionSessionId) return;
             appendTranscriptLine('WebSocket error', 'system');
             setConnStatus('error');
         };
 
         ws.onclose = () => {
+            if (sessionId !== transcriptionSessionId) return;
             if (transcribing) {
                 appendTranscriptLine('Connection closed', 'system');
                 setConnStatus('off');
@@ -4654,6 +4758,7 @@
         }
 
         transcribing = true;
+        startInFlight = false;
         setTranscribeBtn(true);
         setConnStatus('live');
         sendRemoteTranscriptionState();
@@ -4664,6 +4769,10 @@
     }
 
     function stopTranscription(silent = false) {
+        transcriptionSessionId += 1;
+        startInFlight = false;
+        clearTimeout(dgRestartTimer);
+        dgRestartTimer = null;
         transcribing = false;
         _stopTrialCountdown();   // stop counting trial seconds
         stopSessionTimer();      // pause session timer — only runs during transcription
@@ -4675,6 +4784,8 @@
 
         // Stop mic
         if (processor)    { try { processor.disconnect(); } catch(_){} processor = null; }
+        if (audioWorkletNode) { try { audioWorkletNode.port.close(); audioWorkletNode.disconnect(); } catch(_){} audioWorkletNode = null; }
+        if (captureSinkNode) { try { captureSinkNode.disconnect(); } catch(_){} captureSinkNode = null; }
         if (micGainNode)  { try { micGainNode.disconnect(); } catch(_){} micGainNode = null; }
         if (micCompressorNode) { try { micCompressorNode.disconnect(); } catch(_){} micCompressorNode = null; }
         if (micLowPassNode) { try { micLowPassNode.disconnect(); } catch(_){} micLowPassNode = null; }
@@ -4830,23 +4941,14 @@
                 appendTranscriptLine('' + (msg.error || msg.message || 'Unknown error'), 'system');
                 // Auto-restart Deepgram if it drops mid-sermon
                 // (e.g. after 10 s of silence  net0001 error)
-                if (transcribing && !_dgRestarting) {
+                if (msg.type === 'dg_error' && transcribing && !_dgRestarting) {
                     _dgRestarting = true;
+                    stopTranscription(true);
                     appendTranscriptLine('Deepgram disconnected — auto-restarting in 2 s…', 'system');
-                    setTimeout(function () {
+                    dgRestartTimer = setTimeout(function () {
                         _dgRestarting = false;
-                        if (transcribing) {
-                            appendTranscriptLine('Reconnecting to Deepgram…', 'system');
-                            // Re-open WebSocket connection
-                            // Trigger restart via the main toggle button
-                            const _toggleBtn = document.getElementById('startBtn') ||
-                                               document.querySelector('[onclick*="toggleTranscription"]') ||
-                                               document.querySelector('[onclick*="startTranscription"]');
-                            if (_toggleBtn && transcribing) {
-                                // Stop first, then restart
-                                _toggleBtn.click();
-                                setTimeout(function(){ if (!transcribing) _toggleBtn.click(); }, 600);
-                            }
+                        if (!transcribing) {
+                            startTranscription();
                         }
                     }, 2000);
                 }
@@ -6966,6 +7068,108 @@
             </a>
         </div>
     </div>
+
+    <!-- ============================================================
+         PREPARE FOR SERVICE POPUP + SEARCH-STATUS NOTICES
+         Paraphrase (semantic) search loads in the background on the desktop app.
+         Keyword/exact search and transcription never wait for it.
+         ============================================================ -->
+    <div id="prepare-modal">
+        <div class="prep-card">
+            <div class="prep-title">Prepare for Service</div>
+            <div class="prep-body">
+                Start the app a few minutes before preaching to allow Semantic Search to finish loading.
+                Keyword Search is available immediately.
+            </div>
+            <button class="trial-save-btn" onclick="closePrepareModal()">OK</button>
+        </div>
+    </div>
+
+    <script>
+    (function () {
+        // ---- timings (milliseconds) - adjust here ----
+        var NOTICE_PREPARING_MS   = 9000;    // how long the "Preparing…" notice stays before fading
+        var NOTICE_READY_MS       = 6000;    // how long the "Ready" notice stays before fading
+        var NOTICE_UNAVAILABLE_MS = 9000;
+        var POPUP_DELAY_MS        = 6000;    // popup only appears if still preparing after this long
+        var POLL_PREPARING_MS     = 3000;
+        var POLL_IDLE_MS          = 15000;
+        var POLL_RETRY_MS         = 5000;
+
+        var lastState = null, noticeTimer = null, noticeHideTimer = null;
+        function el(id) { return document.getElementById(id); }
+
+        function showNotice(kind, title, body, ms) {
+            var n = el('search-status-notice');
+            if (!n) return;
+            clearTimeout(noticeTimer); clearTimeout(noticeHideTimer);
+            n.className = (kind === 'ready') ? 'ready' : '';
+            n.querySelector('.sn-title').textContent = title;
+            n.querySelector('.sn-body').textContent  = body;
+            n.style.display = 'block';
+            void n.offsetWidth;                       // restart the fade-in when replacing a notice
+            n.classList.add('show');
+            noticeTimer = setTimeout(function () {
+                n.classList.remove('show');
+                noticeHideTimer = setTimeout(function () { n.style.display = 'none'; }, 400);
+            }, ms);
+        }
+
+        window.closePrepareModal = function () {
+            var m = el('prepare-modal');
+            if (m) m.classList.remove('active');
+        };
+        function maybeOpenPrepareModal() {
+            if (lastState !== 'preparing') return;   // finished meanwhile - nothing to warn about
+            try {
+                if (sessionStorage.getItem('itb_prepare_popup_seen')) return;
+                sessionStorage.setItem('itb_prepare_popup_seen', '1');
+            } catch (e) {}
+            var m = el('prepare-modal');
+            if (m) m.classList.add('active');
+        }
+        (function () {
+            var m = el('prepare-modal');
+            if (m) m.addEventListener('click', function (e) { if (e.target === m) window.closePrepareModal(); });
+        })();
+
+        function schedule(ms) { setTimeout(poll, ms); }
+
+        function handle(st) {
+            if (st !== lastState) {
+                lastState = st;
+                if (st === 'preparing') {
+                    showNotice('prep', 'Paraphrase Search: Preparing…',
+                        'Exact Search is ready. Paraphrase Search will be available shortly.', NOTICE_PREPARING_MS);
+                    setTimeout(maybeOpenPrepareModal, POPUP_DELAY_MS);
+                } else if (st === 'ready') {
+                    showNotice('ready', 'Paraphrase Search: Ready',
+                        'Exact + Paraphrase Search are fully available.', NOTICE_READY_MS);
+                    window.closePrepareModal();
+                } else if (st === 'unavailable') {
+                    showNotice('prep', 'Paraphrase Search: Unavailable',
+                        'Exact Search is active.', NOTICE_UNAVAILABLE_MS);
+                    window.closePrepareModal();
+                }
+            }
+            if (st === 'ready' || st === 'unavailable') return;   // finished - stop polling
+            schedule(st === 'preparing' ? POLL_PREPARING_MS : POLL_IDLE_MS);
+        }
+
+        function poll() {
+            var base = (typeof BACKEND_URL !== 'undefined') ? BACKEND_URL : '';
+            fetch(base + '/health', { cache: 'no-store' })
+                .then(function (r) { return r.json(); })
+                .then(function (h) {
+                    var st = (h && h.vector_state) ? h.vector_state
+                           : ((h && h.vector && h.vector.ready) ? 'ready' : 'idle');
+                    handle(st);
+                })
+                .catch(function () { schedule(POLL_RETRY_MS); });
+        }
+        setTimeout(poll, 1500);
+    })();
+    </script>
 
     <script>
     function saveTranscriptionLanguage(lang) {

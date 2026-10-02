@@ -11,6 +11,41 @@ try:
 except Exception:
     pass
 
+#  Diagnostic file log (packaged .exe has no console, so prints are invisible) 
+# Writes to %LOCALAPPDATA%\InTheBeginning\app.log. Purely additive: every call is
+# wrapped so a logging failure can never affect the app.
+import logging
+from logging.handlers import RotatingFileHandler
+_itb_log = logging.getLogger("itb_diag")
+
+def _setup_diag_log():
+    try:
+        base = os.environ.get("LOCALAPPDATA") or os.path.expanduser("~")
+        d = os.path.join(base, "InTheBeginning")
+        os.makedirs(d, exist_ok=True)
+        h = RotatingFileHandler(os.path.join(d, "app.log"), maxBytes=1_000_000,
+                                backupCount=1, encoding="utf-8")
+        h.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
+        _itb_log.addHandler(h)
+        _itb_log.setLevel(logging.INFO)
+        _itb_log.propagate = False
+    except Exception:
+        pass
+
+def _dlog(msg: str):
+    try:
+        _itb_log.info(msg)
+    except Exception:
+        pass
+
+def _dlog_exc(msg: str):
+    try:
+        _itb_log.exception(msg)   # includes the full traceback
+    except Exception:
+        pass
+
+_setup_diag_log()
+
 #  Load .env BEFORE anything else 
 _script_dir = os.path.dirname(os.path.abspath(__file__))
 
@@ -61,6 +96,8 @@ _env_path = next((p for p in _env_candidates if os.path.exists(p)), _env_candida
 from dotenv import load_dotenv
 load_dotenv(dotenv_path=_env_path, override=True)
 print(f".env loaded from: {_env_path}  (exists={os.path.exists(_env_path)})")
+_dlog(f"=== app start | frozen={getattr(sys, 'frozen', False)} | python={sys.version.split()[0]} | "
+      f".env path={_env_path} exists={os.path.exists(_env_path)}")
 
 import time, json, asyncio, re, tempfile, io, zipfile, socket, contextvars
 import sqlite3, hashlib, secrets
@@ -168,6 +205,11 @@ def _hash_password(password: str, salt: str) -> str:
 
 # FastAPI app
 app = FastAPI(title="In The Beginning API", version="6.0.0")
+app.state.startup = {
+    "ready": False,
+    "progress": 5,
+    "message": "Starting In The Beginning services...",
+}
 
 app.add_middleware(
     CORSMiddleware,
@@ -638,24 +680,44 @@ class BibleIndex:
             return
 
         #  Cache paths (live next to this script) 
-        _base = os.path.dirname(os.path.abspath(__file__))
-        _faiss_path = os.path.join(_base, "bible_index.faiss")
-        _emb_path   = os.path.join(_base, "bible_embeddings.npy")
+        # Cache lives in a PERSISTENT, writable folder (get_data_dir): in the packaged .exe the
+        # script folder is a temp dir that is wiped on exit, which forced a full re-embed
+        # of all 31,102 verses on every launch. In dev (no ITB_DATA_DIR) this is still the script folder.
+        _script_base = os.path.dirname(os.path.abspath(__file__))
+        try:
+            _base = get_data_dir()
+        except Exception:
+            _base = _script_base
+        _CACHE_NAMES = ("bible_index.faiss", "bible_embeddings.npy", "bible_cache_meta.json")
+        _faiss_path = os.path.join(_base, _CACHE_NAMES[0])   # WRITE location
+        _emb_path   = os.path.join(_base, _CACHE_NAMES[1])
         # Cache is keyed by (model name, verse count) so a Bible update
         # or model change automatically invalidates and rebuilds.
-        _cache_meta_path = os.path.join(_base, "bible_cache_meta.json")
+        _cache_meta_path = os.path.join(_base, _CACHE_NAMES[2])
+        # READ location: same as above, unless only a cache next to the script (dev) or
+        # bundled in the .exe exists - then that one is used read-only.
+        _rd = {"faiss": _faiss_path, "emb": _emb_path, "meta": _cache_meta_path}
 
         def _cache_valid() -> bool:
-            if not (os.path.exists(_faiss_path) and os.path.exists(_emb_path)
-                    and os.path.exists(_cache_meta_path)):
+            if not (os.path.exists(_rd["faiss"]) and os.path.exists(_rd["emb"])
+                    and os.path.exists(_rd["meta"])):
                 return False
             try:
-                with open(_cache_meta_path, "r", encoding="utf-8") as f:
+                with open(_rd["meta"], "r", encoding="utf-8") as f:
                     meta = json.load(f)
                 return (meta.get("model") == EMBEDDING_MODEL_NAME
                         and meta.get("verse_count") == len(self.verses))
             except Exception:
                 return False
+
+        if not _cache_valid() and _script_base != _base:
+            _rd.update(
+                faiss=os.path.join(_script_base, _CACHE_NAMES[0]),
+                emb=os.path.join(_script_base, _CACHE_NAMES[1]),
+                meta=os.path.join(_script_base, _CACHE_NAMES[2]),
+            )
+            if not _cache_valid():
+                _rd.update(faiss=_faiss_path, emb=_emb_path, meta=_cache_meta_path)
 
         try:
             import numpy as np
@@ -670,7 +732,7 @@ class BibleIndex:
                 self._embedding_model = SentenceTransformer(
                     EMBEDDING_MODEL_NAME, local_files_only=False
                 )
-                self._faiss_index = faiss.read_index(_faiss_path)
+                self._faiss_index = faiss.read_index(_rd["faiss"])
                 self._vector_ready = True
                 self._vector_status = f"ready: {EMBEDDING_MODEL_NAME} ({self._faiss_index.ntotal} verses) [cached]"
                 VECTOR_READY = True
@@ -941,10 +1003,24 @@ async def _ensure_lan_proxy():
 
 @app.on_event("startup")
 async def startup():
+    app.state.startup = {
+        "ready": False,
+        "progress": 35,
+        "message": "Loading Bible database...",
+    }
     bible.load()
+    app.state.startup = {
+        "ready": False,
+        "progress": 72,
+        "message": "Connecting speech engine...",
+    }
     await init_redis()
     # FAISS index is NOT loaded at startup to stay within 512MB free-tier RAM.
     # It loads lazily the first time transcription begins (see _ensure_vector_index).
+    # Desktop / dev only (NOT Fly/Railway, to keep the 512MB cloud limit): start it now, in the
+    # background, so semantic search is usually ready before the service begins.
+    if not (os.environ.get("FLY_APP_NAME") or os.environ.get("RAILWAY_ENVIRONMENT")):
+        _start_vector_index_background()
     await _ensure_lan_proxy()
     dg  = f"key present ({SERVER_DG_KEY[:8]}…)" if SERVER_DG_KEY else "no key"
     wh  = "lib ready" if WHISPER_AVAILABLE else "not installed"
@@ -952,13 +1028,23 @@ async def startup():
     print(f"Frontend: {FRONTEND_FILE or 'NOT FOUND'}")
     print(f"Bible: {len(bible.verses)} verses ({'FULL KJV' if bible.is_full_bible() else 'INCOMPLETE'}) from {bible.source_path or 'built-in sample'}")
     print(f"Output settings: {_OUTPUT_SETTINGS_PATH} (saved screen_index={get_output_target()}) | output starts OFF")
+    app.state.startup = {
+        "ready": bible.is_full_bible(),
+        "progress": 100 if bible.is_full_bible() else 72,
+        "message": "Ready" if bible.is_full_bible() else "Bible database could not be fully loaded.",
+    }
 
 _vector_index_loaded = False
 _vector_index_lock = None   # created lazily inside the event loop (asyncio.Lock() at module level crashes Python 3.12+)
+_vector_index_task = None   # strong reference to the background load so it is never garbage-collected
+# idle -> preparing -> ready | unavailable.  Reported by /health so the UI can tell the user
+# when paraphrase (semantic) search is available. Keyword search never waits on this.
+_vector_index_state = "idle"
 
 async def _ensure_vector_index():
-    """Load FAISS + embedding model once, on first transcription start."""
-    global _vector_index_loaded, _vector_index_lock
+    """Load FAISS + embedding model once (or build + cache it on the very first run).
+    Runs in the BACKGROUND - transcription never waits for it."""
+    global _vector_index_loaded, _vector_index_lock, _vector_index_state
     if _vector_index_loaded:
         return
     if _vector_index_lock is None:
@@ -966,10 +1052,46 @@ async def _ensure_vector_index():
     async with _vector_index_lock:
         if _vector_index_loaded:
             return
-        print("Loading FAISS vector index on first use…")
-        await asyncio.to_thread(bible.build_vector_index)
+        _vector_index_state = "preparing"
+        print("Loading FAISS vector index in the background...")
+        _dlog("FAISS: background load/build started")
+        try:
+            await asyncio.to_thread(bible.build_vector_index)
+        except Exception as e:
+            _vector_index_state = "unavailable"
+            print(f"FAISS vector index failed: {e}")
+            _dlog_exc(f"FAISS background load failed: {e}")
+            return
         _vector_index_loaded = True
-        print("FAISS vector index ready")
+        _ready = bool(bible.vector_status().get("ready"))
+        _vector_index_state = "ready" if _ready else "unavailable"
+        print("FAISS vector index ready" if _ready else "FAISS vector index unavailable - keyword search only")
+        _dlog(f"FAISS: background load finished | state={_vector_index_state}")
+
+def _start_vector_index_background():
+    """Schedule the semantic-index load and return IMMEDIATELY (never awaited by a session).
+    Safe to call repeatedly: only one load ever runs. Until it finishes, verse matching
+    uses keyword search (BibleIndex.vector_search falls back to keyword_search)."""
+    global _vector_index_task, _vector_index_state
+    if _vector_index_loaded:
+        return
+    if _vector_index_task is not None and not _vector_index_task.done():
+        return
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        return
+    _vector_index_state = "preparing"
+    _vector_index_task = loop.create_task(_ensure_vector_index())
+
+    def _on_done(t):
+        try:
+            t.result()
+        except asyncio.CancelledError:
+            pass
+        except Exception as e:
+            print(f"FAISS background task error: {e}")
+    _vector_index_task.add_done_callback(_on_done)
 
 _whisper_model_loaded = False
 _whisper_model_lock = None  # created lazily inside the event loop
@@ -1559,10 +1681,23 @@ async def api_login(req: LoginReq):
     return {"email": row["email"], "churchName": row["church_name"], "country": row["country"]}
 
 #  Health 
+@app.get("/startup-status")
+def startup_status():
+    """Electron uses this instead of a bare TCP probe before showing the UI."""
+    state = dict(app.state.startup)
+    state.update({
+        "verse_count": len(bible.verses),
+        "bible_ok": bible.is_full_bible(),
+        "bible_source": bible.source_path,
+    })
+    return state
+
+
 @app.get("/health")
 def health():
     return {
         "status":      "ok",
+        "ready":       bool(app.state.startup.get("ready")),
         "verse_count": len(bible.verses),
         "bible_ok":    bible.is_full_bible(),
         "bible_source": bible.source_path,
@@ -1570,6 +1705,7 @@ def health():
         "whisper":     WHISPER_AVAILABLE,
         "openai":      False,
         "vector":      bible.vector_status(),
+        "vector_state": _vector_index_state,
         "mode":        "deepgram" if SERVER_DG_KEY else ("whisper" if WHISPER_AVAILABLE else "text-only"),
     }
 
@@ -3630,10 +3766,13 @@ async def live_ws(ws: WebSocket):
     except WebSocketDisconnect:
         print("Client disconnected before session start")
         return
-    except Exception:
+    except Exception as _init_err:
+        _dlog(f"live_ws init phase ended by {type(_init_err).__name__}: {_init_err}")
         pass
 
     effective_dg_key = session_key or SERVER_DG_KEY
+    _dlog(f"live_ws: requested engine={engine!r} | client_key_present={bool(session_key)} | "
+          f"server_key_present={bool(SERVER_DG_KEY)} | prefetched_chunks={len(prefetched_audio)}")
 
     # Resolve which engine to use
     if engine == "auto":
@@ -3664,9 +3803,11 @@ async def live_ws(ws: WebSocket):
         "whisper": engine == "whisper", "key_source": key_source,
     })
     print(f"Engine: {engine} | key_source: {key_source}")
+    _dlog(f"live_ws: FINAL engine={engine} | key_source={key_source} | whisper_available={WHISPER_AVAILABLE}")
 
-    # Load FAISS lazily — only when transcription actually starts
-    await _ensure_vector_index()
+    # Semantic (FAISS) search loads in the background so Deepgram/Whisper start immediately.
+    # Until it is ready, verse matching uses keyword search (vector_search falls back automatically).
+    _start_vector_index_background()
 
     if engine == "deepgram":
         await _run_deepgram(ws, effective_dg_key, session_state, prefetched_audio)
@@ -3699,6 +3840,14 @@ async def _run_deepgram(
 
     import websockets as _ws_lib
     import inspect
+
+    try:
+        import ssl as _ssl, certifi as _certifi
+        _cafile = _certifi.where()
+        _dlog(f"DG env: websockets={getattr(_ws_lib, '__version__', '?')} | certifi cacert={_cafile} "
+              f"exists={os.path.exists(_cafile)} | ssl_default_paths={_ssl.get_default_verify_paths().cafile}")
+    except Exception as _env_err:
+        _dlog(f"DG env: certifi/ssl check failed: {type(_env_err).__name__}: {_env_err}")
 
     AUDIO_QUEUE_MAX        = 96   # ~6 s of browser audio at 64 ms/chunk
     FINAL_QUERY_QUEUE_MAX  = 16
@@ -3841,6 +3990,9 @@ async def _run_deepgram(
     KEEPALIVE     = json.dumps({"type": "KeepAlive"})
     KEEPALIVE_SEC = 5
 
+    _fwd_logged = [False]
+    _rcv_logged = [False]
+
     async def fwd(dg_ws):
         last_sent = asyncio.get_event_loop().time()
         try:
@@ -3850,6 +4002,9 @@ async def _run_deepgram(
                     if chunk is None: break
                     await dg_ws.send(chunk)
                     last_sent = asyncio.get_event_loop().time()
+                    if not _fwd_logged[0]:
+                        _fwd_logged[0] = True
+                        _dlog(f"DG fwd: first audio chunk sent to Deepgram ({len(chunk)} bytes)")
                 except asyncio.TimeoutError:
                     # Queue empty — send KeepAlive if due
                     if asyncio.get_event_loop().time() - last_sent >= KEEPALIVE_SEC:
@@ -3862,6 +4017,7 @@ async def _run_deepgram(
                             break
         except Exception as e:
             print(f"DG fwd error: {e}")
+            _dlog_exc(f"DG fwd error: {e}")
 
     async def rcv(dg_ws):
         nonlocal last_interim_query, last_interim_query_at, last_live_transcript
@@ -3871,6 +4027,9 @@ async def _run_deepgram(
                 try:
                     msg = json.loads(raw if isinstance(raw, str) else raw.decode("utf-8"))
                     msg_type = msg.get("type", "Results")
+                    if not _rcv_logged[0]:
+                        _rcv_logged[0] = True
+                        _dlog(f"DG rcv: first message from Deepgram, type={msg_type}")
 
                     if msg_type == "UtteranceEnd":
                         _cancel_interim_query()
@@ -3890,6 +4049,7 @@ async def _run_deepgram(
                     speech_fin = msg.get("speech_final", False)
 
                     if is_final and tx:
+                        _dlog(f"DG rcv: final transcript received ({len(tx)} chars)")
                         _append_final_segment(msg, tx)
 
                     live_tx = _compose_utterance("" if is_final else tx)
@@ -3923,10 +4083,12 @@ async def _run_deepgram(
 
                 except Exception as e:
                     print(f"DG message handling error: {e}")
+                    _dlog_exc(f"DG message handling error: {e}")
                     continue
         except Exception as e:
             if not stop_evt.is_set():
                 print(f"DG rcv error: {e}")
+                _dlog_exc(f"DG rcv error: {e}")
                 await safe_send(ws, {"type": "dg_error", "error": str(e)})
 
     #  Connect to Deepgram 
@@ -3936,6 +4098,7 @@ async def _run_deepgram(
             "additional_headers" if "additional_headers" in _connect_sig.parameters
             else "extra_headers"
         )
+        _dlog(f"DG connect: attempting | header kwarg={_header_kwarg} | key_len={len(dg_key)}")
 
         async with _ws_lib.connect(
             DG_URL,
@@ -3944,6 +4107,7 @@ async def _run_deepgram(
         ) as dg_ws:
             await safe_send(ws, {"type": "dg_ready", "message": "Deepgram connected — speak now"})
             print("Deepgram stream open")
+            _dlog("DG connect: stream OPEN (handshake succeeded)")
             fwd_t = asyncio.create_task(fwd(dg_ws))
             rcv_t = asyncio.create_task(rcv(dg_ws))
             final_worker_t = asyncio.create_task(final_query_worker())
@@ -4020,9 +4184,11 @@ async def _run_deepgram(
                 except Exception: pass
                 await asyncio.gather(fwd_t, rcv_t, final_worker_t, return_exceptions=True)
                 print("Deepgram closed")
+                _dlog("DG session closed")
 
     except Exception as e:
         print(f"Deepgram connection failed: {e}")
+        _dlog_exc(f"Deepgram connection failed: {type(e).__name__}: {e}")
         # Only try to notify if the browser socket is still open
         await safe_send(ws, {
             "type":    "dg_error",

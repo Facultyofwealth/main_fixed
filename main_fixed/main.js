@@ -37,8 +37,51 @@ const OUTPUT_SETTINGS_PATH = path.join(DATA_DIR, 'output_settings.json');
 
 let controlWin = null;
 let outputWin = null;
+let splashWin = null;
 let backendProc = null;
 let isQuitting = false;
+let startupCancelled = false;
+let startupState = { progress: 5, message: 'Starting In The Beginning services...' };
+
+function setStartupStatus(progress, message) {
+  startupState = { progress, message };
+  if (splashWin && !splashWin.isDestroyed()) {
+    splashWin.webContents.send('itb:startup-status', startupState);
+  }
+}
+
+function createSplashWindow() {
+  splashWin = new BrowserWindow({
+    width: 460,
+    height: 310,
+    resizable: false,
+    maximizable: false,
+    minimizable: true,
+    frame: false,
+    center: true,
+    show: false,
+    backgroundColor: '#0b0d12',
+    title: 'In The Beginning',
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+      backgroundThrottling: false,
+    },
+  });
+  splashWin.loadFile(path.join(__dirname, 'splash.html'));
+  splashWin.once('ready-to-show', () => {
+    if (!splashWin || splashWin.isDestroyed()) return;
+    splashWin.show();
+    splashWin.webContents.send('itb:startup-status', startupState);
+  });
+  splashWin.on('closed', () => { splashWin = null; });
+}
+
+function closeSplashWindow() {
+  if (splashWin && !splashWin.isDestroyed()) splashWin.close();
+  splashWin = null;
+}
 
 // ─────────────────────────── settings I/O ────────────────────────────
 function readOutputSettings() {
@@ -237,6 +280,7 @@ function createControlWindow() {
   controlWin.once('ready-to-show', () => {
     controlWin.maximize();
     controlWin.show();
+    closeSplashWindow();
   });
 
   controlWin.on('closed', () => {
@@ -301,14 +345,23 @@ async function ensureMicrophoneAccess() {
 }
 
 // ─────────────────────────── python backend ──────────────────────────
-function backendIsUp() {
+function backendStatus() {
   return new Promise((resolve) => {
-    const req = http.get(`${BACKEND_URL}/output/status`, { timeout: 1000 }, (res) => {
-      res.resume();
-      resolve(res.statusCode > 0);
+    const req = http.get(`${BACKEND_URL}/startup-status`, { timeout: 1000 }, (res) => {
+      let body = '';
+      res.setEncoding('utf8');
+      res.on('data', (chunk) => { body += chunk; });
+      res.on('end', () => {
+        try {
+          const status = JSON.parse(body);
+          resolve({ reachable: res.statusCode === 200, ...status });
+        } catch (_) {
+          resolve({ reachable: false });
+        }
+      });
     });
-    req.on('error', () => resolve(false));
-    req.on('timeout', () => { req.destroy(); resolve(false); });
+    req.on('error', () => resolve({ reachable: false }));
+    req.on('timeout', () => { req.destroy(); resolve({ reachable: false }); });
   });
 }
 
@@ -338,7 +391,10 @@ function resolveBackendCommand() {
 }
 
 async function startBackend() {
-  if (await backendIsUp()) {
+  const existing = await backendStatus();
+  if (startupCancelled) return false;
+  if (existing.reachable && existing.ready && existing.bible_ok) {
+    setStartupStatus(100, 'Ready');
     console.log('[itb] backend already running — attaching');
     return true;
   }
@@ -351,6 +407,7 @@ async function startBackend() {
   }
 
   console.log(`[itb] starting backend: ${spec.cmd} ${spec.args.join(' ')}`);
+  setStartupStatus(20, 'Starting In The Beginning services...');
   backendProc = spawn(spec.cmd, spec.args, {
     cwd: spec.cwd,
     env: {
@@ -379,7 +436,12 @@ async function startBackend() {
   // can exceed 30s; start_in_the_beginning.py already gives it 90s).
   for (let i = 0; i < 180; i++) {
     await new Promise((r) => setTimeout(r, 500));
-    if (await backendIsUp()) {
+    if (startupCancelled) return false;
+    const status = await backendStatus();
+    if (status.reachable) {
+      setStartupStatus(status.progress || 60, status.message || 'Loading Bible database...');
+    }
+    if (status.reachable && status.ready && status.bible_ok) {
       console.log('[itb] backend is up');
       return true;
     }
@@ -517,6 +579,20 @@ function setupAutoUpdater() {
 
 // ─────────────────────────── IPC surface ─────────────────────────────
 function registerIpc() {
+  ipcMain.handle('itb:cancel-startup', (e) => {
+    if (!splashWin || splashWin.isDestroyed() || e.sender !== splashWin.webContents) return { ok: false };
+    startupCancelled = true;
+    isQuitting = true;
+    stopBackend();
+    app.quit();
+    return { ok: true };
+  });
+  ipcMain.handle('itb:minimize-splash', (e) => {
+    if (!splashWin || splashWin.isDestroyed() || e.sender !== splashWin.webContents) return { ok: false };
+    splashWin.minimize();
+    return { ok: true };
+  });
+
   ipcMain.handle('itb:update-state', () => updateState);
   ipcMain.handle('itb:update-download', () => { startUpdateDownload(); return { ok: true }; });
   ipcMain.handle('itb:update-install', () => { installUpdateNow(); return { ok: true }; });
@@ -599,12 +675,14 @@ if (!app.requestSingleInstanceLock()) {
   });
 
   app.whenReady().then(async () => {
+    createSplashWindow();
     configurePermissions();
     registerIpc();
     await ensureMicrophoneAccess();
+    if (startupCancelled) return;
 
     const ok = await startBackend();
-    if (!ok) { app.quit(); return; }
+    if (!ok) { closeSplashWindow(); app.quit(); return; }
 
     createControlWindow();
     watchDisplays();

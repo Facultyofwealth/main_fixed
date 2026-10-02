@@ -1,0 +1,485 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>In The Beginning AI</title>
+  <style>
+    :root { color-scheme: dark; --k: 1; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; overflow: hidden; }
+    body { background: #0b0d12; color: #f5f1e8; font-family: "Segoe UI", Arial, sans-serif; user-select: none; cursor: default; }
+    .app { height: 100vh; display: flex; flex-direction: column; }
+
+    /* top bar (drag area + minimize) */
+    .top { height: 30px; flex: none; display: flex; align-items: center; justify-content: space-between; padding: 0 8px 0 12px; -webkit-app-region: drag; }
+    .brand { display: flex; align-items: center; gap: 8px; font-size: 11px; letter-spacing: .04em; color: #8d94a1; }
+    .mark { width: 16px; height: 16px; border: 1px solid #bf8b47; color: #f6ca82; font: 11px/14px Georgia, serif; text-align: center; }
+    .iconbtn { -webkit-app-region: no-drag; width: 28px; height: 22px; border: 0; border-radius: 4px; background: transparent; color: #8d94a1; font-size: 15px; line-height: 1; cursor: pointer; }
+    .iconbtn:hover { background: #1b1f28; color: #f5f1e8; }
+
+    /* stage */
+    svg#stage { display: block; width: 100%; height: 170px; flex: none; font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif; }
+    svg#stage.shake { animation: shake calc(.4s * var(--k)) linear; }
+
+    /* caption */
+    #cap { flex: 1 1 auto; display: flex; align-items: center; justify-content: center; padding: 4px 30px; text-align: center; font-size: 15px; line-height: 1.35; color: #f5f1e8; transition: opacity .22s ease, transform .22s ease; }
+    #cap.hide { opacity: 0; transform: translateY(5px); }
+
+    /* bottom */
+    .track { height: 3px; flex: none; background: #151922; }
+    #bar { width: 4%; height: 100%; background: #8a6638; transition: width 600ms ease; }
+    .foot { height: 34px; flex: none; display: flex; align-items: center; justify-content: space-between; padding: 0 12px 0 14px; }
+    #status { font-size: 10px; color: #5d6471; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 300px; }
+    #cancel { border: 1px solid #333a47; background: transparent; color: #a9afb9; font: 12px "Segoe UI", Arial, sans-serif; padding: 4px 14px; border-radius: 999px; cursor: pointer; }
+    #cancel:hover { border-color: #bf8b47; color: #f5f1e8; }
+    #cancel:disabled { opacity: .6; cursor: default; }
+
+    /* ---------- hero ---------- */
+    .eye { transform-box: fill-box; transform-origin: center; animation: blink 4.2s infinite; }
+    #heroX .m { display: none; }
+    #heroX[data-mood="smile"] .m-smile, #heroX[data-mood="o"] .m-o,
+    #heroX[data-mood="flat"] .m-flat, #heroX[data-mood="sad"] .m-sad { display: inline; }
+    #heroX .phone { display: none; }
+    #heroX[data-pose="phone"] .phone { display: inline; }
+    #heroX .armL, #heroX .armR { transition: transform calc(.35s * var(--k)) ease; }
+    #heroX[data-pose="down"] .armL { transform: rotate(4deg); }
+    #heroX[data-pose="down"] .armR { transform: rotate(-4deg); }
+    #heroX[data-pose="carry"] .armL { transform: rotate(-80deg); }
+    #heroX[data-pose="carry"] .armR { transform: rotate(-88deg); }
+    #heroX[data-pose="facepalm"] .armR { transform: rotate(153deg); }
+    #heroX[data-pose="phone"] .armR { transform: rotate(-172deg); }
+    #heroX[data-pose="cheer"] .armR { transform: rotate(-155deg); }
+    #heroX[data-pose="cheer"] .armL { transform: rotate(155deg); }
+    #heroX[data-pose="cheer"] #heroBob { animation: dance calc(.45s * var(--k)) ease-in-out infinite alternate; }
+    .walking #heroBob { animation: bob calc(.25s * var(--k)) ease-in-out infinite alternate; }
+    .walking .legL { animation: walkA calc(.5s * var(--k)) ease-in-out infinite alternate; }
+    .walking .legR { animation: walkA calc(.5s * var(--k)) ease-in-out infinite alternate-reverse; }
+    #emote { opacity: 0; }
+    #emote.pop { animation: pop calc(1.9s * var(--k)) ease-out forwards; }
+
+    /* ---------- forklift ---------- */
+    #fk.driving .wheelSpin { animation: spinCCW calc(.4s * var(--k)) linear infinite; }
+    #wheelF.rolling { animation: spinCCW calc(.45s * var(--k)) linear infinite; }
+    #wheelF.rolling.back { animation-direction: reverse; }
+    .sputter #fk { animation: sputter calc(.12s * var(--k)) linear infinite alternate; }
+
+    /* ---------- friend on the call ---------- */
+    #call { transform: scale(0); opacity: 0; transition: transform calc(.35s * var(--k)) cubic-bezier(.3, 1.6, .5, 1), opacity calc(.2s * var(--k)); }
+    #stage[data-call="1"] #call { transform: scale(1); opacity: 1; }
+    #callShake.ringing { animation: ring calc(.7s * var(--k)) linear infinite; }
+    #call .f-open, #call .f-closed, #call .f-zzz, #call .f-type, #call .f-thumb, #call .f-coffee { display: none; }
+    #call[data-friend="asleep"] .f-closed, #call[data-friend="asleep"] .f-zzz { display: inline; }
+    #call[data-friend="awake"] .f-open, #call[data-friend="awake"] .f-coffee { display: inline; }
+    #call[data-friend="typing"] .f-open, #call[data-friend="typing"] .f-type { display: inline; }
+    #call[data-friend="thumb"] .f-open, #call[data-friend="thumb"] .f-thumb { display: inline; }
+    #call .f-type { animation: tap calc(.18s * var(--k)) linear infinite alternate; }
+
+    @keyframes walkA { from { transform: rotate(-30deg); } to { transform: rotate(30deg); } }
+    @keyframes bob { from { transform: translateY(0); } to { transform: translateY(-2px); } }
+    @keyframes dance { from { transform: translateY(0); } to { transform: translateY(-7px); } }
+    @keyframes spinCCW { to { transform: rotate(-360deg); } }
+    @keyframes sputter { from { transform: translateY(0); } to { transform: translateY(-1.5px); } }
+    @keyframes blink { 0%, 94%, 100% { transform: scaleY(1); } 97% { transform: scaleY(.1); } }
+    @keyframes pop { 0% { opacity: 0; transform: translateY(6px) scale(.5); } 14% { opacity: 1; transform: translateY(0) scale(1.15); } 78% { opacity: 1; } 100% { opacity: 0; transform: translateY(-8px); } }
+    @keyframes shake { 0%, 100% { transform: translateX(0); } 20% { transform: translateX(-4px); } 40% { transform: translateX(3px); } 60% { transform: translateX(-2px); } 80% { transform: translateX(2px); } }
+    @keyframes ring { 0%, 100% { transform: rotate(0); } 10% { transform: rotate(-8deg); } 20% { transform: rotate(8deg); } 30% { transform: rotate(-8deg); } 40% { transform: rotate(8deg); } 50% { transform: rotate(0); } }
+    @keyframes tap { from { transform: translateY(0); } to { transform: translateY(-2px); } }
+    @keyframes fly { from { transform: translate(var(--x0), var(--y)); } to { transform: translate(var(--x1), var(--y)); } }
+    @keyframes puff { from { opacity: .8; transform: translate(var(--x), var(--y)) scale(.4); } to { opacity: 0; transform: translate(var(--x), calc(var(--y) - 42px)) scale(1.7); } }
+    @keyframes fall { from { transform: translate(var(--x), -10px) rotate(0); } to { transform: translate(calc(var(--x) + var(--dx)), 172px) rotate(var(--r)); } }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="top">
+      <div class="brand"><div class="mark">I</div><span>In The Beginning AI</span></div>
+      <button id="min" class="iconbtn" title="Minimize" aria-label="Minimize">&#8211;</button>
+    </div>
+
+    <svg id="stage" viewBox="0 0 460 170" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+      <rect x="0" y="140" width="460" height="30" fill="#10131a"/>
+      <line x1="0" y1="140.5" x2="460" y2="140.5" stroke="#2a303c" stroke-width="1"/>
+      <g id="amb"></g>
+
+      <!-- friend on the phone call -->
+      <defs><clipPath id="cc"><circle r="36"/></clipPath></defs>
+      <g transform="translate(392,52)">
+        <g id="call" data-friend="asleep">
+          <g id="callShake">
+            <circle r="38" fill="#141821" stroke="#c9944e" stroke-width="2"/>
+            <g clip-path="url(#cc)">
+              <ellipse cx="0" cy="40" rx="27" ry="17" fill="#3b6ea8"/>
+              <circle cx="0" cy="2" r="20" fill="#e8b98f"/>
+              <path d="M-21 -4 Q-20 -27 0 -27 Q20 -27 21 -4 Z" fill="#3b6ea8"/>
+              <rect x="-22" y="-8" width="44" height="7" rx="3" fill="#2d5486"/>
+              <g class="f-open"><circle cx="-7" cy="4" r="2.2" fill="#1b1b1f"/><circle cx="7" cy="4" r="2.2" fill="#1b1b1f"/></g>
+              <g class="f-closed" fill="none" stroke="#1b1b1f" stroke-width="1.6" stroke-linecap="round"><path d="M-10 4 Q-7 6.5 -4 4"/><path d="M4 4 Q7 6.5 10 4"/></g>
+              <path d="M-5 12 Q0 15 5 12" fill="none" stroke="#7a3f35" stroke-width="1.6" stroke-linecap="round"/>
+              <text class="f-zzz" x="12" y="-10" font-size="12">&#128164;</text>
+              <text class="f-coffee" x="-26" y="30" font-size="14">&#9749;</text>
+              <text class="f-type" x="-8" y="33" font-size="14">&#9000;&#65039;</text>
+              <text class="f-thumb" x="8" y="28" font-size="18">&#128077;</text>
+            </g>
+          </g>
+        </g>
+      </g>
+
+      <!-- whatever was in the box -->
+      <text id="loot" x="0" y="0" font-size="15" text-anchor="middle" style="opacity:0">&#129414;</text>
+
+      <!-- tiny forklift (faces left) -->
+      <g id="fkX">
+        <g transform="translate(0,140)">
+          <g id="fk">
+            <g transform="translate(28,-7)"><g id="fkTilt"><g transform="translate(-28,7)">
+              <rect x="-12" y="-54" width="5" height="54" rx="1" fill="#596073"/>
+              <rect x="-8" y="-31" width="42" height="22" rx="4" fill="#e0ad62"/>
+              <rect x="-8" y="-19" width="42" height="3" fill="#b88a3e"/>
+              <line x1="14" y1="-31" x2="14" y2="-52" stroke="#596073" stroke-width="2"/>
+              <line x1="31" y1="-31" x2="31" y2="-52" stroke="#596073" stroke-width="2"/>
+              <rect x="11" y="-56" width="23" height="4" rx="1" fill="#596073"/>
+              <rect x="21" y="-39" width="10" height="8" rx="2" fill="#2b3342"/>
+              <g id="fork"><rect x="-34" y="-5" width="26" height="4" fill="#aab2c0"/><rect x="-12" y="-14" width="5" height="14" fill="#8890a0"/></g>
+              <g transform="translate(28,-7)"><g class="wheelSpin"><circle r="7" fill="#1b1f28" stroke="#596073" stroke-width="2"/><line x1="-6" y1="0" x2="6" y2="0" stroke="#596073" stroke-width="1.5"/></g></g>
+            </g></g></g>
+            <g id="wheelRoll"><g transform="translate(2,-7)"><g id="wheelF" class="wheelSpin"><circle r="7" fill="#1b1f28" stroke="#596073" stroke-width="2"/><line x1="-6" y1="0" x2="6" y2="0" stroke="#596073" stroke-width="1.5"/></g></g></g>
+          </g>
+        </g>
+      </g>
+
+      <!-- hero -->
+      <g id="heroX" data-pose="carry" data-mood="smile">
+        <g transform="translate(0,140)">
+          <g id="heroBob">
+            <g transform="translate(-4,-22)"><g class="legL"><rect x="-3" y="0" width="6" height="22" rx="3" fill="#2b3342"/></g></g>
+            <g transform="translate(4,-22)"><g class="legR"><rect x="-3" y="0" width="6" height="22" rx="3" fill="#2b3342"/></g></g>
+            <g transform="translate(-8,-44)"><g class="armL"><rect x="-2.5" y="0" width="5" height="19" rx="2.5" fill="#b07e3c"/><circle cx="0" cy="19" r="3" fill="#f1c9a0"/></g></g>
+            <rect x="-11" y="-48" width="22" height="28" rx="8" fill="#c9944e"/>
+            <rect x="-11" y="-30" width="22" height="3" fill="#a87a3a"/>
+            <circle cx="0" cy="-60" r="11" fill="#f1c9a0"/>
+            <ellipse class="eye" cx="-1" cy="-61" rx="1.6" ry="1.9" fill="#1b1b1f"/>
+            <ellipse class="eye" cx="6" cy="-61" rx="1.6" ry="1.9" fill="#1b1b1f"/>
+            <g fill="none" stroke="#7a3f35" stroke-width="1.4" stroke-linecap="round">
+              <path class="m m-smile" d="M0 -56.5 Q3.5 -53.5 7 -56.5"/>
+              <ellipse class="m m-o" cx="3.5" cy="-55" rx="2" ry="2.6" fill="#5a2f2a"/>
+              <path class="m m-flat" d="M0 -55 L7 -55"/>
+              <path class="m m-sad" d="M0 -53.5 Q3.5 -57 7 -53.5"/>
+            </g>
+            <path d="M-12 -65 Q0 -85 12 -65 Z" fill="#f6ca82"/>
+            <rect x="-15" y="-66" width="30" height="3.5" rx="1.5" fill="#e0ad62"/>
+            <g transform="translate(8,-44)"><g class="armR">
+              <rect x="-2.5" y="0" width="5" height="19" rx="2.5" fill="#c9944e"/>
+              <circle cx="0" cy="19" r="3" fill="#f1c9a0"/>
+              <g class="phone"><rect x="-2" y="14" width="5" height="9" rx="1.2" fill="#20242d" stroke="#8d94a1" stroke-width=".8"/></g>
+            </g></g>
+            <g transform="translate(14,-78)"><text id="emote" x="0" y="0" font-size="16"></text></g>
+          </g>
+        </g>
+      </g>
+
+      <!-- the box -->
+      <g id="boxX">
+        <rect x="-15" y="10" width="30" height="4" fill="#7a5a35"/>
+        <rect x="-13" y="-10" width="26" height="20" rx="1.5" fill="#b9824a" stroke="#7a5a35" stroke-width="1"/>
+        <rect x="-2" y="-10" width="4" height="20" fill="#d6ad76"/>
+        <text x="0" y="5" font-size="12" font-family="Georgia, serif" fill="#4a3320" text-anchor="middle" transform="translate(7,0)">I</text>
+      </g>
+    </svg>
+
+    <div id="cap" class="hide"></div>
+    <div class="track"><div id="bar"></div></div>
+    <div class="foot">
+      <span id="status"></span>
+      <button id="cancel" type="button">Cancel</button>
+    </div>
+  </div>
+
+  <script>
+  (() => {
+    'use strict';
+    const $ = (id) => document.getElementById(id);
+    const stage = $('stage'), hero = $('heroX'), box = $('boxX'), fork = $('fork'), fk = $('fk'),
+          fkX = $('fkX'), fkTilt = $('fkTilt'), wheelRoll = $('wheelRoll'), wheelF = $('wheelF'),
+          loot = $('loot'), emoteEl = $('emote'), call = $('call'), callShake = $('callShake'),
+          amb = $('amb'), capEl = $('cap'), bar = $('bar'), statusEl = $('status'),
+          cancelBtn = $('cancel'), minBtn = $('min');
+    const api = window.itbDesktop || {};
+
+    // Preview in a normal browser:  splash.html?speed=6  plays the whole show 6x faster.
+    const q = new URLSearchParams(location.search);
+    const SPEED = Math.max(0.25, Math.min(30, parseFloat(q.get('speed')) || 1));
+    document.documentElement.style.setProperty('--k', String(1 / SPEED));
+
+    const rnd = (a, b) => a + Math.random() * (b - a);
+    const pick = (a) => a[Math.floor(Math.random() * a.length)];
+    const bag = (arr) => { let left = []; return () => { if (!left.length) left = arr.slice().sort(() => Math.random() - 0.5); return left.pop(); }; };
+
+    function go(el, tf, dur, ease) {
+      el.style.transition = dur > 0 ? 'transform ' + (dur / SPEED) + 's ' + (ease || 'ease') : 'none';
+      el.style.transform = tf;
+    }
+
+    // ---------- scheduler (wall-clock based, so minimizing never desyncs the story) ----------
+    const t0 = performance.now();
+    const tNow = () => (performance.now() - t0) / 1000 * SPEED;
+    let events = [];
+    let finaleOn = false;
+    const at = (time, fn, force) => { events.push({ time, fn, force: !!force }); };
+    function tick() {
+      const t = tNow();
+      const due = events.filter((e) => e.time <= t);
+      if (due.length) {
+        events = events.filter((e) => e.time > t);
+        due.sort((a, b) => a.time - b.time).forEach((e) => {
+          if (!finaleOn || e.force) { try { e.fn(); } catch (err) { console.error(err); } }
+        });
+      }
+      updateBar(t);
+    }
+
+    // ---------- helpers ----------
+    let capTimer = null;
+    function say(txt) {
+      capEl.classList.add('hide');
+      clearTimeout(capTimer);
+      capTimer = setTimeout(() => { capEl.textContent = txt; capEl.classList.remove('hide'); }, 230 / Math.min(SPEED, 4));
+    }
+    const pose = (p) => hero.setAttribute('data-pose', p);
+    const mood = (m) => hero.setAttribute('data-mood', m);
+    function emote(s) {
+      emoteEl.textContent = s;
+      emoteEl.classList.remove('pop');
+      emoteEl.getBoundingClientRect();
+      emoteEl.classList.add('pop');
+    }
+    function shake() { stage.classList.remove('shake'); stage.getBoundingClientRect(); stage.classList.add('shake'); }
+    function chatter(start, end, next) {
+      let tt = start + rnd(4.2, 5.2);
+      while (tt < end - 3) { at(tt, () => say(next())); tt += rnd(4.3, 5.8); }
+    }
+
+    // ---------- ambient randomness ----------
+    const NS = 'http://www.w3.org/2000/svg';
+    function svgEl(tag, attrs, vars) {
+      const e = document.createElementNS(NS, tag);
+      for (const k in attrs) e.setAttribute(k, attrs[k]);
+      for (const k in (vars || {})) e.style.setProperty(k, vars[k]);
+      return e;
+    }
+    function launch(e, anim, secs) {
+      e.style.animation = anim + ' ' + (secs / SPEED) + 's linear forwards';
+      e.addEventListener('animationend', () => e.remove());
+      amb.appendChild(e);
+    }
+    function flyer() {
+      const dir = Math.random() < 0.5 ? 1 : -1;
+      const e = svgEl('text', { x: 0, y: 0, 'font-size': Math.round(rnd(13, 19)) },
+        { '--y': Math.round(rnd(16, 96)) + 'px', '--x0': (dir > 0 ? -30 : 490) + 'px', '--x1': (dir > 0 ? 490 : -30) + 'px' });
+      e.textContent = pick(['\u{1F426}', '\u{1F98B}', '\u{1F6F8}', '\u{1F388}', '\u{1FA81}', '\u2708\uFE0F', '\u{1F41D}']);
+      launch(e, 'fly', rnd(7, 12));
+    }
+    function crawler() {
+      const dir = Math.random() < 0.5 ? 1 : -1;
+      const e = svgEl('text', { x: 0, y: 0, 'font-size': 13 },
+        { '--y': '160px', '--x0': (dir > 0 ? -30 : 490) + 'px', '--x1': (dir > 0 ? 490 : -30) + 'px' });
+      e.textContent = pick(['\u{1F40C}', '\u{1F41B}', '\u{1F994}']);
+      launch(e, 'fly', rnd(16, 24));
+    }
+    function puff(x, y) {
+      const e = svgEl('circle', { r: 5, fill: '#8d94a1' }, { '--x': x + 'px', '--y': y + 'px' });
+      launch(e, 'puff', 1.3);
+    }
+    function confetti(n) {
+      const cols = ['#f6ca82', '#e0ad62', '#6fb3ff', '#ff7a8a', '#8fe3a1', '#f5f1e8'];
+      for (let i = 0; i < n; i++) {
+        const e = svgEl('rect', { width: 4, height: 7, fill: pick(cols) },
+          { '--x': Math.round(rnd(10, 450)) + 'px', '--dx': Math.round(rnd(-40, 40)) + 'px', '--r': Math.round(rnd(300, 900)) + 'deg' });
+        e.style.animationDelay = (rnd(0, 1.2) / SPEED) + 's';
+        launch(e, 'fall', rnd(2.2, 3.6));
+      }
+    }
+    function ambient() {
+      const r = Math.random();
+      if (r < 0.5) flyer();
+      else if (r < 0.7) crawler();
+      else if (!finaleOn && hero.getAttribute('data-pose') !== 'facepalm') emote(pick(['\u2753', '\u{1F440}', '\u{1F914}', '\u{1F4AD}']));
+      at(tNow() + rnd(3.5, 7.5), ambient, true);
+    }
+
+    // ---------- story ----------
+    const J = () => rnd(-1.5, 1.5);
+    const B = { s2: 15 + J(), s3: 30 + J(), s4: 45 + J(), s5: 60 + J(), s6: 70 };
+    const lootEmoji = pick(['\u{1F986}', '\u{1F34C}', '\u{1F9E6}', '\u{1F34B}', '\u{1F954}', '\u{1F414}']);
+    loot.textContent = lootEmoji;
+
+    const pool1 = bag(['Carrying the important thing.', 'Almost there. Probably.', 'Please enjoy this walking.', 'Step 47 of an unknown number.', 'The box is heavier than it looks.', 'Do not ask what is inside.']);
+    const pool2 = bag(['The box says it is fine.', 'Nobody saw that.', 'We do not talk about the box.', 'Okay, that one is on the box.', 'Something in there is making noise.', 'Cleaning up. Eventually.']);
+    const pool3 = bag(['Tiny forklift. Big confidence.', 'Borrowed. Technically.', 'Beep. Beep. Beep.', 'Safety first. The hat is on.', 'Please do not tell facilities.', 'It has a seat and everything.']);
+    const pool4 = bag(['That wheel had one job.', 'Okay. Everyone stay calm.', 'We have more plans. Probably.', 'Plan C has no details yet.', 'Is it supposed to smell like that?']);
+    const pool5 = bag(['He says: have you tried turning it off and on?', 'Typing. Lots of typing.', 'He is reading the docs. Out loud.', 'The hold music is just breathing.', 'Please hold. The universe is rebooting.']);
+    const poolL = bag(['Any second now. Honest.', 'Good time to stretch.', 'The app is stretching too.', 'Almost there. For real.', 'Opening everything nicely.']);
+
+    function scene1() {
+      const d = B.s2 * 0.78;
+      pose('carry'); mood('smile');
+      stage.classList.add('walking');
+      go(hero, 'translateX(165px)', d, 'linear');
+      go(box, 'translate(189px,106px)', d, 'linear');
+      at(d, () => stage.classList.remove('walking'));
+      say('Starting up....');
+      at(2.5, () => emote('\u{1F3B5}'));
+      chatter(0, B.s2, pool1);
+    }
+
+    function scene2() {
+      const s = tNow();
+      stage.classList.remove('walking');
+      pose('down'); mood('o'); emote('\u2757');
+      say('That was not supposed to happen.');
+      go(box, 'translate(189px,106px) rotate(-12deg)', 0.22, 'ease-out');
+      at(s + 0.3, () => go(box, 'translate(197px,126px) rotate(12deg)', 0.35, 'cubic-bezier(.5,0,1,1)'));
+      at(s + 0.68, () => {
+        shake();
+        loot.style.opacity = 1;
+        go(loot, 'translate(186px,92px)', 0.35, 'ease-out');
+        go(box, 'translate(199px,119px) rotate(5deg)', 0.14, 'ease-out');
+      });
+      at(s + 0.85, () => go(box, 'translate(200px,126px) rotate(7deg)', 0.14, 'ease-in'));
+      at(s + 1.05, () => go(loot, 'translate(176px,134px)', 0.3, 'ease-in'));
+      at(s + 2.6, () => { mood('sad'); emote('\u{1F633}'); });
+      chatter(s, B.s3, pool2);
+    }
+
+    function scene3() {
+      const s = tNow();
+      pose('down'); mood('flat'); emote('\u{1F4A1}');
+      say('Plan B.');
+      at(s + 0.4, () => go(loot, 'translate(-30px,134px)', 11, 'linear'));
+      at(s + 1.0, () => { fk.classList.add('driving'); go(fkX, 'translateX(230px)', 4.2, 'cubic-bezier(.2,.7,.3,1)'); });
+      at(s + 5.4, () => { fk.classList.remove('driving'); mood('smile'); });
+      at(s + 6.6, () => {
+        go(fork, 'translateY(-36px)', 2.6, 'ease-in-out');
+        go(box, 'translate(200px,90px) rotate(0deg)', 2.6, 'ease-in-out');
+      });
+      at(s + 9.8, () => emote('\u{1F44D}'));
+      chatter(s, B.s4, pool3);
+    }
+
+    function scene4() {
+      const s = tNow();
+      say('Plan C.');
+      mood('flat');
+      at(s + 0.3, () => { stage.classList.add('sputter'); puff(244, 100); puff(250, 96); });
+      at(s + 1.4, () => {
+        stage.classList.remove('sputter');
+        shake(); emote('\u{1F4A5}'); mood('o');
+        wheelF.classList.add('rolling');
+        go(wheelRoll, 'translateX(-430px)', 4.6, 'linear');
+        go(fkTilt, 'rotate(-9deg)', 0.5, 'ease-in');
+      });
+      at(s + 1.9, () => {
+        go(fork, 'translateY(-6px)', 0.6, 'ease-in');
+        go(box, 'translate(196px,126px) rotate(13deg)', 0.45, 'cubic-bezier(.5,0,1,1)');
+      });
+      at(s + 2.35, () => { shake(); go(box, 'translate(198px,120px) rotate(6deg)', 0.14, 'ease-out'); });
+      at(s + 2.5, () => go(box, 'translate(199px,126px) rotate(10deg)', 0.14, 'ease-in'));
+      at(s + 3.4, () => { pose('facepalm'); mood('sad'); emote('\u{1F635}'); });
+      for (let i = 1; i < 9; i++) at(s + 1.4 + i * 0.9, () => puff(rnd(240, 252), rnd(96, 104)));
+      chatter(s + 2, B.s5, pool4);
+    }
+
+    function scene5() {
+      const s = tNow();
+      pose('phone'); mood('flat');
+      call.setAttribute('data-friend', 'asleep');
+      stage.setAttribute('data-call', '1');
+      callShake.classList.add('ringing');
+      say('Calling a friend...');
+      emote('\u{1F4DE}');
+      at(s + 3.4, () => {
+        callShake.classList.remove('ringing');
+        call.setAttribute('data-friend', 'awake');
+        mood('smile');
+        say('Hey......can you restart the app?');
+        emote('\u{1F64F}');
+      });
+      at(s + 7.2, () => { call.setAttribute('data-friend', 'typing'); say(pool5()); });
+      chatter(s + 5, B.s6, pool5);
+    }
+
+    function finale() {
+      if (finaleOn) return;
+      finaleOn = true;
+      stage.classList.remove('walking', 'sputter');
+      callShake.classList.remove('ringing');
+      say('Never mind.');
+      pose('cheer'); mood('smile'); emote('\u{1F389}');
+      stage.setAttribute('data-call', '1');
+      call.setAttribute('data-friend', 'thumb');
+      go(hero, 'translateX(165px)', 0.8, 'ease-out');
+      fk.classList.remove('driving');
+      go(fkX, 'translateX(230px)', 1.2, 'ease-out');
+      go(fkTilt, 'rotate(0deg)', 0.6, 'ease-out');
+      wheelF.classList.add('rolling', 'back');
+      go(wheelRoll, 'translateX(0px)', 1.4, 'ease-in-out');
+      at(tNow() + 1.5, () => wheelF.classList.remove('rolling', 'back'), true);
+      go(fork, 'translateY(-36px)', 1.2, 'ease-in-out');
+      go(box, 'translate(200px,90px) rotate(0deg)', 1.2, 'ease-in-out');
+      confetti(30);
+      at(tNow() + 2.6, () => confetti(18), true);
+      at(tNow() + 7, linger, true);
+    }
+    function linger() {
+      say(poolL());
+      at(tNow() + rnd(5, 7), linger, true);
+    }
+
+    // ---------- progress bar (deliberately tiny and number-free) ----------
+    let realP = 0, readyFlag = false;
+    function updateBar(t) {
+      const fake = 4 + 90 * (1 - Math.exp(-t / 42));
+      const v = readyFlag ? 100 : Math.min(99, Math.max(fake, realP * 0.98));
+      bar.style.width = v + '%';
+    }
+
+    // ---------- real startup signal from the Electron main process ----------
+    if (typeof api.onStartupStatus === 'function') {
+      api.onStartupStatus((state) => {
+        const p = Number(state && state.progress) || 0;
+        if (p > realP) realP = p;
+        if (state && state.message) statusEl.textContent = state.message;
+        if (p >= 100) { readyFlag = true; finale(); }
+      });
+    }
+
+    // ---------- window buttons ----------
+    minBtn.addEventListener('click', () => { if (typeof api.minimizeSplash === 'function') api.minimizeSplash(); });
+    cancelBtn.addEventListener('click', async () => {
+      cancelBtn.disabled = true;
+      cancelBtn.textContent = 'Leaving...';
+      say('Okay, okay. Packing up.');
+      try {
+        if (typeof api.cancelStartup === 'function') await api.cancelStartup();
+        else window.close();
+      } catch (_) { window.close(); }
+    });
+
+    // ---------- go ----------
+    go(hero, 'translateX(-70px)', 0);
+    go(box, 'translate(-46px,106px)', 0);
+    go(fkX, 'translateX(520px)', 0);
+    go(wheelRoll, 'translateX(0px)', 0);
+    at(B.s2, scene2);
+    at(B.s3, scene3);
+    at(B.s4, scene4);
+    at(B.s5, scene5);
+    at(B.s6, finale, true);
+    at(rnd(3, 6), ambient, true);
+    scene1();
+    setInterval(tick, 100);
+    tick();
+  })();
+  </script>
+</body>
+</html>
